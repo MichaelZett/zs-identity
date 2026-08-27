@@ -1,0 +1,145 @@
+import net.ltgt.gradle.errorprone.CheckSeverity
+
+plugins {
+    id 'base'
+    id 'net.ltgt.errorprone' version "${errorproneGradleVersion}" apply false
+    id 'net.ltgt.nullaway' version "${nullawayGradleVersion}" apply false
+    id 'com.github.ben-manes.versions' version "${benmanesVersion}" apply false
+}
+
+// ErrorProne-Checks, die als Sicherheitsnetz auf ERROR stehen.
+ext.errorproneEnforcedChecks = [
+        'ArrayRecordComponent',
+        'EmptyCatch',
+        'EqualsGetClass',
+        'FutureReturnValueIgnored',
+        'InlineFormatString',
+        'JavaTimeDefaultTimeZone',
+        'JdkObsolete',
+        'MissingOverride',
+        'MixedMutabilityReturnType',
+        'OperatorPrecedence',
+        'ReferenceEquality',
+        'StringSplitter',
+        'SuperCallToObjectMethod',
+        'UnnecessaryMethodReference',
+]
+
+subprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'maven-publish'
+    apply plugin: 'net.ltgt.errorprone'
+    apply plugin: 'net.ltgt.nullaway'
+    apply plugin: 'com.github.ben-manes.versions'
+
+    group = rootProject.group
+    version = rootProject.version
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of("${javaVersion}")
+        }
+        withSourcesJar()
+        withJavadocJar()
+    }
+
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+    }
+
+    dependencies {
+        // Native Gradle-Platform statt io.spring.dependency-management: Die
+        // BOM landet so in den Modul-Metadaten des Artefakts, und das Plugin
+        // ist mit dem Configuration-Cache beim POM-Erzeugen unvertraeglich.
+        api platform("org.springframework.boot:spring-boot-dependencies:${bootVersion}")
+        annotationProcessor platform("org.springframework.boot:spring-boot-dependencies:${bootVersion}")
+        testAnnotationProcessor platform("org.springframework.boot:spring-boot-dependencies:${bootVersion}")
+        errorprone platform("org.springframework.boot:spring-boot-dependencies:${bootVersion}")
+
+        compileOnly "org.jetbrains:annotations:${jetbrainsAnnotationsVersion}"
+        testCompileOnly "org.jetbrains:annotations:${jetbrainsAnnotationsVersion}"
+        api 'org.jspecify:jspecify'
+
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        testCompileOnly 'org.projectlombok:lombok'
+        testAnnotationProcessor 'org.projectlombok:lombok'
+
+        annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+        errorprone "com.google.errorprone:error_prone_core:${errorproneCoreVersion}"
+        errorprone "com.uber.nullaway:nullaway:${nullawayCoreVersion}"
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        // Explizit UTF-8 statt Plattform-Default (Windows: CP1252) — die Quellen
+        // enthalten durchgaengig Umlaute.
+        options.encoding = 'UTF-8'
+        options.compilerArgs += ['-parameters']
+    }
+
+    tasks.withType(Javadoc).configureEach {
+        options.encoding = 'UTF-8'
+        // Doclint stolpert ueber freie Inline-Tags in deutschsprachigen
+        // Kommentaren; Doku-Form ist kein Build-Kriterium.
+        options.addStringOption('Xdoclint:none', '-quiet')
+        failOnError = false
+    }
+
+    tasks.named('compileJava').configure {
+        options.errorprone {
+            disableWarningsInGeneratedCode = true
+            excludedPaths = '.*/build/generated/.*'
+            // Meldet jedes Inline-Tag in Dateien mit Nicht-ASCII-Zeichen.
+            disable('UnrecognisedJavadocTag')
+            // Wirft intermittierend eine interne Exception (Bug im Check).
+            disable('StringConcatToTextBlock')
+            nullaway {
+                severity = CheckSeverity.ERROR
+                annotatedPackages.add('de.zettsystems')
+            }
+            rootProject.ext.errorproneEnforcedChecks.each { check -> error(check) }
+        }
+    }
+
+    tasks.named('compileTestJava').configure {
+        options.errorprone.enabled = false
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+        systemProperty 'postgres.version', "${postgresVersion}"
+    }
+
+    // Veroeffentlichung: GitHub Packages (CI, Releases) und mavenLocal
+    // (./gradlew publishToMavenLocal fuer die lokale Iteration mit einer App).
+    // Zugangsdaten: gpr.user/gpr.key in ~/.gradle/gradle.properties oder
+    // GITHUB_ACTOR/GITHUB_TOKEN in der CI.
+    publishing {
+        publications {
+            maven(MavenPublication) {
+                from components.java
+                pom {
+                    name = project.name
+                    description = 'Reusable identity building block for Spring Boot applications'
+                    url = 'https://github.com/MichaelZett/zs-identity'
+                }
+            }
+        }
+        repositories {
+            maven {
+                name = 'GitHubPackages'
+                url = uri('https://maven.pkg.github.com/MichaelZett/zs-identity')
+                credentials {
+                    username = project.findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR')
+                    password = project.findProperty('gpr.key') ?: System.getenv('GITHUB_TOKEN')
+                }
+            }
+        }
+    }
+}

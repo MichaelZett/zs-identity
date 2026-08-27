@@ -1,0 +1,9 @@
+// Vaadin-Oberflaeche zum Auth-Baustein: Login, Registrierung, Bestaetigung,
+// Passwort-Reset. Getrennt von :identity-core, damit der Kern frei von Vaadin
+// bleibt. Kein Vaadin-Gradle-Plugin hier — der Frontend-Build laeuft in der
+// einbindenden Anwendung, die die Views ueber vaadin.allowed-packages einsammelt.
+dependencies {
+    api platform("com.vaadin:vaadin-bom:${vaadinVersion}")
+    api project(':identity-core')
+    api 'com.vaadin:vaadin-spring-boot-starter'
+}

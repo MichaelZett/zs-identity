@@ -1,0 +1,74 @@
+package de.zettsystems.identity.application;
+
+import de.zettsystems.identity.testsupport.IdentityTestApplication;
+import de.zettsystems.identity.testsupport.PostgresTestImage;
+import de.zettsystems.identity.values.IdentityMessageKeys;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * Belegt, dass der Baustein wirklich konfigurierbar ist und nicht heimlich auf
+ * eine Anwendung zugeschnitten: Mit
+ * {@code zs.identity.self-registration-enabled=false} lehnt er jede
+ * Selbstregistrierung ab, und die Oberfläche kann den Verweis darauf ausblenden.
+ *
+ * <p>Eigener Kontext mit abweichender Eigenschaft, deshalb nicht von
+ * {@code AbstractIdentityIntegrationTest} abgeleitet.
+ */
+@SpringBootTest(classes = IdentityTestApplication.class,
+        properties = "zs.identity.self-registration-enabled=false")
+class SelfRegistrationDisabledIT {
+
+    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(PostgresTestImage.resolve())
+            .withDatabaseName("identity")
+            .withUsername("identity")
+            .withPassword("identity")
+            .withReuse(true);
+
+    static {
+        POSTGRES.start();
+    }
+
+    @DynamicPropertySource
+    static void datasourceProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+        registry.add("spring.datasource.username", POSTGRES::getUsername);
+        registry.add("spring.datasource.password", POSTGRES::getPassword);
+    }
+
+    @Autowired
+    private RegistrationService registrationService;
+    @Autowired
+    private UserAccountService userAccountService;
+
+    @Test
+    void theUiCanTellThatRegistrationIsOff() {
+        assertThat(registrationService.isSelfRegistrationEnabled()).isFalse();
+    }
+
+    @Test
+    void registeringIsRefused() {
+        assertThatThrownBy(() -> registrationService.register(
+                "abgelehnt@example.com", "ein-langes-passwort", "Abge", "Lehnt"))
+                .isInstanceOf(IdentityException.class)
+                .extracting(e -> ((IdentityException) e).getMessageKey())
+                .isEqualTo(IdentityMessageKeys.SELF_REGISTRATION_DISABLED);
+    }
+
+    @Test
+    void anAdministrationCanStillCreateAccounts() {
+        var created = userAccountService.createAccount(
+                "von-hand@example.com", "ein-langes-passwort", "Von", "Hand", true);
+
+        assertThat(created.enabled())
+                .as("der Weg über die Verwaltung darf durch die Abschaltung nicht blockiert sein")
+                .isTrue();
+    }
+}

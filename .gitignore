@@ -1,0 +1,29 @@
+build/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+### Eclipse / VS Code ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+.vscode/
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Secrets / lokale Stände ###
+*.env
+.env.local

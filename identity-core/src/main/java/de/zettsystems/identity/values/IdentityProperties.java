@@ -1,0 +1,63 @@
+package de.zettsystems.identity.values;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
+
+import java.time.Duration;
+
+/**
+ * Einstellungen des Identity-Bausteins, Präfix {@code zs.identity}.
+ *
+ * @param selfRegistrationEnabled  ob sich Personen selbst registrieren dürfen.
+ *                                 Aus bedeutet: Konten legt nur eine
+ *                                 Administration an.
+ * @param emailVerificationRequired ob ein Konto erst nach bestätigter Adresse
+ *                                 nutzbar ist. Aus bedeutet: sofort freigeschaltet
+ *                                 — nur sinnvoll, wenn kein Mailversand da ist.
+ * @param tokenValidity            wie lange Bestätigungs- und Reset-Links gelten
+ * @param passwordMinLength        Mindestlänge neuer Passwörter
+ * @param fromAddress              Absender der Bausteinsmails
+ * @param fromName                 Anzeigename des Absenders
+ * @param baseUrl                  öffentliche Basis-URL für die Links in den
+ *                                 Mails, ohne abschließenden Schrägstrich
+ * @param defaultRoleCode          Rolle, die neue Konten bekommen
+ * @param nameMode                 welche Namensangaben die Registrierung
+ *                                 verlangt (siehe {@link NameMode})
+ */
+@ConfigurationProperties(prefix = "zs.identity")
+public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationEnabled,
+                                 @DefaultValue("true") boolean emailVerificationRequired,
+                                 @DefaultValue("24h") Duration tokenValidity,
+                                 @DefaultValue("12") int passwordMinLength,
+                                 @DefaultValue("noreply@localhost") String fromAddress,
+                                 @DefaultValue("Application") String fromName,
+                                 @DefaultValue("http://localhost:8080") String baseUrl,
+                                 @DefaultValue("USER") String defaultRoleCode,
+                                 @DefaultValue("FULL_NAME") NameMode nameMode) {
+
+    public IdentityProperties {
+        if (passwordMinLength < 8) {
+            throw new IllegalArgumentException(
+                    "zs.identity.password-min-length must be at least 8, was " + passwordMinLength);
+        }
+        if (tokenValidity.isZero() || tokenValidity.isNegative()) {
+            throw new IllegalArgumentException("zs.identity.token-validity must be positive");
+        }
+        baseUrl = stripTrailingSlash(baseUrl);
+    }
+
+    /** Baut eine absolute Adresse für den Mailversand. */
+    public String urlFor(String path) {
+        return path.startsWith("/") ? baseUrl + path : baseUrl + "/" + path;
+    }
+
+    private static String stripTrailingSlash(String url) {
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
+
+    /** Voreinstellungen für Tests, die den Record von Hand bauen. */
+    public static IdentityProperties defaults() {
+        return new IdentityProperties(true, true, Duration.ofHours(24), 12,
+                "noreply@localhost", "Application", "http://localhost:8080", "USER", NameMode.FULL_NAME);
+    }
+}
