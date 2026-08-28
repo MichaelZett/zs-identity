@@ -94,6 +94,10 @@ Fachobjekte ausschließlich über die Konto-ID (`UserAccountDto.id()`,
 ./gradlew dependencyUpdates     # Versionen prüfen
 ```
 
-Release: Version in `gradle.properties` ohne `-SNAPSHOT` setzen, committen,
-Tag `v<version>` pushen — die CI publiziert nach GitHub Packages. Danach
-wieder auf die nächste `-SNAPSHOT` hochziehen.
+Release: Version in `gradle.properties` ohne `-SNAPSHOT` setzen und auf
+`main` pushen — die CI publiziert nach GitHub Packages, legt Tag und
+GitHub-Release `v<version>` an und hebt die Version anschließend selbst auf
+die nächste Patch-`-SNAPSHOT`. SNAPSHOTs werden nicht veröffentlicht;
+Anwendungen binden ausschließlich Release-Versionen ein (lokale Iteration
+über `publishToMavenLocal`). Minor-/Major-Sprung: Version vor dem Release
+von Hand setzen.
