@@ -24,6 +24,9 @@ dependencies {
     compileOnly 'jakarta.servlet:jakarta.servlet-api'
 
     testImplementation 'org.springframework.security:spring-security-test'
+    // Fuer MockHttpServletRequest/-Response: Der Baustein kennt die Servlet-Typen
+    // im Hauptcode nur compileOnly, der AuthenticationRefresher-Test braucht sie.
+    testImplementation 'jakarta.servlet:jakarta.servlet-api'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
     testImplementation 'org.testcontainers:testcontainers-postgresql'

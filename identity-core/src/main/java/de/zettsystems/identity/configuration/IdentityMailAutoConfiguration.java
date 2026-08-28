@@ -1,6 +1,7 @@
 package de.zettsystems.identity.configuration;
 
 import de.zettsystems.identity.application.IdentityMailFactory;
+import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.IdentityMailSender;
 import de.zettsystems.identity.values.IdentityProperties;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -29,8 +30,9 @@ public class IdentityMailAutoConfiguration {
     @Bean
     @ConditionalOnBean(JavaMailSender.class)
     @ConditionalOnMissingBean(IdentityMailSender.class)
-    IdentityMailSender javaMailIdentityMailSender(JavaMailSender mailSender, IdentityProperties properties) {
-        return IdentityMailFactory.javaMail(mailSender, properties);
+    IdentityMailSender javaMailIdentityMailSender(JavaMailSender mailSender, IdentityProperties properties,
+                                                  IdentityMessages messages) {
+        return IdentityMailFactory.javaMail(mailSender, properties, messages);
     }
 
     /**

@@ -63,9 +63,46 @@ Auto-Konfiguration:
 | `base-url`                    | `http://localhost:8080`  | Basis der Links in Mails |
 | `default-role-code`           | `USER`                   | Rolle neuer Konten |
 | `name-mode`                   | `FULL_NAME`              | `FULL_NAME` (Vor-/Nachname) oder `DISPLAY_NAME` (frei gewählter Name) |
+| `locale`                      | `de`                     | Sprache der Mails und Rückfallsprache der Views (siehe Sprachen) |
 
 Mailversand: ist `spring.mail.*` konfiguriert, gehen echte Mails raus; sonst
 landen die Links im Log (`LoggingIdentityMailSender`).
+
+## Sprachen
+
+Alle Texte — Views, Mails und die Meldungen zu `IdentityMessageKeys` — kommen
+aus mitgelieferten Sprachdateien: **Deutsch** und **Englisch**, unter
+`de/zettsystems/identity/messages/` (`core*` in `identity-core`, `ui*` in
+`identity-vaadin`). Die Datei ohne Sprachkürzel ist die Rückfallebene und ist
+englisch; eine Sprache ohne eigene Datei bekommt also Englisch, nie die
+Spracheinstellung des Servers.
+
+Welche Sprache eine Ansicht spricht:
+
+* Bringt die Anwendung eine Sprachwahl mit (Vaadins `I18NProvider`), folgen
+  die Views der Sprache der `UI` — also dem Browser bzw. der Umschaltung in
+  der Anwendung.
+* Ohne `I18NProvider` gilt `zs.identity.locale`. Grund: Vaadin setzt die
+  UI-Sprache dann auf die Voreinstellung der Server-JVM, und die sagt nichts
+  über die Anwendung aus.
+
+Mails gehen immer in `zs.identity.locale` — beim Versand gibt es keinen
+Browser, und am Konto ist (noch) keine Sprache hinterlegt.
+
+Eigene Texte: eine eigene `IdentityMessages`-Bean verdrängt die Voreinstellung.
+Wer nur einzelne Schlüssel ersetzen will, beantwortet diese selbst und reicht
+den Rest an `IdentityMessages.resourceBundles()` weiter.
+
+```java
+@Bean
+IdentityMessages identityMessages() {
+    IdentityMessages fallback = IdentityMessages.resourceBundles();
+    return (key, locale, args) -> switch (key) {
+        case IdentityMessageKeys.SELF_REGISTRATION_DISABLED -> "Bitte wende dich an die Turnierleitung.";
+        default -> fallback.get(key, locale, args);
+    };
+}
+```
 
 ## Datenbank
 
@@ -96,7 +133,8 @@ Fachobjekte ausschließlich über die Konto-ID (`UserAccountDto.id()`,
 ./gradlew dependencyUpdates     # Versionen prüfen (-Punstable / -Pmajor zeigt RC/Major)
 ```
 
-Release: Version in `gradle.properties` ohne `-SNAPSHOT` setzen und auf
+Release: Abschnitt in `CHANGELOG.md` benennen, Version in
+`gradle.properties` ohne `-SNAPSHOT` setzen und auf
 `main` pushen — die CI publiziert nach GitHub Packages, legt Tag und
 GitHub-Release `v<version>` an und hebt die Version anschließend selbst auf
 die nächste Patch-`-SNAPSHOT`. SNAPSHOTs werden nicht veröffentlicht;

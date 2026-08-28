@@ -14,8 +14,9 @@ public final class IdentityMailFactory {
         // Fabrikmethoden
     }
 
-    public static IdentityMailSender javaMail(JavaMailSender mailSender, IdentityProperties properties) {
-        return new JavaMailIdentityMailSender(mailSender, properties);
+    public static IdentityMailSender javaMail(JavaMailSender mailSender, IdentityProperties properties,
+                                              IdentityMessages messages) {
+        return new JavaMailIdentityMailSender(mailSender, properties, messages);
     }
 
     public static IdentityMailSender logOnly() {

@@ -42,11 +42,10 @@ ext.depUpdateIsMajorBump = { String current, String candidate ->
     return cur.isInteger() && cand.isInteger() && cand.toInteger() > cur.toInteger()
 }
 
-// Aus der Coverage-Messung heraus: Auto-Konfiguration, Vaadin-Ansichten und
-// JPA-Entities. Getestet wird die Anwendungslogik in application/values.
+// Aus der Coverage-Messung heraus: Auto-Konfiguration und JPA-Entities.
+// Die Vaadin-Ansichten sind seit den Karibu-Tests wieder drin.
 ext.coverageExclusions = [
         '**/configuration/**',
-        '**/ui/**',
         '**/domain/**',
 ]
 
@@ -199,7 +198,7 @@ subprojects {
                 limit {
                     counter = 'BRANCH'
                     value = 'COVEREDRATIO'
-                    minimum = 0.60
+                    minimum = 0.80
                 }
             }
         }
@@ -268,7 +267,7 @@ sonar {
             property 'sonar.token', sonarTokenValue
         }
         // Spiegel von ext.coverageExclusions (dort .class-, hier .java-Muster).
-        property 'sonar.coverage.exclusions', '**/configuration/**,**/ui/**,**/domain/**'
+        property 'sonar.coverage.exclusions', '**/configuration/**,**/domain/**'
         // Serializable-Regeln erzeugen bei Vaadin/Spring nur Rauschen; java:S2160
         // meckert bei jeder JPA-Entity, die equals/hashCode aus AbstractAuthEntity
         // erbt; java:S110 zaehlt die Vererbungstiefe mitsamt der Vaadin-Hierarchie.

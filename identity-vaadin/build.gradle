@@ -6,4 +6,8 @@ dependencies {
     api platform("com.vaadin:vaadin-bom:${vaadinVersion}")
     api project(':identity-core')
     api 'com.vaadin:vaadin-spring-boot-starter'
+
+    // Browserlose Vaadin-Tests: baut VaadinSession/UI im Speicher nach, damit
+    // die Views ohne Servlet-Container und ohne Selenium pruefbar sind.
+    testImplementation "com.github.mvysny.kaributesting:karibu-testing-v24:${karibuVersion}"
 }

@@ -16,6 +16,8 @@ public final class IdentityMessageKeys {
     public static final String TOKEN_EXPIRED = "identity.error.tokenExpired";
     public static final String DEFAULT_ROLE_MISSING = "identity.error.defaultRoleMissing";
     public static final String ACCOUNT_NOT_FOUND = "identity.error.accountNotFound";
+    /** Rückfall der Oberfläche für alles, was sie nicht einzeln behandelt. */
+    public static final String UNEXPECTED = "identity.error.unexpected";
 
     private IdentityMessageKeys() {
         // Konstanten-Klasse

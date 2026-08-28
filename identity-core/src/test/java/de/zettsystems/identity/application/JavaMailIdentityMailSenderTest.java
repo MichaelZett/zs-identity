@@ -13,12 +13,15 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 class JavaMailIdentityMailSenderTest {
+
+    private static final IdentityMessages MESSAGES = IdentityMessages.resourceBundles();
 
     private static final UserAccountDto USER = new UserAccountDto(1L, "anna@example.com",
             AccountName.of("Anna", "Beispiel"), true, true, Instant.parse("2026-09-01T10:00:00Z"), Set.of("USER"));
@@ -63,7 +66,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void theVerificationMailCarriesRecipientSubjectAndLink() {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, IdentityProperties.defaults());
+        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, IdentityProperties.defaults(), MESSAGES);
 
         testee.sendEmailVerification(USER, "http://example.com/register/confirm?token=abc");
 
@@ -80,7 +83,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void theResetMailCarriesTheResetLink() {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, IdentityProperties.defaults());
+        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, IdentityProperties.defaults(), MESSAGES);
 
         testee.sendPasswordReset(USER, "http://example.com/password/reset?token=xyz");
 
@@ -92,7 +95,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void theValidityPeriodIsSpelledOutInTheMail() {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, propertiesWithValidity(Duration.ofHours(2)));
+        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, propertiesWithValidity(Duration.ofHours(2)), MESSAGES);
 
         testee.sendEmailVerification(USER, "http://example.com/x");
 
@@ -102,7 +105,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void aValidityBelowAnHourIsSpelledOutInMinutes() {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, propertiesWithValidity(Duration.ofMinutes(30)));
+        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, propertiesWithValidity(Duration.ofMinutes(30)), MESSAGES);
 
         testee.sendEmailVerification(USER, "http://example.com/x");
 
@@ -111,7 +114,7 @@ class JavaMailIdentityMailSenderTest {
 
     @Test
     void aFailedDeliveryDoesNotPropagate() {
-        IdentityMailSender testee = new JavaMailIdentityMailSender(new FailingMailSender(), IdentityProperties.defaults());
+        IdentityMailSender testee = new JavaMailIdentityMailSender(new FailingMailSender(), IdentityProperties.defaults(), MESSAGES);
 
         assertThatCode(() -> testee.sendEmailVerification(USER, "http://example.com/x"))
                 .as("sonst rollt ein unerreichbarer SMTP-Server die gesamte Registrierung "
@@ -119,8 +122,27 @@ class JavaMailIdentityMailSenderTest {
                 .doesNotThrowAnyException();
     }
 
+    @Test
+    void theMailFollowsTheConfiguredLocale() {
+        CapturingMailSender mailSender = new CapturingMailSender();
+        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, englishProperties(), MESSAGES);
+
+        testee.sendEmailVerification(USER, "http://example.com/x");
+
+        SimpleMailMessage message = mailSender.sent.getFirst();
+        assertThat(message.getSubject()).isEqualTo("Please confirm your e-mail address");
+        assertThat(message.getText()).contains("The link is valid for 24 hours");
+    }
+
     private static IdentityProperties propertiesWithValidity(Duration validity) {
         return new IdentityProperties(true, true, validity, 12,
-                "noreply@localhost", "Terminplanung", "http://localhost:8080", "USER", NameMode.FULL_NAME);
+                "noreply@localhost", "Terminplanung", "http://localhost:8080", "USER", NameMode.FULL_NAME,
+                Locale.GERMAN);
+    }
+
+    private static IdentityProperties englishProperties() {
+        return new IdentityProperties(true, true, Duration.ofHours(24), 12,
+                "noreply@localhost", "Terminplanung", "http://localhost:8080", "USER", NameMode.FULL_NAME,
+                Locale.ENGLISH);
     }
 }

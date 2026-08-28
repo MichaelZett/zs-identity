@@ -12,46 +12,56 @@ import com.vaadin.flow.component.textfield.Autocomplete;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import de.zettsystems.identity.application.IdentityException;
+import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.values.AccountName;
+import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.NameMode;
 
 /** Selbstregistrierung. */
 @Route(value = IdentityRoutes.REGISTER, autoLayout = false)
-@PageTitle("Registrieren")
 @AnonymousAllowed
-public class RegistrationView extends VerticalLayout {
+public class RegistrationView extends VerticalLayout implements HasDynamicTitle {
 
     private final RegistrationService registrationService;
     private final IdentityProperties properties;
+    private final IdentityTexts texts;
 
-    private final TextField firstName = new TextField("Vorname");
-    private final TextField lastName = new TextField("Nachname");
-    private final TextField displayName = new TextField("Anzeigename");
-    private final EmailField email = new EmailField("E-Mail-Adresse");
-    private final PasswordField password = new PasswordField("Passwort");
-    private final PasswordField passwordRepeat = new PasswordField("Passwort wiederholen");
+    private final TextField firstName = new TextField();
+    private final TextField lastName = new TextField();
+    private final TextField displayName = new TextField();
+    private final EmailField email = new EmailField();
+    private final PasswordField password = new PasswordField();
+    private final PasswordField passwordRepeat = new PasswordField();
 
-    public RegistrationView(RegistrationService registrationService, IdentityProperties properties) {
+    public RegistrationView(RegistrationService registrationService, IdentityProperties properties,
+                            IdentityMessages messages) {
         this.registrationService = registrationService;
         this.properties = properties;
+        this.texts = new IdentityTexts(messages, properties);
 
         setMaxWidth("28rem");
         getStyle().set("margin", "0 auto");
 
-        add(new H2("Konto anlegen"));
+        add(new H2(texts.get("identity.registration.title")));
 
         if (!registrationService.isSelfRegistrationEnabled()) {
-            add(new Paragraph("Die Registrierung ist für diese Anwendung abgeschaltet. "
-                    + "Bitte wende dich an die Person, die die Gruppe verwaltet."));
-            add(loginButton("Zur Anmeldung"));
+            add(new Paragraph(texts.get("identity.registration.disabled")));
+            add(loginButton(texts.get("identity.common.toLogin")));
             return;
         }
+
+        firstName.setLabel(texts.get("identity.registration.firstName"));
+        lastName.setLabel(texts.get("identity.registration.lastName"));
+        displayName.setLabel(texts.get("identity.registration.displayName"));
+        email.setLabel(texts.get("identity.common.email"));
+        password.setLabel(texts.get("identity.common.password"));
+        passwordRepeat.setLabel(texts.get("identity.registration.passwordRepeat"));
 
         // Ohne diese Kennzeichnung bieten Chrome & Co. weder das Ausfüllen
         // noch die Passwort-Generierung an: „new-password" ist das Signal
@@ -65,18 +75,19 @@ public class RegistrationView extends VerticalLayout {
         password.setAutocomplete(Autocomplete.NEW_PASSWORD);
         passwordRepeat.setAutocomplete(Autocomplete.NEW_PASSWORD);
 
-        password.setHelperText("Mindestens %d Zeichen".formatted(properties.passwordMinLength()));
+        password.setHelperText(texts.get("identity.common.passwordHelper", properties.passwordMinLength()));
         firstName.setRequiredIndicatorVisible(true);
         lastName.setRequiredIndicatorVisible(true);
         displayName.setRequiredIndicatorVisible(true);
-        displayName.setHelperText("So sehen dich andere.");
+        displayName.setHelperText(texts.get("identity.registration.displayNameHelper"));
         email.setRequiredIndicatorVisible(true);
         password.setRequiredIndicatorVisible(true);
         passwordRepeat.setRequiredIndicatorVisible(true);
 
-        Button submit = new Button("Registrieren", event -> submit());
+        Button submit = new Button(texts.get("identity.registration.submit"), event -> submit());
         submit.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         submit.setWidthFull();
+        submit.setId("registration-submit-button");
 
         // Welche Namensfelder erscheinen, entscheidet die Anwendung über
         // zs.identity.name-mode: Klarname (Vereine) oder Spielername (Spiele).
@@ -85,7 +96,13 @@ public class RegistrationView extends VerticalLayout {
         } else {
             add(displayName);
         }
-        add(email, password, passwordRepeat, submit, loginButton("Ich habe schon ein Konto"));
+        add(email, password, passwordRepeat, submit,
+                loginButton(texts.get("identity.registration.haveAccount")));
+    }
+
+    @Override
+    public String getPageTitle() {
+        return texts.get("identity.registration.pageTitle");
     }
 
     /** Navigations-Button zur Anmeldung — volle Breite, weil das Formular schmal ist. */
@@ -101,15 +118,15 @@ public class RegistrationView extends VerticalLayout {
                 ? firstName.isEmpty() || lastName.isEmpty()
                 : displayName.isEmpty();
         if (nameMissing || email.isEmpty() || password.isEmpty()) {
-            warn("Bitte fülle alle Felder aus.");
+            warn(texts.get("identity.registration.missingFields"));
             return;
         }
         if (email.isInvalid()) {
-            warn("Bitte gib eine gültige E-Mail-Adresse ein.");
+            warn(texts.get("identity.common.invalidEmail"));
             return;
         }
         if (!password.getValue().equals(passwordRepeat.getValue())) {
-            warn("Die beiden Passwörter stimmen nicht überein.");
+            warn(texts.get("identity.common.passwordMismatch"));
             return;
         }
 
@@ -138,30 +155,28 @@ public class RegistrationView extends VerticalLayout {
      */
     private void showConfirmation() {
         removeAll();
-        add(new H2("Fast geschafft"));
+        add(new H2(texts.get("identity.registration.done.title")));
         if (properties.emailVerificationRequired()) {
-            add(new Paragraph("Wir haben dir eine E-Mail an %s geschickt. "
-                    .formatted(email.getValue())
-                    + "Bitte öffne den Link darin, um dein Konto freizuschalten."));
+            add(new Paragraph(texts.get("identity.registration.done.verify", email.getValue())));
         } else {
-            add(new Paragraph("Dein Konto ist angelegt. Du kannst dich jetzt anmelden."));
+            add(new Paragraph(texts.get("identity.registration.done.ready")));
         }
-        add(loginButton("Zur Anmeldung"));
+        add(loginButton(texts.get("identity.common.toLogin")));
     }
 
     /**
-     * Übersetzt die Meldungsschlüssel des Bausteins. Der Kern kennt keine
-     * Sprachdateien — welche es gibt, weiß nur die Anwendung.
+     * Übersetzt die Meldungsschlüssel des Bausteins. Nur die hier
+     * aufgezählten: Ein unbekannter Schlüssel — etwa aus einem selbst
+     * gebauten {@code RegistrationService} — bekommt den allgemeinen Text
+     * statt eines rohen Schlüssels auf dem Bildschirm.
      */
     private String translate(IdentityException e) {
         return switch (e.getMessageKey()) {
-            case de.zettsystems.identity.values.IdentityMessageKeys.EMAIL_ALREADY_REGISTERED ->
-                    "Zu dieser E-Mail-Adresse gibt es bereits ein Konto.";
-            case de.zettsystems.identity.values.IdentityMessageKeys.PASSWORD_TOO_SHORT ->
-                    "Das Passwort muss mindestens %d Zeichen lang sein.".formatted(properties.passwordMinLength());
-            case de.zettsystems.identity.values.IdentityMessageKeys.SELF_REGISTRATION_DISABLED ->
-                    "Die Registrierung ist für diese Anwendung abgeschaltet.";
-            default -> "Die Registrierung hat nicht geklappt. Bitte versuche es später erneut.";
+            case IdentityMessageKeys.EMAIL_ALREADY_REGISTERED,
+                 IdentityMessageKeys.SELF_REGISTRATION_DISABLED -> texts.get(e.getMessageKey());
+            case IdentityMessageKeys.PASSWORD_TOO_SHORT ->
+                    texts.get(e.getMessageKey(), properties.passwordMinLength());
+            default -> texts.get(IdentityMessageKeys.UNEXPECTED);
         };
     }
 

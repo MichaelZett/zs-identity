@@ -3,6 +3,7 @@ package de.zettsystems.identity.values;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,7 +30,7 @@ class IdentityPropertiesTest {
     void aPasswordMinimumBelowEightIsRefused() {
         Duration tokenValidity = Duration.ofHours(1);
         assertThatThrownBy(() -> new IdentityProperties(true, true, tokenValidity, 6,
-                "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME))
+                "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME, Locale.GERMAN))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("password-min-length");
     }
@@ -37,7 +38,7 @@ class IdentityPropertiesTest {
     @Test
     void aNonPositiveTokenValidityIsRefused() {
         assertThatThrownBy(() -> new IdentityProperties(true, true, Duration.ZERO, 12,
-                "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME))
+                "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME, Locale.GERMAN))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("token-validity");
     }
@@ -49,10 +50,11 @@ class IdentityPropertiesTest {
         assertThat(defaults.selfRegistrationEnabled()).isTrue();
         assertThat(defaults.emailVerificationRequired()).isTrue();
         assertThat(defaults.defaultRoleCode()).isEqualTo("USER");
+        assertThat(defaults.locale()).isEqualTo(Locale.GERMAN);
     }
 
     private static IdentityProperties propertiesWithBaseUrl(String baseUrl) {
         return new IdentityProperties(true, true, Duration.ofHours(24), 12,
-                "noreply@example.com", "Test", baseUrl, "USER", NameMode.FULL_NAME);
+                "noreply@example.com", "Test", baseUrl, "USER", NameMode.FULL_NAME, Locale.GERMAN);
     }
 }

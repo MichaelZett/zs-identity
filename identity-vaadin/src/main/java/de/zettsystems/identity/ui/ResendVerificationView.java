@@ -7,10 +7,12 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.RegistrationService;
+import de.zettsystems.identity.values.IdentityProperties;
 
 /**
  * Fordert die Bestätigungsmail erneut an.
@@ -25,28 +27,30 @@ import de.zettsystems.identity.application.RegistrationService;
  * Grund: Sonst ließe sich hier durchprobieren, wer registriert ist.
  */
 @Route(value = IdentityRoutes.RESEND_VERIFICATION, autoLayout = false)
-@PageTitle("Bestätigungsmail anfordern")
 @AnonymousAllowed
-public class ResendVerificationView extends VerticalLayout {
+public class ResendVerificationView extends VerticalLayout implements HasDynamicTitle {
 
     private final RegistrationService registrationService;
-    private final EmailField email = new EmailField("E-Mail-Adresse");
+    private final IdentityTexts texts;
+    private final EmailField email = new EmailField();
 
-    public ResendVerificationView(RegistrationService registrationService) {
+    public ResendVerificationView(RegistrationService registrationService, IdentityProperties properties,
+                                  IdentityMessages messages) {
         this.registrationService = registrationService;
+        this.texts = new IdentityTexts(messages, properties);
 
         setMaxWidth("28rem");
         getStyle().set("margin", "0 auto");
 
-        add(new H2("Bestätigungsmail erneut anfordern"));
-        add(new Paragraph("Gib die E-Mail-Adresse ein, mit der du dich registriert hast. "
-                + "Ist das Konto noch nicht bestätigt, schicken wir den Link erneut."));
+        add(new H2(texts.get("identity.resend.title")));
+        add(new Paragraph(texts.get("identity.resend.intro")));
 
+        email.setLabel(texts.get("identity.common.email"));
         email.setRequiredIndicatorVisible(true);
         email.setWidthFull();
         email.setId("resend-email-field");
 
-        Button submit = new Button("Mail anfordern", event -> submit());
+        Button submit = new Button(texts.get("identity.resend.submit"), event -> submit());
         submit.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         submit.setWidthFull();
         submit.setId("resend-submit-button");
@@ -54,9 +58,14 @@ public class ResendVerificationView extends VerticalLayout {
         add(email, submit, backToLoginButton());
     }
 
+    @Override
+    public String getPageTitle() {
+        return texts.get("identity.resend.pageTitle");
+    }
+
     /** Navigations-Button zur Anmeldung — volle Breite, weil das Formular schmal ist. */
-    private static Button backToLoginButton() {
-        Button button = new Button("Zurück zur Anmeldung",
+    private Button backToLoginButton() {
+        Button button = new Button(texts.get("identity.common.backToLogin"),
                 event -> UI.getCurrent().navigate(IdentityRoutes.LOGIN));
         button.setWidthFull();
         return button;
@@ -64,7 +73,7 @@ public class ResendVerificationView extends VerticalLayout {
 
     private void submit() {
         if (email.isEmpty() || email.isInvalid()) {
-            email.setErrorMessage("Bitte gib eine gültige E-Mail-Adresse ein.");
+            email.setErrorMessage(texts.get("identity.common.invalidEmail"));
             email.setInvalid(true);
             return;
         }
@@ -75,10 +84,9 @@ public class ResendVerificationView extends VerticalLayout {
 
     private void showConfirmation() {
         removeAll();
-        add(new H2("E-Mail unterwegs"));
-        add(new Paragraph("Wenn es zu %s ein noch unbestätigtes Konto gibt, ist der Link jetzt "
-                .formatted(email.getValue())
-                + "unterwegs. Schau auch im Spam-Ordner nach."));
+        add(new H2(texts.get("identity.common.mailSent.title")));
+        add(new Paragraph(texts.get("identity.resend.sent", email.getValue())
+                + " " + texts.get("identity.common.spamHint")));
         add(backToLoginButton());
     }
 }

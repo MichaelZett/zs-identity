@@ -12,10 +12,11 @@ import com.vaadin.flow.component.textfield.Autocomplete;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import de.zettsystems.identity.application.IdentityException;
+import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.PasswordResetService;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
@@ -25,28 +26,37 @@ import java.util.List;
 
 /** Nimmt den Link aus der Reset-Mail entgegen und setzt das neue Passwort. */
 @Route(value = IdentityRoutes.RESET_PASSWORD, autoLayout = false)
-@PageTitle("Neues Passwort")
 @AnonymousAllowed
-public class ResetPasswordView extends VerticalLayout implements BeforeEnterObserver {
+public class ResetPasswordView extends VerticalLayout implements BeforeEnterObserver, HasDynamicTitle {
 
     private final PasswordResetService passwordResetService;
     private final IdentityProperties properties;
+    private final IdentityTexts texts;
 
-    private final PasswordField password = new PasswordField("Neues Passwort");
-    private final PasswordField passwordRepeat = new PasswordField("Neues Passwort wiederholen");
+    private final PasswordField password = new PasswordField();
+    private final PasswordField passwordRepeat = new PasswordField();
 
     private @Nullable String token;
 
-    public ResetPasswordView(PasswordResetService passwordResetService, IdentityProperties properties) {
+    public ResetPasswordView(PasswordResetService passwordResetService, IdentityProperties properties,
+                             IdentityMessages messages) {
         this.passwordResetService = passwordResetService;
         this.properties = properties;
+        this.texts = new IdentityTexts(messages, properties);
         setMaxWidth("28rem");
         getStyle().set("margin", "0 auto");
+        password.setLabel(texts.get("identity.reset.password"));
+        passwordRepeat.setLabel(texts.get("identity.reset.passwordRepeat"));
         // Signal an den Passwortmanager: Hier entsteht ein neues Passwort —
         // erst damit bieten Chrome & Co. die Generierung an (wie in der
         // RegistrationView).
         password.setAutocomplete(Autocomplete.NEW_PASSWORD);
         passwordRepeat.setAutocomplete(Autocomplete.NEW_PASSWORD);
+    }
+
+    @Override
+    public String getPageTitle() {
+        return texts.get("identity.reset.pageTitle");
     }
 
     @Override
@@ -56,24 +66,25 @@ public class ResetPasswordView extends VerticalLayout implements BeforeEnterObse
         List<String> tokens = event.getLocation().getQueryParameters().getParameters()
                 .getOrDefault(IdentityRoutes.TOKEN_PARAMETER, List.of());
         if (tokens.isEmpty()) {
-            add(new H2("Link unvollständig"));
-            add(new Paragraph("Bitte öffne den Link direkt aus der E-Mail."));
-            add(navigationButton("Neuen Link anfordern", IdentityRoutes.FORGOT_PASSWORD));
+            add(new H2(texts.get("identity.reset.incomplete.title")));
+            add(new Paragraph(texts.get("identity.reset.incomplete.message")));
+            add(navigationButton(texts.get("identity.reset.requestNew"), IdentityRoutes.FORGOT_PASSWORD));
             return;
         }
         this.token = tokens.getFirst();
 
-        password.setHelperText("Mindestens %d Zeichen".formatted(properties.passwordMinLength()));
+        password.setHelperText(texts.get("identity.common.passwordHelper", properties.passwordMinLength()));
         password.setRequiredIndicatorVisible(true);
         password.setWidthFull();
         passwordRepeat.setRequiredIndicatorVisible(true);
         passwordRepeat.setWidthFull();
 
-        Button submit = new Button("Passwort speichern", e -> submit());
+        Button submit = new Button(texts.get("identity.reset.submit"), e -> submit());
         submit.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         submit.setWidthFull();
+        submit.setId("reset-submit-button");
 
-        add(new H2("Neues Passwort setzen"), password, passwordRepeat, submit);
+        add(new H2(texts.get("identity.reset.title")), password, passwordRepeat, submit);
     }
 
     private void submit() {
@@ -81,7 +92,7 @@ public class ResetPasswordView extends VerticalLayout implements BeforeEnterObse
             return;
         }
         if (password.isEmpty() || !password.getValue().equals(passwordRepeat.getValue())) {
-            warn("Die beiden Passwörter stimmen nicht überein.");
+            warn(texts.get("identity.common.passwordMismatch"));
             return;
         }
 
@@ -95,9 +106,9 @@ public class ResetPasswordView extends VerticalLayout implements BeforeEnterObse
 
     private void showConfirmation() {
         removeAll();
-        add(new H2("Passwort geändert"));
-        add(new Paragraph("Du kannst dich jetzt mit deinem neuen Passwort anmelden."));
-        add(navigationButton("Zur Anmeldung", IdentityRoutes.LOGIN));
+        add(new H2(texts.get("identity.reset.done.title")));
+        add(new Paragraph(texts.get("identity.reset.done.message")));
+        add(navigationButton(texts.get("identity.common.toLogin"), IdentityRoutes.LOGIN));
     }
 
     /** Navigations-Button — volle Breite, weil die Ansicht schmal ist. */
@@ -107,13 +118,14 @@ public class ResetPasswordView extends VerticalLayout implements BeforeEnterObse
         return button;
     }
 
+    /** Siehe {@code RegistrationView#translate}: Unbekanntes bekommt den allgemeinen Text. */
     private String translate(IdentityException e) {
         return switch (e.getMessageKey()) {
             case IdentityMessageKeys.PASSWORD_TOO_SHORT ->
-                    "Das Passwort muss mindestens %d Zeichen lang sein.".formatted(properties.passwordMinLength());
+                    texts.get(e.getMessageKey(), properties.passwordMinLength());
             case IdentityMessageKeys.TOKEN_EXPIRED, IdentityMessageKeys.TOKEN_INVALID ->
-                    "Dieser Link ist abgelaufen oder wurde bereits benutzt. Fordere einen neuen an.";
-            default -> "Das hat nicht geklappt. Bitte versuche es später erneut.";
+                    texts.get(e.getMessageKey());
+            default -> texts.get(IdentityMessageKeys.UNEXPECTED);
         };
     }
 

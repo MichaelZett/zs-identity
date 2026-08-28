@@ -9,6 +9,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -18,49 +19,45 @@ import java.util.Objects;
  * Meinung darüber haben, welche Vorlagen-Bibliothek eine Anwendung nutzt. Wer
  * gestaltete Mails will, stellt eine eigene {@link IdentityMailSender}-Bean
  * bereit und verdrängt diese hier.
+ *
+ * <p>Die Texte kommen aus {@link IdentityMessages}, die Sprache aus
+ * {@code zs.identity.locale}: Zum Zeitpunkt des Versands gibt es keinen Browser,
+ * dessen Spracheinstellung man fragen könnte, und am Konto ist keine Sprache
+ * hinterlegt (siehe {@code BACKLOG.md}).
  */
 class JavaMailIdentityMailSender implements IdentityMailSender {
 
     private static final Logger LOG = LoggerFactory.getLogger(JavaMailIdentityMailSender.class);
 
+    private static final String VERIFICATION_SUBJECT = "identity.mail.verification.subject";
+    private static final String VERIFICATION_BODY = "identity.mail.verification.body";
+    private static final String RESET_SUBJECT = "identity.mail.reset.subject";
+    private static final String RESET_BODY = "identity.mail.reset.body";
+
     private final JavaMailSender mailSender;
     private final IdentityProperties properties;
+    private final IdentityMessages messages;
 
-    JavaMailIdentityMailSender(JavaMailSender mailSender, IdentityProperties properties) {
+    JavaMailIdentityMailSender(JavaMailSender mailSender, IdentityProperties properties, IdentityMessages messages) {
         this.mailSender = mailSender;
         this.properties = properties;
+        this.messages = messages;
     }
 
     @Override
     public void sendEmailVerification(UserAccountDto user, String confirmationUrl) {
-        send(user, "Bitte bestätige deine E-Mail-Adresse", """
-                Hallo %s,
-
-                bitte bestätige deine E-Mail-Adresse über diesen Link:
-
-                %s
-
-                Der Link ist %s gültig. Wenn du dich nicht registriert hast,
-                kannst du diese Nachricht ignorieren.
-                """.formatted(user.displayName(), confirmationUrl, humanReadableValidity()));
+        send(user, VERIFICATION_SUBJECT, VERIFICATION_BODY, confirmationUrl);
     }
 
     @Override
     public void sendPasswordReset(UserAccountDto user, String resetUrl) {
-        send(user, "Passwort zurücksetzen", """
-                Hallo %s,
-
-                über diesen Link kannst du ein neues Passwort setzen:
-
-                %s
-
-                Der Link ist %s gültig. Wenn du kein neues Passwort angefordert
-                hast, ignoriere diese Nachricht — dein aktuelles Passwort bleibt
-                unverändert.
-                """.formatted(user.displayName(), resetUrl, humanReadableValidity()));
+        send(user, RESET_SUBJECT, RESET_BODY, resetUrl);
     }
 
-    private void send(UserAccountDto user, String subject, String body) {
+    private void send(UserAccountDto user, String subjectKey, String bodyKey, String url) {
+        Locale locale = properties.locale();
+        String subject = messages.get(subjectKey, locale);
+
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom("%s <%s>".formatted(properties.fromName(), properties.fromAddress()));
         // Verwaltete Konten haben keine Adresse — sie durchlaufen aber auch
@@ -68,7 +65,7 @@ class JavaMailIdentityMailSender implements IdentityMailSender {
         // Programmierfehler, kein Laufzeitfall.
         message.setTo(Objects.requireNonNull(user.email(), "email"));
         message.setSubject(subject);
-        message.setText(body);
+        message.setText(messages.get(bodyKey, locale, user.displayName(), url, humanReadableValidity(locale)));
         try {
             mailSender.send(message);
         } catch (MailException e) {
@@ -79,13 +76,12 @@ class JavaMailIdentityMailSender implements IdentityMailSender {
         }
     }
 
-    private String humanReadableValidity() {
+    private String humanReadableValidity(Locale locale) {
         Duration validity = properties.tokenValidity();
         long hours = validity.toHours();
         if (hours >= 1) {
-            return hours == 1 ? "eine Stunde" : hours + " Stunden";
+            return messages.get("identity.mail.validity.hours", locale, hours);
         }
-        long minutes = Math.max(1, validity.toMinutes());
-        return minutes == 1 ? "eine Minute" : minutes + " Minuten";
+        return messages.get("identity.mail.validity.minutes", locale, Math.max(1, validity.toMinutes()));
     }
 }

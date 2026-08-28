@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 import java.time.Duration;
+import java.util.Locale;
 
 /**
  * Einstellungen des Identity-Bausteins, Präfix {@code zs.identity}.
@@ -23,6 +24,12 @@ import java.time.Duration;
  * @param defaultRoleCode          Rolle, die neue Konten bekommen
  * @param nameMode                 welche Namensangaben die Registrierung
  *                                 verlangt (siehe {@link NameMode})
+ * @param locale                   Sprache der Mails und Rückfallsprache der
+ *                                 Oberfläche. Bringt die Anwendung eine eigene
+ *                                 Sprachwahl mit (Vaadins {@code I18NProvider}),
+ *                                 folgen die Ansichten dieser; sonst gilt diese
+ *                                 Einstellung. Mitgeliefert sind {@code de} und
+ *                                 {@code en}, bei allem anderen greift Englisch.
  */
 @ConfigurationProperties(prefix = "zs.identity")
 public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationEnabled,
@@ -33,7 +40,8 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                                  @DefaultValue("Application") String fromName,
                                  @DefaultValue("http://localhost:8080") String baseUrl,
                                  @DefaultValue("USER") String defaultRoleCode,
-                                 @DefaultValue("FULL_NAME") NameMode nameMode) {
+                                 @DefaultValue("FULL_NAME") NameMode nameMode,
+                                 @DefaultValue("de") Locale locale) {
 
     public IdentityProperties {
         if (passwordMinLength < 8) {
@@ -58,6 +66,7 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
     /** Voreinstellungen für Tests, die den Record von Hand bauen. */
     public static IdentityProperties defaults() {
         return new IdentityProperties(true, true, Duration.ofHours(24), 12,
-                "noreply@localhost", "Application", "http://localhost:8080", "USER", NameMode.FULL_NAME);
+                "noreply@localhost", "Application", "http://localhost:8080", "USER", NameMode.FULL_NAME,
+                Locale.GERMAN);
     }
 }

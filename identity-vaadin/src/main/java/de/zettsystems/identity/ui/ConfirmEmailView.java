@@ -8,11 +8,13 @@ import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import de.zettsystems.identity.application.IdentityException;
+import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.RegistrationService;
+import de.zettsystems.identity.values.IdentityProperties;
 
 import java.util.List;
 import java.util.Map;
@@ -30,16 +32,23 @@ import java.util.Map;
  * läuft in „Link bereits benutzt" (Praxisfall Gruppentest 19.08.2026).
  */
 @Route(value = IdentityRoutes.CONFIRM_EMAIL, autoLayout = false)
-@PageTitle("E-Mail bestätigen")
 @AnonymousAllowed
-public class ConfirmEmailView extends VerticalLayout implements BeforeEnterObserver {
+public class ConfirmEmailView extends VerticalLayout implements BeforeEnterObserver, HasDynamicTitle {
 
     private final RegistrationService registrationService;
+    private final IdentityTexts texts;
 
-    public ConfirmEmailView(RegistrationService registrationService) {
+    public ConfirmEmailView(RegistrationService registrationService, IdentityProperties properties,
+                            IdentityMessages messages) {
         this.registrationService = registrationService;
+        this.texts = new IdentityTexts(messages, properties);
         setMaxWidth("32rem");
         getStyle().set("margin", "0 auto");
+    }
+
+    @Override
+    public String getPageTitle() {
+        return texts.get("identity.confirm.pageTitle");
     }
 
     @Override
@@ -49,7 +58,7 @@ public class ConfirmEmailView extends VerticalLayout implements BeforeEnterObser
         Map<String, List<String>> parameters = event.getLocation().getQueryParameters().getParameters();
         List<String> tokens = parameters.getOrDefault(IdentityRoutes.TOKEN_PARAMETER, List.of());
         if (tokens.isEmpty()) {
-            showFailure("Dieser Link ist unvollständig. Bitte öffne ihn direkt aus der E-Mail.");
+            showFailure(texts.get("identity.confirm.incompleteLink"));
             return;
         }
 
@@ -57,9 +66,9 @@ public class ConfirmEmailView extends VerticalLayout implements BeforeEnterObser
     }
 
     private void showPrompt(String token) {
-        add(new H2("E-Mail bestätigen"));
-        add(new Paragraph("Ein Klick, und dein Konto ist freigeschaltet."));
-        Button confirm = new Button("E-Mail-Adresse bestätigen", event -> confirm(token));
+        add(new H2(texts.get("identity.confirm.title")));
+        add(new Paragraph(texts.get("identity.confirm.prompt")));
+        Button confirm = new Button(texts.get("identity.confirm.submit"), event -> confirm(token));
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         confirm.setId("confirm-email-button");
         confirm.setWidthFull();
@@ -70,24 +79,23 @@ public class ConfirmEmailView extends VerticalLayout implements BeforeEnterObser
         removeAll();
         try {
             registrationService.confirmEmail(token);
-            add(new H2("Konto freigeschaltet"));
-            add(new Paragraph("Deine E-Mail-Adresse ist bestätigt. Du kannst dich jetzt anmelden."));
+            add(new H2(texts.get("identity.confirm.done.title")));
+            add(new Paragraph(texts.get("identity.confirm.done.message")));
             add(loginButton());
         } catch (IdentityException _) {
-            showFailure("Dieser Link ist abgelaufen oder wurde bereits benutzt. "
-                    + "Du kannst dir die Bestätigungsmail erneut schicken lassen.");
+            showFailure(texts.get("identity.confirm.failed.message"));
         }
     }
 
     private void showFailure(String message) {
-        add(new H2("Bestätigung nicht möglich"));
+        add(new H2(texts.get("identity.confirm.failed.title")));
         add(new Paragraph(message));
         add(resendButton(), loginButton());
     }
 
     /** Der Ausweg aus einem abgelaufenen Link — sonst bleibt das Konto gesperrt. */
-    private static Button resendButton() {
-        Button button = new Button("Bestätigungsmail erneut anfordern",
+    private Button resendButton() {
+        Button button = new Button(texts.get("identity.confirm.resend"),
                 event -> UI.getCurrent().navigate(IdentityRoutes.RESEND_VERIFICATION));
         button.setId("confirm-resend-verification-button");
         button.setWidthFull();
@@ -95,9 +103,10 @@ public class ConfirmEmailView extends VerticalLayout implements BeforeEnterObser
     }
 
     /** Navigations-Button zur Anmeldung — volle Breite, weil die Ansicht schmal ist. */
-    private static Button loginButton() {
-        Button button = new Button("Zur Anmeldung",
+    private Button loginButton() {
+        Button button = new Button(texts.get("identity.common.toLogin"),
                 event -> UI.getCurrent().navigate(IdentityRoutes.LOGIN));
+        button.setId("confirm-login-button");
         button.setWidthFull();
         return button;
     }

@@ -37,6 +37,13 @@ public class IdentityBeans {
         return Clock.systemUTC();
     }
 
+    /** Texte des Bausteins; die Anwendung kann sie durch eine eigene Bean ersetzen. */
+    @Bean
+    @ConditionalOnMissingBean
+    IdentityMessages identityMessages() {
+        return IdentityMessages.resourceBundles();
+    }
+
     @Bean
     @ConditionalOnMissingBean
     PasswordEncoder passwordEncoder() {

@@ -4,15 +4,17 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.login.LoginI18n;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.RegistrationService;
+import de.zettsystems.identity.values.IdentityProperties;
 
 /**
  * Anmeldeseite.
@@ -23,19 +25,22 @@ import de.zettsystems.identity.application.RegistrationService;
  * Anmeldecode, der Fehler enthalten könnte.
  */
 @Route(value = IdentityRoutes.LOGIN, autoLayout = false)
-@PageTitle("Anmelden")
 @AnonymousAllowed
-public class LoginView extends VerticalLayout implements BeforeEnterObserver {
+public class LoginView extends VerticalLayout implements BeforeEnterObserver, HasDynamicTitle {
 
     private final LoginForm loginForm = new LoginForm();
+    private final IdentityTexts texts;
 
-    public LoginView(RegistrationService registrationService) {
+    public LoginView(RegistrationService registrationService, IdentityProperties properties,
+                     IdentityMessages messages) {
+        this.texts = new IdentityTexts(messages, properties);
+
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
 
         loginForm.setAction(IdentityRoutes.LOGIN);
-        loginForm.setI18n(germanI18n());
+        loginForm.setI18n(loginI18n(texts));
         loginForm.setForgotPasswordButtonVisible(true);
         loginForm.addForgotPasswordListener(
                 event -> getUI().ifPresent(ui -> ui.navigate(IdentityRoutes.FORGOT_PASSWORD)));
@@ -45,17 +50,24 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         // Der Verweis erscheint nur, wenn die Selbstregistrierung eingeschaltet
         // ist — sonst führt er auf eine Seite, die jede Eingabe ablehnt.
         if (registrationService.isSelfRegistrationEnabled()) {
-            add(centered(new Button("Noch kein Konto? Jetzt registrieren",
-                    event -> UI.getCurrent().navigate(IdentityRoutes.REGISTER))));
+            Button register = new Button(texts.get("identity.login.register"),
+                    event -> UI.getCurrent().navigate(IdentityRoutes.REGISTER));
+            register.setId("login-register-button");
+            add(centered(register));
         }
         // Ohne Bestätigungspflicht gibt es keine Bestätigungsmail — dann führt
         // der Weg ins Leere und bleibt weg.
         if (registrationService.isEmailVerificationRequired()) {
-            Button resend = new Button("Bestätigungsmail nicht erhalten?",
+            Button resend = new Button(texts.get("identity.login.resendVerification"),
                     event -> UI.getCurrent().navigate(IdentityRoutes.RESEND_VERIFICATION));
             resend.setId("login-resend-verification-button");
             add(centered(resend));
         }
+    }
+
+    @Override
+    public String getPageTitle() {
+        return texts.get("identity.login.pageTitle");
     }
 
     private static HorizontalLayout centered(Button button) {
@@ -72,20 +84,24 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         }
     }
 
-    private static LoginI18n germanI18n() {
+    /**
+     * Paket-sichtbar und statisch, damit der Test die Beschriftungen prüfen
+     * kann: {@code LoginForm.getI18n()} ist geschützt, das gesetzte Objekt
+     * lässt sich von außen also nicht mehr auslesen.
+     */
+    static LoginI18n loginI18n(IdentityTexts texts) {
         LoginI18n i18n = LoginI18n.createDefault();
         LoginI18n.Form form = i18n.getForm();
-        form.setTitle("Anmelden");
-        form.setUsername("E-Mail-Adresse");
-        form.setPassword("Passwort");
-        form.setSubmit("Anmelden");
-        form.setForgotPassword("Passwort vergessen?");
+        form.setTitle(texts.get("identity.login.title"));
+        form.setUsername(texts.get("identity.common.email"));
+        form.setPassword(texts.get("identity.common.password"));
+        form.setSubmit(texts.get("identity.login.submit"));
+        form.setForgotPassword(texts.get("identity.login.forgotPassword"));
         i18n.setForm(form);
 
         LoginI18n.ErrorMessage error = i18n.getErrorMessage();
-        error.setTitle("Anmeldung fehlgeschlagen");
-        error.setMessage("E-Mail-Adresse oder Passwort stimmen nicht. "
-                + "Wenn du dich gerade erst registriert hast, bestätige zuerst den Link in deiner E-Mail.");
+        error.setTitle(texts.get("identity.login.error.title"));
+        error.setMessage(texts.get("identity.login.error.message"));
         i18n.setErrorMessage(error);
         return i18n;
     }
