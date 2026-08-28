@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+
+    <!-- Vaadin-Konstruktoren rufen overridable add()/setSizeFull(); das ist der
+         einzige vorgesehene Lifecycle-Hook des Frameworks. -->
+    <Match>
+        <Class name="~.*\.ui\..*"/>
+        <Bug pattern="MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR"/>
+    </Match>
+
+    <!-- Vaadin-Views sind Serializable (HTTP-Session), referenzieren aber
+         nicht-serialisierbare Spring-Services. Session-Replication ueber mehrere
+         Knoten ist nicht im Einsatz. -->
+    <Match>
+        <Class name="~.*\.ui\..*"/>
+        <Bug pattern="SE_BAD_FIELD,SE_BAD_FIELD_STORE,SE_NO_SERIALVERSIONID,SE_TRANSIENT_FIELD_NOT_RESTORED,SE_COMPARATOR_SHOULD_BE_SERIALIZABLE"/>
+    </Match>
+
+    <!-- Views geben interne Vaadin-Komponenten per Getter heraus; defensive
+         Kopien wuerden das Vaadin-Binding brechen. -->
+    <Match>
+        <Class name="~.*\.ui\..*"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- JPA-Entities geben Collections per Referenz heraus (Hibernate-Dirty-Tracking). -->
+    <Match>
+        <Class name="~.*\.domain\..*"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2,EQ_DOESNT_OVERRIDE_EQUALS,HE_EQUALS_USE_HASHCODE"/>
+    </Match>
+
+    <!-- DTOs/Records sind Read-only-Sichten; Kopien pro Aufruf waeren zu teuer. -->
+    <Match>
+        <Class name="~.*\.values\..*"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Entity-Konstruktoren validieren Pflichtfelder per requireNonNull — genau das
+         verlangt die Projektkonvention. Die von SpotBugs befuerchtete Finalizer-Attacke
+         setzt einen Finalizer voraus, den keine dieser Klassen hat. -->
+    <Match>
+        <Class name="~.*\.domain\..*"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+
+    <!-- Mailtexte enthalten bewusst \n und nicht %n: Der Zeilenumbruch einer Mail
+         ist durch RFC 5322 festgelegt und darf nicht vom Betriebssystem abhaengen. -->
+    <Match>
+        <Class name="~.*MailSender"/>
+        <Bug pattern="VA_FORMAT_STRING_USES_NEWLINE"/>
+    </Match>
+
+    <!-- Generierter Code. -->
+    <Match>
+        <Source name="~.*/build/generated/.*"/>
+    </Match>
+
+</FindBugsFilter>

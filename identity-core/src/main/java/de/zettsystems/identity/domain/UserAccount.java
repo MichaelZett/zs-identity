@@ -99,7 +99,12 @@ public class UserAccount extends AbstractAuthEntity {
     public UserAccount(String email, String passwordHash, AccountName name, Instant createdAt) {
         this.email = normalizeEmail(email);
         this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash");
-        applyName(name);
+        // Bewusst nicht ueber applyName(): Sonar (java:S2637) sieht die
+        // Initialisierung des @NullMarked-Felds sonst nicht im Konstruktor.
+        Objects.requireNonNull(name, "name");
+        this.displayName = name.displayName();
+        this.firstName = name.firstName();
+        this.lastName = name.lastName();
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
         this.enabled = false;
         this.emailVerified = false;

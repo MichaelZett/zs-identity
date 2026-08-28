@@ -1,5 +1,6 @@
 package de.zettsystems.identity.application;
 
+
 import de.zettsystems.identity.domain.AuthTokenType;
 import de.zettsystems.identity.domain.Role;
 import de.zettsystems.identity.domain.RoleRepository;
@@ -7,21 +8,18 @@ import de.zettsystems.identity.domain.UserAccount;
 import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.IdentityMessageKeys;
+import de.zettsystems.identity.values.IdentityPaths;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.UserAccountDto;
+import java.time.Clock;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.util.Optional;
-
 class RegistrationServiceImpl implements RegistrationService {
 
     private static final Logger LOG = LoggerFactory.getLogger(RegistrationServiceImpl.class);
-
-    /** Pfad der View, die den Bestätigungslink entgegennimmt. */
-    static final String CONFIRM_PATH = "/register/confirm";
 
     private final UserAccountRepository userRepository;
     private final RoleRepository roleRepository;
@@ -126,7 +124,8 @@ class RegistrationServiceImpl implements RegistrationService {
 
     private void sendVerification(UserAccount user) {
         String token = tokenIssuer.issue(user, AuthTokenType.EMAIL_VERIFICATION);
-        String url = properties.urlFor(CONFIRM_PATH + "?token=" + token);
+        String url = properties.urlFor(
+                IdentityPaths.CONFIRM_EMAIL + "?" + IdentityPaths.TOKEN_PARAMETER + "=" + token);
         mailSender.sendEmailVerification(UserAccountMapper.toDto(user), url);
     }
 

@@ -1,22 +1,20 @@
 package de.zettsystems.identity.application;
 
+
 import de.zettsystems.identity.domain.AuthTokenType;
 import de.zettsystems.identity.domain.UserAccount;
 import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.values.IdentityMessageKeys;
+import de.zettsystems.identity.values.IdentityPaths;
 import de.zettsystems.identity.values.IdentityProperties;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-
 class PasswordResetServiceImpl implements PasswordResetService {
 
     private static final Logger LOG = LoggerFactory.getLogger(PasswordResetServiceImpl.class);
-
-    /** Pfad der View, die den Reset-Link entgegennimmt. */
-    static final String RESET_PATH = "/password/reset";
 
     private final UserAccountRepository userRepository;
     private final AuthTokenIssuer tokenIssuer;
@@ -47,7 +45,8 @@ class PasswordResetServiceImpl implements PasswordResetService {
 
         UserAccount user = found.get();
         String token = tokenIssuer.issue(user, AuthTokenType.PASSWORD_RESET);
-        String url = properties.urlFor(RESET_PATH + "?token=" + token);
+        String url = properties.urlFor(
+                IdentityPaths.RESET_PASSWORD + "?" + IdentityPaths.TOKEN_PARAMETER + "=" + token);
         mailSender.sendPasswordReset(UserAccountMapper.toDto(user), url);
     }
 

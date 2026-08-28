@@ -46,12 +46,14 @@ public record UserAccountDto(Long id,
      * arbeiten können.
      */
     public String firstName() {
-        return Objects.requireNonNullElse(name.firstName(), "");
+        String firstName = name.firstName();
+        return firstName != null ? firstName : "";
     }
 
     /** Nachname; leer, wenn die Anwendung nur Anzeigenamen führt. */
     public String lastName() {
-        return Objects.requireNonNullElse(name.lastName(), "");
+        String lastName = name.lastName();
+        return lastName != null ? lastName : "";
     }
 
     /** Verwaltet = von der Anwendung angelegt, ohne eigene Anmeldedaten. */

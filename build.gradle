@@ -4,7 +4,9 @@ plugins {
     id 'base'
     id 'net.ltgt.errorprone' version "${errorproneGradleVersion}" apply false
     id 'net.ltgt.nullaway' version "${nullawayGradleVersion}" apply false
-    id 'com.github.ben-manes.versions' version "${benmanesVersion}" apply false
+    id 'com.github.spotbugs' version "${spotbugsGradleVersion}" apply false
+    id 'io.github.ben-manes.versions' version "${benmanesVersion}" apply false
+    id 'org.sonarqube' version "${sonarVersion}"
 }
 
 // ErrorProne-Checks, die als Sicherheitsnetz auf ERROR stehen.
@@ -25,12 +27,37 @@ ext.errorproneEnforcedChecks = [
         'UnnecessaryMethodReference',
 ]
 
+// Filter fuer `dependencyUpdates`. Vor dem subprojects-Block definieren, damit
+// die Closures dort bereits aufloesbar sind.
+ext.depUpdateIsUnstable = { String version ->
+    def stableKeywords = ['RELEASE', 'FINAL', 'GA']
+    def stable = stableKeywords.any { version.toUpperCase(Locale.ROOT).contains(it) }
+    def numericLooking = version ==~ /^[0-9,.v-]+(-r)?$/
+    return !stable && !numericLooking
+}
+
+ext.depUpdateIsMajorBump = { String current, String candidate ->
+    def cur = current.split(/[.\-]/, 2)[0]
+    def cand = candidate.split(/[.\-]/, 2)[0]
+    return cur.isInteger() && cand.isInteger() && cand.toInteger() > cur.toInteger()
+}
+
+// Aus der Coverage-Messung heraus: Auto-Konfiguration, Vaadin-Ansichten und
+// JPA-Entities. Getestet wird die Anwendungslogik in application/values.
+ext.coverageExclusions = [
+        '**/configuration/**',
+        '**/ui/**',
+        '**/domain/**',
+]
+
 subprojects {
     apply plugin: 'java-library'
+    apply plugin: 'jacoco'
     apply plugin: 'maven-publish'
+    apply plugin: 'com.github.spotbugs'
     apply plugin: 'net.ltgt.errorprone'
     apply plugin: 'net.ltgt.nullaway'
-    apply plugin: 'com.github.ben-manes.versions'
+    apply plugin: 'io.github.ben-manes.versions'
 
     group = rootProject.group
     version = rootProject.version
@@ -41,6 +68,10 @@ subprojects {
         }
         withSourcesJar()
         withJavadocJar()
+    }
+
+    jacoco {
+        toolVersion = "${jacocoVersion}"
     }
 
     configurations {
@@ -111,9 +142,72 @@ subprojects {
         options.errorprone.enabled = false
     }
 
+    spotbugs {
+        // Echte Enum-Werte statt der Zeichenketten 'max'/'low': Gradle 9 warnt
+        // vor der stillen Umwandlung, Gradle 10 lehnt sie ab.
+        effort = com.github.spotbugs.snom.Effort.valueOf('MAX')
+        reportLevel = com.github.spotbugs.snom.Confidence.valueOf('LOW')
+        excludeFilter = rootProject.file('config/spotbugs/exclude.xml')
+    }
+
+    tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
+        reports {
+            html {
+                required = true
+                outputLocation = layout.buildDirectory.file("reports/spotbugs/${name}.html")
+            }
+            sarif {
+                required = true
+                outputLocation = layout.buildDirectory.file("reports/spotbugs/${name}.sarif")
+            }
+            xml.required = false
+        }
+    }
+
+    // SpotBugs auf Testcode bringt fast nur Rauschen (Serializable-, EI_EXPOSE-Muster).
+    tasks.named('spotbugsTest') {
+        enabled = false
+    }
+
     tasks.named('test') {
         useJUnitPlatform()
         systemProperty 'postgres.version', "${postgresVersion}"
+    }
+
+    jacocoTestReport {
+        dependsOn tasks.named('test')
+        reports {
+            xml.required = true
+            html.required = true
+        }
+    }
+
+    jacocoTestCoverageVerification {
+        dependsOn tasks.named('jacocoTestReport')
+        // setFrom, nicht from: from() addiert zur vom Plugin gesetzten Default-Menge,
+        // die Ausschluesse waeren damit wirkungslos.
+        classDirectories.setFrom(files(sourceSets.main.output).asFileTree.matching {
+            rootProject.ext.coverageExclusions.each { pattern -> exclude pattern }
+        })
+        violationRules {
+            rule {
+                limit {
+                    counter = 'LINE'
+                    value = 'COVEREDRATIO'
+                    minimum = 0.78
+                }
+                limit {
+                    counter = 'BRANCH'
+                    value = 'COVEREDRATIO'
+                    minimum = 0.60
+                }
+            }
+        }
+    }
+
+    tasks.named('check') {
+        dependsOn tasks.named('jacocoTestReport')
+        dependsOn tasks.named('jacocoTestCoverageVerification')
     }
 
     // Veroeffentlichung: GitHub Packages (CI, Releases) und mavenLocal
@@ -141,5 +235,49 @@ subprojects {
                 }
             }
         }
+    }
+
+    // Nur stabile Releases und keine Major-Bumps anzeigen. Override:
+    //   ./gradlew dependencyUpdates -Punstable   (RC/M/Beta sichtbar)
+    //   ./gradlew dependencyUpdates -Pmajor      (Major-Bumps sichtbar)
+    dependencyUpdates {
+        rejectVersionIf { selection ->
+            def allowUnstable = project.hasProperty('unstable')
+            def allowMajor = project.hasProperty('major')
+            if (!allowUnstable
+                    && rootProject.ext.depUpdateIsUnstable(selection.candidate.version)
+                    && !rootProject.ext.depUpdateIsUnstable(selection.currentVersion)) {
+                return true
+            }
+            if (!allowMajor
+                    && rootProject.ext.depUpdateIsMajorBump(selection.currentVersion, selection.candidate.version)) {
+                return true
+            }
+            return false
+        }
+    }
+}
+
+sonar {
+    properties {
+        property 'sonar.projectKey', 'zs-identity'
+        property 'sonar.projectName', 'zs-identity'
+        property 'sonar.host.url', 'http://localhost:9000'
+        def sonarTokenValue = findProperty('sonar.token') ?: System.getenv('SONAR_TOKEN')
+        if (sonarTokenValue) {
+            property 'sonar.token', sonarTokenValue
+        }
+        // Spiegel von ext.coverageExclusions (dort .class-, hier .java-Muster).
+        property 'sonar.coverage.exclusions', '**/configuration/**,**/ui/**,**/domain/**'
+        // Serializable-Regeln erzeugen bei Vaadin/Spring nur Rauschen; java:S2160
+        // meckert bei jeder JPA-Entity, die equals/hashCode aus AbstractAuthEntity
+        // erbt; java:S110 zaehlt die Vererbungstiefe mitsamt der Vaadin-Hierarchie.
+        property 'sonar.issue.ignore.multicriteria', 's1948,s2160,s110'
+        property 'sonar.issue.ignore.multicriteria.s2160.ruleKey', 'java:S2160'
+        property 'sonar.issue.ignore.multicriteria.s2160.resourceKey', '**/domain/**/*.java'
+        property 'sonar.issue.ignore.multicriteria.s1948.ruleKey', 'java:S1948'
+        property 'sonar.issue.ignore.multicriteria.s1948.resourceKey', '**/*.java'
+        property 'sonar.issue.ignore.multicriteria.s110.ruleKey', 'java:S110'
+        property 'sonar.issue.ignore.multicriteria.s110.resourceKey', '**/ui/**/*.java'
     }
 }

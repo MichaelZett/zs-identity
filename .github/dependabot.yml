@@ -1,0 +1,14 @@
+# Hält die GitHub-Actions in den Workflows aktuell — das Pendant zu
+# `./gradlew dependencyUpdates` für die Libs. Bei schwimmenden Major-Tags
+# (@v7) meldet Dependabot genau die Major-Sprünge; Minor/Patch kommen über
+# das Tag von selbst. Alle Bumps gesammelt in einem Wochen-PR.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns:
+          - "*"

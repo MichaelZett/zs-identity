@@ -3,6 +3,7 @@ package de.zettsystems.identity.application;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.io.Serial;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -16,6 +17,11 @@ import java.util.Objects;
  * dafür die Datenbank zu fragen.
  */
 public final class IdentityUserDetails implements UserDetails {
+
+    // Liegt in der HTTP-Session; ohne feste UID bricht jeder Klassenwechsel
+    // eine noch offene Sitzung.
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     private final Long userId;
     private final String email;

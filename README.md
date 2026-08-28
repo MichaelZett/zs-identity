@@ -46,7 +46,8 @@ Auto-Konfiguration:
    ```java
    http.with(VaadinSecurityConfigurer.vaadin(), c -> c.loginView(LoginView.class));
    ```
-   und die öffentlichen Pfade (`IdentityRoutes.*`) per `permitAll()` freigeben.
+   und die öffentlichen Pfade (`IdentityPaths.*` aus dem Kern, in Vaadin-Apps
+   gleichbedeutend `IdentityRoutes.*`) per `permitAll()` freigeben.
 3. **Vaadin-Routen sichtbar machen** (nur mit `identity-vaadin`):
    `vaadin.allowed-packages` um `de.zettsystems.identity` ergänzen.
 
@@ -89,9 +90,10 @@ Fachobjekte ausschließlich über die Konto-ID (`UserAccountDto.id()`,
 ## Entwicklung
 
 ```
-./gradlew build                 # kompiliert, testet (Testcontainers → Docker nötig)
+./gradlew build                 # kompiliert, testet, SpotBugs, JaCoCo (Testcontainers → Docker nötig)
+./gradlew sonar                 # SonarQube gegen die lokale Instanz (SONAR_TOKEN)
 ./gradlew publishToMavenLocal   # lokale Iteration mit einer App (mavenLocal() dort eintragen)
-./gradlew dependencyUpdates     # Versionen prüfen
+./gradlew dependencyUpdates     # Versionen prüfen (-Punstable / -Pmajor zeigt RC/Major)
 ```
 
 Release: Version in `gradle.properties` ohne `-SNAPSHOT` setzen und auf
