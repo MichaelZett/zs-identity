@@ -5,7 +5,30 @@ Nennenswerte Änderungen an zs-identity. Format nach
 [SemVer](https://semver.org/lang/de/). Beim Release wird `## Unreleased` in
 `## <version> - <Datum>` umbenannt.
 
-## Unreleased
+## 0.3.0 - 2026-08-29
+
+### Added
+- **Erzwungener Passwortwechsel.** `UserAccountService#requirePasswordChange(userId)`
+  setzt das Flag `must_change_password` (Migration `V1_3`); jedes Setzen eines
+  neuen Passworts — `changePassword` wie der Reset über „Passwort vergessen" —
+  löscht es. `UserAccountDto` und `IdentityUserDetails` tragen
+  `mustChangePassword()`. In `identity-vaadin` führt `PasswordChangeGuard`
+  (angehängt über einen `VaadinServiceInitListener` per ServiceLoader) jede
+  Route auf die neue `ChangePasswordView` (`IdentityRoutes.CHANGE_PASSWORD` =
+  `password/change`, `@PermitAll`, ohne Layout, mit Abmelden-Knopf), bis das
+  Passwort gewechselt ist. Nach dem Wechsel frischt der Baustein die laufende
+  Sitzung auf.
+- Neue Texte `identity.change.*` in beiden Sprachdateien.
+
+### Changed
+- `UserAccountDto` hat die neue Komponente `mustChangePassword` am Ende; der
+  bisherige Konstruktor bleibt als Überladung (Wert `false`), Anwendungen
+  müssen dafür nichts ändern.
+- `IdentityUserDetails` hat einen öffentlichen Konstruktor mit dem neuen
+  Parameter `mustChangePassword` — für Tests einbindender Anwendungen.
+- Die Ansicht braucht Vaadins `AuthenticationContext`; die Bean kommt aus
+  `vaadin-spring` von selbst.
+
 
 ## 0.2.0 - 2026-08-28
 

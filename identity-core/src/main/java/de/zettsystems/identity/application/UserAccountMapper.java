@@ -31,6 +31,7 @@ final class UserAccountMapper {
                 user.isEnabled(),
                 user.isEmailVerified(),
                 user.getCreatedAt(),
-                roleCodes);
+                roleCodes,
+                user.isMustChangePassword());
     }
 }

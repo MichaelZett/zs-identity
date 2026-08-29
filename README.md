@@ -50,6 +50,14 @@ Auto-Konfiguration:
    gleichbedeutend `IdentityRoutes.*`) per `permitAll()` freigeben.
 3. **Vaadin-Routen sichtbar machen** (nur mit `identity-vaadin`):
    `vaadin.allowed-packages` um `de.zettsystems.identity` ergänzen.
+4. **Erzwungener Passwortwechsel** (ab 0.3.0, nur mit `identity-vaadin`):
+   `UserAccountService#requirePasswordChange(userId)` — etwa nach dem Anlegen
+   eines Kontos mit Startpasswort. Der Baustein führt das Konto danach bei
+   jeder Navigation auf `IdentityRoutes.CHANGE_PASSWORD` (`password/change`),
+   bis ein neues Passwort gesetzt ist; die Ansicht ist `@PermitAll`, die
+   Security-Kette der Anwendung muss sie also für Angemeldete nicht eigens
+   freigeben. Die Migration `V1_3` ist niedriger nummeriert als App-Migrationen
+   — `spring.flyway.out-of-order: true` bleibt Pflicht.
 
 ## Konfiguration (`zs.identity.*`)
 

@@ -44,6 +44,27 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(userDetailsService.loadUserByUsername("verwaltet@example.com").isEnabled()).isTrue();
     }
 
+    /** Startpasswort aus einer Verwaltung: Das Flag steht, bis das Passwort neu ist. */
+    @Test
+    void aRequiredPasswordChangeIsClearedByChangingThePassword() {
+        UserAccountDto created = userAccountService.createAccount(
+                "start@example.com", "ein-start-passwort", "Start", "Konto", true);
+        assertThat(created.mustChangePassword()).isFalse();
+
+        UserAccountDto flagged = userAccountService.requirePasswordChange(created.id());
+
+        assertThat(flagged.mustChangePassword()).isTrue();
+        assertThat(userAccountService.findById(created.id()).orElseThrow().mustChangePassword()).isTrue();
+        assertThat(((IdentityUserDetails) userDetailsService.loadUserByUsername("start@example.com"))
+                .mustChangePassword()).isTrue();
+
+        userAccountService.changePassword(created.id(), "ein-neues-langes-passwort");
+
+        assertThat(userAccountService.findById(created.id()).orElseThrow().mustChangePassword()).isFalse();
+        assertThat(((IdentityUserDetails) userDetailsService.loadUserByUsername("start@example.com"))
+                .mustChangePassword()).isFalse();
+    }
+
     @Test
     void anAccountCreatedWithoutVerificationStaysLocked() {
         UserAccountDto created = userAccountService.createAccount(

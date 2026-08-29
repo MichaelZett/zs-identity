@@ -136,7 +136,20 @@ class UserAccountServiceImpl implements UserAccountService {
     @Transactional
     public void changePassword(Long userId, String newRawPassword) {
         requireLongEnough(newRawPassword);
-        requireUser(userId).changePassword(passwordHasher.hash(newRawPassword));
+        UserAccount user = requireUser(userId);
+        user.changePassword(passwordHasher.hash(newRawPassword));
+        // Die Sitzung trägt das Flag „muss wechseln" — nach dem Wechsel muss
+        // es dort verschwinden, sonst bliebe die Person auf der Ansicht hängen.
+        authenticationRefresher.refreshAfterCommit(user.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public UserAccountDto requirePasswordChange(Long userId) {
+        UserAccount user = requireUser(userId);
+        user.requirePasswordChange();
+        authenticationRefresher.refreshAfterCommit(user.getEmail());
+        return UserAccountMapper.toDto(user);
     }
 
     private void requireLongEnough(String rawPassword) {

@@ -33,6 +33,8 @@ class PasswordResetServiceIT extends AbstractIdentityIntegrationTest {
     @Autowired
     private AuthTokenRepository tokenRepository;
     @Autowired
+    private UserAccountService userAccountService;
+    @Autowired
     private IdentityMailSender mailSender;
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -56,6 +58,19 @@ class PasswordResetServiceIT extends AbstractIdentityIntegrationTest {
         registrationService.register(EMAIL, OLD_PASSWORD, "Ida", "Beispiel");
         registrationService.confirmEmail(mails.tokenFromLastMailTo(EMAIL));
         mails.clear();
+    }
+
+    /** Auch der Weg über „Passwort vergessen" räumt einen verlangten Wechsel ab. */
+    @Test
+    void theResetClearsARequiredPasswordChange() {
+        Long userId = userRepository.findByEmail(EMAIL).orElseThrow().getId();
+        userAccountService.requirePasswordChange(userId);
+        passwordResetService.requestReset(EMAIL);
+        String token = mails.tokenFromLastMailTo(EMAIL);
+
+        passwordResetService.resetPassword(token, NEW_PASSWORD);
+
+        assertThat(userRepository.findByEmail(EMAIL).orElseThrow().isMustChangePassword()).isFalse();
     }
 
     @Test

@@ -79,6 +79,16 @@ public class UserAccount extends AbstractAuthEntity {
     @Column(name = "last_login_at")
     private @Nullable Instant lastLoginAt;
 
+    /**
+     * Das Konto muss sein Passwort ändern, bevor es die Anwendung benutzt —
+     * etwa nach einem Startpasswort aus einer Verwaltung. Gelöscht wird das
+     * Flag an derselben Stelle, an der das Passwort neu gesetzt wird
+     * ({@link #changePassword}), damit es nach einem Wechsel nie stehen
+     * bleiben kann — auch nicht auf dem Weg über „Passwort vergessen".
+     */
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword;
+
     // LAZY ist Pflicht: Der EAGER-Default von JPA lädt bei jeder Benutzerliste
     // die Rollen einzeln nach (N+1).
     @ManyToMany(fetch = FetchType.LAZY)
@@ -161,6 +171,12 @@ public class UserAccount extends AbstractAuthEntity {
 
     public void changePassword(String newPasswordHash) {
         this.passwordHash = Objects.requireNonNull(newPasswordHash, "newPasswordHash");
+        this.mustChangePassword = false;
+    }
+
+    /** Verlangt einen Passwortwechsel bei der nächsten Anmeldung. */
+    public void requirePasswordChange() {
+        this.mustChangePassword = true;
     }
 
     public void rename(AccountName newName) {

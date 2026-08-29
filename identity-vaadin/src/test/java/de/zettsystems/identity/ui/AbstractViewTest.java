@@ -53,6 +53,20 @@ abstract class AbstractViewTest {
     public static class ForgotPasswordTarget extends Div {
     }
 
+    /** Die Wurzel der Anwendung — Ziel nach dem Passwortwechsel. */
+    @Route(value = "", autoLayout = false)
+    public static class RootTarget extends Div {
+    }
+
+    /** Irgendeine Fachansicht — der Wächter soll sie versperren. */
+    @Route(value = "somewhere", autoLayout = false)
+    public static class SomewhereTarget extends Div {
+    }
+
+    @Route(value = IdentityRoutes.CHANGE_PASSWORD, autoLayout = false)
+    public static class ChangePasswordTarget extends Div {
+    }
+
     /** Die mitgelieferte Auflösung — die Tests prüfen die echten Texte, keine Attrappen. */
     protected static final IdentityMessages MESSAGES = IdentityMessages.resourceBundles();
 
@@ -60,7 +74,8 @@ abstract class AbstractViewTest {
     void setUpVaadin() {
         Routes routes = new Routes();
         routes.getRoutes().addAll(List.of(LoginTarget.class, RegisterTarget.class,
-                ResendTarget.class, ForgotPasswordTarget.class));
+                ResendTarget.class, ForgotPasswordTarget.class, RootTarget.class,
+                SomewhereTarget.class, ChangePasswordTarget.class));
         MockVaadin.setup(routes);
     }
 

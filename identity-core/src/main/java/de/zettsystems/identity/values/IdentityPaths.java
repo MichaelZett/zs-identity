@@ -18,6 +18,8 @@ public final class IdentityPaths {
     public static final String RESEND_VERIFICATION = "register/resend";
     public static final String FORGOT_PASSWORD = "password/forgot";
     public static final String RESET_PASSWORD = "password/reset";
+    /** Passwort ändern für angemeldete Konten — Ziel des erzwungenen Wechsels. */
+    public static final String CHANGE_PASSWORD = "password/change";
 
     /** Parametername des Tokens in Bestätigungs- und Reset-Links. */
     public static final String TOKEN_PARAMETER = "token";

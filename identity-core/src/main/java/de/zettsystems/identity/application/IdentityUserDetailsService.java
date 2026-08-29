@@ -47,7 +47,7 @@ class IdentityUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("Account without ID for " + username);
         }
         return new IdentityUserDetails(userId, email, user.getDisplayName(), passwordHash, user.isEnabled(),
-                toAuthorities(user));
+                user.isMustChangePassword(), toAuthorities(user));
     }
 
     private static Set<GrantedAuthority> toAuthorities(UserAccount user) {

@@ -18,6 +18,9 @@ import java.util.Set;
  *              Anwendung ohne Selbstregistrierung führt ({@link #managed()})
  * @param name  Anzeigename, bei Klarnamen-Anwendungen auch Vor- und Nachname
  * @param roleCodes Rollencodes ohne {@code ROLE_}-Präfix
+ * @param mustChangePassword das Konto muss sein Passwort ändern, bevor es die
+ *                           Anwendung benutzt (Startpasswort, Rücksetzung
+ *                           von Hand)
  */
 public record UserAccountDto(Long id,
                              @Nullable String email,
@@ -25,7 +28,8 @@ public record UserAccountDto(Long id,
                              boolean enabled,
                              boolean emailVerified,
                              Instant createdAt,
-                             Set<String> roleCodes) {
+                             Set<String> roleCodes,
+                             boolean mustChangePassword) {
 
     public UserAccountDto {
         Objects.requireNonNull(id, "id");
@@ -33,6 +37,16 @@ public record UserAccountDto(Long id,
         Objects.requireNonNull(createdAt, "createdAt");
         Objects.requireNonNull(roleCodes, "roleCodes");
         roleCodes = Set.copyOf(roleCodes);
+    }
+
+    /**
+     * Die Gestalt vor 0.3.0 — ohne {@code mustChangePassword}. Bleibt, damit
+     * Anwendungen, die das Record von Hand bauen (in Tests üblich), nicht
+     * brechen.
+     */
+    public UserAccountDto(Long id, @Nullable String email, AccountName name, boolean enabled,
+                          boolean emailVerified, Instant createdAt, Set<String> roleCodes) {
+        this(id, email, name, enabled, emailVerified, createdAt, roleCodes, false);
     }
 
     /** Der öffentlich sichtbare Name — in beiden Namensgestalten gesetzt. */

@@ -52,5 +52,18 @@ public interface UserAccountService {
 
     UserAccountDto setEnabled(Long userId, boolean enabled);
 
+    /**
+     * Setzt ein neues Passwort. Löscht zugleich ein gesetztes
+     * {@code mustChangePassword} und frischt die laufende Sitzung auf, wenn es
+     * das angemeldete Konto ist.
+     */
     void changePassword(Long userId, String newRawPassword);
+
+    /**
+     * Verlangt vom Konto, sein Passwort bei der nächsten Anmeldung zu ändern
+     * — für Startpasswörter aus einer Verwaltung oder von Hand zurückgesetzte
+     * Konten. Mit {@code identity-vaadin} führt danach jede Route auf die
+     * Passwort-ändern-Ansicht, bis das Passwort gewechselt ist.
+     */
+    UserAccountDto requirePasswordChange(Long userId);
 }

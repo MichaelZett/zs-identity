@@ -28,15 +28,22 @@ public final class IdentityUserDetails implements UserDetails {
     private final String displayName;
     private final String passwordHash;
     private final boolean enabled;
+    private final boolean mustChangePassword;
     private final List<GrantedAuthority> authorities;
 
-    IdentityUserDetails(Long userId, String email, String displayName, String passwordHash, boolean enabled,
-                        Collection<? extends GrantedAuthority> authorities) {
+    /**
+     * Öffentlich, damit einbindende Anwendungen den Prinzipal in Tests bauen
+     * können; im Betrieb erzeugt ihn allein der {@code IdentityUserDetailsService}.
+     */
+    public IdentityUserDetails(Long userId, String email, String displayName, String passwordHash,
+                               boolean enabled, boolean mustChangePassword,
+                               Collection<? extends GrantedAuthority> authorities) {
         this.userId = Objects.requireNonNull(userId, "userId");
         this.email = Objects.requireNonNull(email, "email");
         this.displayName = Objects.requireNonNull(displayName, "displayName");
         this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash");
         this.enabled = enabled;
+        this.mustChangePassword = mustChangePassword;
         this.authorities = List.copyOf(authorities);
     }
 
@@ -48,6 +55,15 @@ public final class IdentityUserDetails implements UserDetails {
     /** Anzeigename zum Zeitpunkt der Anmeldung. */
     public String displayName() {
         return displayName;
+    }
+
+    /**
+     * Das Konto muss sein Passwort ändern, bevor es die Anwendung benutzt.
+     * Steht in der Sitzung, damit die Erzwingung nicht bei jedem Seitenaufruf
+     * die Datenbank fragt; nach dem Wechsel frischt der Dienst die Sitzung auf.
+     */
+    public boolean mustChangePassword() {
+        return mustChangePassword;
     }
 
     @Override

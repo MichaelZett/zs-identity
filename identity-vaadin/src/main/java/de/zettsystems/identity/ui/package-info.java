@@ -1,6 +1,7 @@
 /**
- * Vaadin-Oberfläche des Auth-Bausteins: Login, Registrierung, Bestätigung und
- * Passwort-Reset.
+ * Vaadin-Oberfläche des Auth-Bausteins: Login, Registrierung, Bestätigung,
+ * Passwort-Reset und Passwort ändern (samt erzwungenem Wechsel über
+ * {@code PasswordChangeGuard}).
  *
  * <p>Damit Vaadin die {@code @Route}-Klassen aus dieser Bibliothek findet, muss
  * die einbindende Anwendung dieses Paket in {@code vaadin.allowed-packages}
