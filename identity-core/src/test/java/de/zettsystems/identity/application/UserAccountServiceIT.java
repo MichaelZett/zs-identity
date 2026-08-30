@@ -44,6 +44,21 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(userDetailsService.loadUserByUsername("verwaltet@example.com").isEnabled()).isTrue();
     }
 
+    /** Ein gelöschtes Konto ist weg — samt Rolle; ein zweites Löschen meldet „nicht gefunden". */
+    @Test
+    void anAccountCanBeDeletedForGood() {
+        UserAccountDto created = userAccountService.createAccount(
+                "doppelt@example.com", "ein-langes-passwort", "Dop", "Pelt", true);
+        userAccountService.grantRole(created.id(), "SYSTEM_ADMIN");
+
+        userAccountService.deleteAccount(created.id());
+
+        assertThat(userAccountService.findById(created.id())).isEmpty();
+        assertThat(userAccountService.findByEmail("doppelt@example.com")).isEmpty();
+        assertThatThrownBy(() -> userAccountService.deleteAccount(created.id()))
+                .isInstanceOf(IdentityException.class);
+    }
+
     /** Startpasswort aus einer Verwaltung: Das Flag steht, bis das Passwort neu ist. */
     @Test
     void aRequiredPasswordChangeIsClearedByChangingThePassword() {

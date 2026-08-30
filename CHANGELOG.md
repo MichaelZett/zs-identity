@@ -5,6 +5,15 @@ Nennenswerte Änderungen an zs-identity. Format nach
 [SemVer](https://semver.org/lang/de/). Beim Release wird `## Unreleased` in
 `## <version> - <Datum>` umbenannt.
 
+## 0.4.0 - 2026-08-30
+
+### Added
+- **Konto löschen.** `UserAccountService#deleteAccount(userId)` entfernt ein
+  Konto endgültig samt Rollenzuordnung und Tokens (Fremdschlüssel mit
+  `ON DELETE CASCADE`). Die Anwendung räumt ihre eigenen Daten zur Kennung
+  vorher selbst auf. Gedacht für die Verwaltung, etwa bei doppelt angelegten
+  Konten.
+
 ## 0.3.0 - 2026-08-29
 
 ### Added

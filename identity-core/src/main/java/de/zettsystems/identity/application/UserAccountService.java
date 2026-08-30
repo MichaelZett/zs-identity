@@ -66,4 +66,14 @@ public interface UserAccountService {
      * Passwort-ändern-Ansicht, bis das Passwort gewechselt ist.
      */
     UserAccountDto requirePasswordChange(Long userId);
+
+    /**
+     * Löscht ein Konto endgültig — samt Rollenzuordnungen und Tokens. Die
+     * Anwendung räumt ihre eigenen Daten zur Kennung <strong>vorher</strong>
+     * selbst auf; der Baustein kennt sie nicht. Gedacht für die Verwaltung,
+     * etwa für versehentlich doppelt angelegte Konten.
+     *
+     * @throws IdentityException wenn es das Konto nicht gibt
+     */
+    void deleteAccount(Long userId);
 }

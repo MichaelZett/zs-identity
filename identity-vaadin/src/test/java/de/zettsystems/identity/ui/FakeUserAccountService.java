@@ -38,6 +38,11 @@ class FakeUserAccountService implements UserAccountService {
     }
 
     @Override
+    public void deleteAccount(Long userId) {
+        // Die Ansichten löschen nichts.
+    }
+
+    @Override
     public Optional<UserAccountDto> findById(Long id) {
         return Optional.of(ACCOUNT);
     }

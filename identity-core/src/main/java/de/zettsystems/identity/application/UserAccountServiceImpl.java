@@ -152,6 +152,18 @@ class UserAccountServiceImpl implements UserAccountService {
         return UserAccountMapper.toDto(user);
     }
 
+    /**
+     * Tokens hängen per Fremdschlüssel mit {@code ON DELETE CASCADE} am
+     * Konto, die Rollenzuordnung räumt JPA über die Beziehung ab — es bleibt
+     * nichts zurück.
+     */
+    @Override
+    @Transactional
+    public void deleteAccount(Long userId) {
+        UserAccount user = requireUser(userId);
+        userRepository.delete(user);
+    }
+
     private void requireLongEnough(String rawPassword) {
         if (rawPassword.length() < properties.passwordMinLength()) {
             throw new IdentityException(IdentityMessageKeys.PASSWORD_TOO_SHORT,
