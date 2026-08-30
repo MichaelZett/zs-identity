@@ -77,10 +77,6 @@ public class IdentityBeans {
                 properties, clock, authenticationRefresher);
     }
 
-    /**
-     * Hält die Berechtigungen der laufenden Sitzung aktuell, wenn sich die
-     * Rollen des angemeldeten Kontos ändern.
-     */
     /** Der tägliche Token-Aufräumlauf; abschaltbar über {@code zs.identity.token-cleanup.enabled}. */
     @Bean
     @ConditionalOnMissingBean
@@ -89,6 +85,10 @@ public class IdentityBeans {
         return new TokenCleanupScheduler(tokenRepository, clock);
     }
 
+    /**
+     * Hält die Berechtigungen der laufenden Sitzung aktuell, wenn sich die
+     * Rollen des angemeldeten Kontos ändern.
+     */
     @Bean
     @ConditionalOnMissingBean
     AuthenticationRefresher authenticationRefresher(UserDetailsService userDetailsService) {
