@@ -5,6 +5,18 @@ Nennenswerte Änderungen an zs-identity. Format nach
 [SemVer](https://semver.org/lang/de/). Beim Release wird `## Unreleased` in
 `## <version> - <Datum>` umbenannt.
 
+## 0.5.0 - 2026-08-30
+
+### Added
+- **Bündelabfrage.** `UserAccountService#findAllById(Collection<Long>)` lädt
+  mehrere Konten samt Rollen in einer Abfrage — für Mitgliederlisten statt
+  eines `findById` je Zeile.
+- **Token-Aufräumlauf.** `TokenCleanupScheduler` löscht täglich um 03:15
+  eingelöste und seit mehr als 7 Tagen abgelaufene Token
+  (`AuthTokenRepository#deleteObsolete`). Läuft nur, wenn die Anwendung
+  `@EnableScheduling` setzt; abschaltbar mit
+  `zs.identity.token-cleanup.enabled=false`.
+
 ## 0.4.0 - 2026-08-30
 
 ### Added

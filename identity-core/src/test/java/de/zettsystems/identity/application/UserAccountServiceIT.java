@@ -8,6 +8,8 @@ import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.UserAccountDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -42,6 +44,17 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(created.emailVerified()).isTrue();
         assertThat(created.roleCodes()).containsExactly("USER");
         assertThat(userDetailsService.loadUserByUsername("verwaltet@example.com").isEnabled()).isTrue();
+    }
+
+    @Test
+    void severalAccountsAreLoadedInOneGo() {
+        UserAccountDto a = userAccountService.createAccount("a@example.com", "ein-langes-passwort", "A", "Aa", true);
+        UserAccountDto b = userAccountService.createAccount("b@example.com", "ein-langes-passwort", "B", "Bb", true);
+
+        assertThat(userAccountService.findAllById(List.of(a.id(), b.id(), -1L)))
+                .extracting(UserAccountDto::id)
+                .containsExactlyInAnyOrder(a.id(), b.id());
+        assertThat(userAccountService.findAllById(List.of())).isEmpty();
     }
 
     /** Ein gelöschtes Konto ist weg — samt Rolle; ein zweites Löschen meldet „nicht gefunden". */

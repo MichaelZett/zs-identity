@@ -11,6 +11,7 @@ import de.zettsystems.identity.values.UserAccountDto;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,6 +54,17 @@ class UserAccountServiceImpl implements UserAccountService {
     @Transactional(readOnly = true)
     public List<UserAccountDto> findAll() {
         return userRepository.findAllByOrderByDisplayNameAsc().stream()
+                .map(UserAccountMapper::toDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserAccountDto> findAllById(Collection<Long> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return userRepository.findAllWithRolesByIdIn(ids).stream()
                 .map(UserAccountMapper::toDto)
                 .toList();
     }

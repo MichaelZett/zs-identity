@@ -58,7 +58,11 @@ Auto-Konfiguration:
    Security-Kette der Anwendung muss sie also für Angemeldete nicht eigens
    freigeben. Die Migration `V1_3` ist niedriger nummeriert als App-Migrationen
    — `spring.flyway.out-of-order: true` bleibt Pflicht.
-5. **Konto löschen** (ab 0.4.0): `UserAccountService#deleteAccount(userId)`
+5. **Token-Aufräumlauf** (ab 0.5.0): `TokenCleanupScheduler` läuft täglich
+   um 03:15, sobald die Anwendung `@EnableScheduling` setzt; abschaltbar mit
+   `zs.identity.token-cleanup.enabled=false`. Mitgliederlisten laden ihre
+   Konten mit `UserAccountService#findAllById(ids)` in einer Abfrage.
+6. **Konto löschen** (ab 0.4.0): `UserAccountService#deleteAccount(userId)`
    entfernt Konto, Rollenzuordnung und Tokens endgültig. Eigene Daten der
    Anwendung zu dieser Kennung vorher selbst aufräumen — der Baustein kennt
    sie nicht.

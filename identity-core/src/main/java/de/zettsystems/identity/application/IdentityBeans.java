@@ -5,6 +5,7 @@ import de.zettsystems.identity.domain.RoleRepository;
 import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.values.IdentityProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -80,6 +81,14 @@ public class IdentityBeans {
      * Hält die Berechtigungen der laufenden Sitzung aktuell, wenn sich die
      * Rollen des angemeldeten Kontos ändern.
      */
+    /** Der tägliche Token-Aufräumlauf; abschaltbar über {@code zs.identity.token-cleanup.enabled}. */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(name = "zs.identity.token-cleanup.enabled", havingValue = "true", matchIfMissing = true)
+    TokenCleanupScheduler tokenCleanupScheduler(AuthTokenRepository tokenRepository, Clock clock) {
+        return new TokenCleanupScheduler(tokenRepository, clock);
+    }
+
     @Bean
     @ConditionalOnMissingBean
     AuthenticationRefresher authenticationRefresher(UserDetailsService userDetailsService) {

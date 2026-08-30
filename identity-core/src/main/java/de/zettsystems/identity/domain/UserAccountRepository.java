@@ -3,6 +3,7 @@ package de.zettsystems.identity.domain;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,4 +21,8 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
 
     @EntityGraph(attributePaths = {"roles"})
     List<UserAccount> findAllByOrderByDisplayNameAsc();
+
+    /** Mehrere Konten samt Rollen in einer Abfrage — für Mitgliederlisten. */
+    @EntityGraph(attributePaths = {"roles"})
+    List<UserAccount> findAllWithRolesByIdIn(Collection<Long> ids);
 }

@@ -38,6 +38,11 @@ class FakeUserAccountService implements UserAccountService {
     }
 
     @Override
+    public java.util.List<UserAccountDto> findAllById(java.util.Collection<Long> ids) {
+        return java.util.List.of(ACCOUNT);
+    }
+
+    @Override
     public void deleteAccount(Long userId) {
         // Die Ansichten löschen nichts.
     }

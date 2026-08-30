@@ -3,6 +3,7 @@ package de.zettsystems.identity.application;
 import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.UserAccountDto;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +21,13 @@ public interface UserAccountService {
     Optional<UserAccountDto> findByEmail(String email);
 
     List<UserAccountDto> findAll();
+
+    /**
+     * Mehrere Konten in einer Abfrage — für Listen, die je Zeile ein Konto
+     * zeigen (Mitgliederlisten), statt eines {@link #findById} je Zeile.
+     * Unbekannte Kennungen fehlen im Ergebnis; die Reihenfolge ist offen.
+     */
+    List<UserAccountDto> findAllById(Collection<Long> ids);
 
     /** Legt ein Konto ohne Selbstregistrierung an, etwa durch eine Administration. */
     UserAccountDto createAccount(String email, String rawPassword, AccountName name, boolean alreadyVerified);
