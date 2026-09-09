@@ -82,7 +82,11 @@ Auto-Konfiguration:
 | `locale`                      | `de`                     | Sprache der Mails und Rückfallsprache der Views (siehe Sprachen) |
 
 Mailversand: ist `spring.mail.*` konfiguriert, gehen echte Mails raus; sonst
-landen die Links im Log (`LoggingIdentityMailSender`).
+landen die Links im Log (`LoggingIdentityMailSender`). Jede Mail geht als
+`multipart/alternative` hinaus — Text und daneben ein schlichter HTML-Teil, in
+dem der Link ein echtes `<a href>` ist. Grund ist Outlook: In Nur-Text-Mails
+bricht es lange Zeilen um und macht aus einem Link über 76 Zeichen keinen
+anklickbaren mehr.
 
 ## Sprachen
 

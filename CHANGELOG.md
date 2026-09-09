@@ -5,6 +5,17 @@ Nennenswerte Änderungen an zs-identity. Format nach
 [SemVer](https://semver.org/lang/de/). Beim Release wird `## Unreleased` in
 `## <version> - <Datum>` umbenannt.
 
+## 0.5.1 - 2026-09-09
+
+### Fixed
+- **Klickbarer Link in Bestätigungs- und Reset-Mail.** Beide Mails gehen jetzt
+  als `multipart/alternative` hinaus: derselbe Text wie bisher und daneben ein
+  HTML-Teil mit echtem `<a href>`. Outlook bricht in Nur-Text-Nachrichten lange
+  Zeilen um und machte aus dem Link — mit dem 43-stelligen Token immer über 76
+  Zeichen — keinen anklickbaren mehr. Neue Schlüssel
+  `identity.mail.verification.body.html` und `identity.mail.reset.body.html`;
+  wer die Texte selbst setzt, ergänzt sie.
+
 ## 0.5.0 - 2026-08-30
 
 ### Added
