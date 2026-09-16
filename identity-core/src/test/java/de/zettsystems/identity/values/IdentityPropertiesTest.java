@@ -29,7 +29,7 @@ class IdentityPropertiesTest {
     @Test
     void aPasswordMinimumBelowEightIsRefused() {
         Duration tokenValidity = Duration.ofHours(1);
-        assertThatThrownBy(() -> new IdentityProperties(true, true, tokenValidity, 6,
+        assertThatThrownBy(() -> new IdentityProperties(true, true, tokenValidity, Duration.ofDays(7), 6,
                 "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME, Locale.GERMAN))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("password-min-length");
@@ -37,10 +37,19 @@ class IdentityPropertiesTest {
 
     @Test
     void aNonPositiveTokenValidityIsRefused() {
-        assertThatThrownBy(() -> new IdentityProperties(true, true, Duration.ZERO, 12,
+        assertThatThrownBy(() -> new IdentityProperties(true, true, Duration.ZERO, Duration.ofDays(7), 12,
                 "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME, Locale.GERMAN))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("token-validity");
+    }
+
+    @Test
+    void aNonPositiveInvitationValidityIsRefused() {
+        Duration tokenValidity = Duration.ofHours(1);
+        assertThatThrownBy(() -> new IdentityProperties(true, true, tokenValidity, Duration.ZERO, 12,
+                "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME, Locale.GERMAN))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("invitation-validity");
     }
 
     @Test
@@ -51,10 +60,13 @@ class IdentityPropertiesTest {
         assertThat(defaults.emailVerificationRequired()).isTrue();
         assertThat(defaults.defaultRoleCode()).isEqualTo("USER");
         assertThat(defaults.locale()).isEqualTo(Locale.GERMAN);
+        assertThat(defaults.invitationValidity())
+                .as("eine Einladung liegt im Postfach, bis jemand Zeit hat")
+                .isEqualTo(Duration.ofDays(7));
     }
 
     private static IdentityProperties propertiesWithBaseUrl(String baseUrl) {
-        return new IdentityProperties(true, true, Duration.ofHours(24), 12,
+        return new IdentityProperties(true, true, Duration.ofHours(24), Duration.ofDays(7), 12,
                 "noreply@example.com", "Test", baseUrl, "USER", NameMode.FULL_NAME, Locale.GERMAN);
     }
 }

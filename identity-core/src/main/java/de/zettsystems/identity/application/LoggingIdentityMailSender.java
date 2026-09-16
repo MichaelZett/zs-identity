@@ -34,4 +34,9 @@ class LoggingIdentityMailSender implements IdentityMailSender {
     public void sendPasswordReset(UserAccountDto user, String resetUrl) {
         LOG.warn("Password reset link for {}: {}", user.email(), resetUrl);
     }
+
+    @Override
+    public void sendInvitation(UserAccountDto user, String invitationUrl) {
+        LOG.warn("Invitation link for {}: {}", user.email(), invitationUrl);
+    }
 }

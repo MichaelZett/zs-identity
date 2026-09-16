@@ -22,7 +22,8 @@ public class RecordingMailSender implements IdentityMailSender {
 
     public enum Kind {
         EMAIL_VERIFICATION,
-        PASSWORD_RESET
+        PASSWORD_RESET,
+        INVITATION
     }
 
     private final List<SentMail> sent = new ArrayList<>();
@@ -35,6 +36,11 @@ public class RecordingMailSender implements IdentityMailSender {
     @Override
     public void sendPasswordReset(UserAccountDto user, String resetUrl) {
         sent.add(new SentMail(Kind.PASSWORD_RESET, user.email(), resetUrl));
+    }
+
+    @Override
+    public void sendInvitation(UserAccountDto user, String invitationUrl) {
+        sent.add(new SentMail(Kind.INVITATION, user.email(), invitationUrl));
     }
 
     public List<SentMail> sentMails() {

@@ -13,6 +13,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -58,9 +59,20 @@ class AuthTokenIssuer {
         secureRandom.nextBytes(raw);
         String plainToken = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
 
-        AuthToken token = new AuthToken(user, hash(plainToken), type, now.plus(properties.tokenValidity()));
+        AuthToken token = new AuthToken(user, hash(plainToken), type, now.plus(validityOf(type)));
         tokenRepository.save(token);
         return plainToken;
+    }
+
+    /**
+     * Wie lange ein frisch ausgestelltes Token dieses Typs gilt.
+     *
+     * <p>Einladungen bekommen eine eigene, längere Frist: Bestätigung und
+     * Passwort-Reset fordert jemand selbst an und liest sie sofort, eine
+     * Einladung kommt unangekündigt.
+     */
+    Duration validityOf(AuthTokenType type) {
+        return type == AuthTokenType.INVITATION ? properties.invitationValidity() : properties.tokenValidity();
     }
 
     /**

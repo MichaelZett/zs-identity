@@ -21,7 +21,10 @@ public final class IdentityPaths {
     /** Passwort ändern für angemeldete Konten — Ziel des erzwungenen Wechsels. */
     public static final String CHANGE_PASSWORD = "password/change";
 
-    /** Parametername des Tokens in Bestätigungs- und Reset-Links. */
+    /** Einladung einlösen: Konto beanspruchen und erstes Passwort setzen. */
+    public static final String CLAIM_ACCOUNT = "invitation";
+
+    /** Parametername des Tokens in Bestätigungs-, Reset- und Einladungslinks. */
     public static final String TOKEN_PARAMETER = "token";
 
     private IdentityPaths() {

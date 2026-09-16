@@ -25,4 +25,22 @@ public interface IdentityMailSender {
      * @param resetUrl vollständige Adresse inklusive Token
      */
     void sendPasswordReset(UserAccountDto user, String resetUrl);
+
+    /**
+     * Lädt zu einem Konto ein: Adresse bestätigen und erstes Passwort setzen.
+     *
+     * <p>Bewusst eine {@code default}-Methode, die scheitert, statt einer
+     * abstrakten: Ein eigener Sender einer Anwendung (Transaktionsmail-Dienst,
+     * Testdoppel) soll durch diese Ergänzung nicht die Übersetzung verlieren.
+     * Still nichts zu tun wäre schlimmer als der Fehler — der Eingeladene
+     * bekäme nie einen Link, und niemand merkte es.
+     *
+     * @param invitationUrl vollständige Adresse inklusive Token
+     * @throws UnsupportedOperationException solange ein eigener Sender sie nicht überschreibt
+     */
+    default void sendInvitation(UserAccountDto user, String invitationUrl) {
+        throw new UnsupportedOperationException(
+                getClass().getName() + " does not implement sendInvitation(..) — "
+                        + "implement it to use InvitationService");
+    }
 }

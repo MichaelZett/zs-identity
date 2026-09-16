@@ -16,6 +16,8 @@ public final class IdentityMessageKeys {
     public static final String TOKEN_EXPIRED = "identity.error.tokenExpired";
     public static final String DEFAULT_ROLE_MISSING = "identity.error.defaultRoleMissing";
     public static final String ACCOUNT_NOT_FOUND = "identity.error.accountNotFound";
+    /** Das Konto hat schon eine Adresse — es gehört bereits jemandem. */
+    public static final String ACCOUNT_ALREADY_CLAIMED = "identity.error.accountAlreadyClaimed";
     /** Rückfall der Oberfläche für alles, was sie nicht einzeln behandelt. */
     public static final String UNEXPECTED = "identity.error.unexpected";
 

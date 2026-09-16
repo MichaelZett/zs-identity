@@ -120,6 +120,19 @@ public class IdentityBeans {
 
     @Bean
     @ConditionalOnMissingBean
+    InvitationService invitationService(UserAccountRepository userRepository,
+                                        RoleRepository roleRepository,
+                                        AuthTokenIssuer tokenIssuer,
+                                        IdentityMailSender mailSender,
+                                        PasswordHasher passwordHasher,
+                                        IdentityProperties properties,
+                                        Clock clock) {
+        return new InvitationServiceImpl(userRepository, roleRepository, tokenIssuer, mailSender,
+                passwordHasher, properties, clock);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     UserDetailsService identityUserDetailsService(UserAccountRepository userRepository) {
         return new IdentityUserDetailsService(userRepository);
     }

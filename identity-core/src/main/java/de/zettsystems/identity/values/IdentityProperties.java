@@ -16,6 +16,10 @@ import java.util.Locale;
  *                                 nutzbar ist. Aus bedeutet: sofort freigeschaltet
  *                                 — nur sinnvoll, wenn kein Mailversand da ist.
  * @param tokenValidity            wie lange Bestätigungs- und Reset-Links gelten
+ * @param invitationValidity       wie lange Einladungen gelten. Eigene Frist,
+ *                                 weil eine Einladung niemand angefordert hat:
+ *                                 Sie liegt im Postfach, bis jemand Zeit hat,
+ *                                 und darf nicht über Nacht verfallen.
  * @param passwordMinLength        Mindestlänge neuer Passwörter
  * @param fromAddress              Absender der Bausteinsmails
  * @param fromName                 Anzeigename des Absenders
@@ -35,6 +39,7 @@ import java.util.Locale;
 public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationEnabled,
                                  @DefaultValue("true") boolean emailVerificationRequired,
                                  @DefaultValue("24h") Duration tokenValidity,
+                                 @DefaultValue("7d") Duration invitationValidity,
                                  @DefaultValue("12") int passwordMinLength,
                                  @DefaultValue("noreply@localhost") String fromAddress,
                                  @DefaultValue("Application") String fromName,
@@ -51,6 +56,9 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
         if (tokenValidity.isZero() || tokenValidity.isNegative()) {
             throw new IllegalArgumentException("zs.identity.token-validity must be positive");
         }
+        if (invitationValidity.isZero() || invitationValidity.isNegative()) {
+            throw new IllegalArgumentException("zs.identity.invitation-validity must be positive");
+        }
         baseUrl = stripTrailingSlash(baseUrl);
     }
 
@@ -65,7 +73,7 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
 
     /** Voreinstellungen für Tests, die den Record von Hand bauen. */
     public static IdentityProperties defaults() {
-        return new IdentityProperties(true, true, Duration.ofHours(24), 12,
+        return new IdentityProperties(true, true, Duration.ofHours(24), Duration.ofDays(7), 12,
                 "noreply@localhost", "Application", "http://localhost:8080", "USER", NameMode.FULL_NAME,
                 Locale.GERMAN);
     }

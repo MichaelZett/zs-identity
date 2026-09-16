@@ -31,7 +31,7 @@ class RegistrationViewTest extends AbstractViewTest {
     }
 
     private static IdentityProperties propertiesWith(NameMode nameMode, boolean verificationRequired) {
-        return new IdentityProperties(true, verificationRequired, Duration.ofHours(24), 12,
+        return new IdentityProperties(true, verificationRequired, Duration.ofHours(24), Duration.ofDays(7), 12,
                 "noreply@localhost", "Test", "http://localhost:8080", "USER", nameMode, Locale.GERMAN);
     }
 

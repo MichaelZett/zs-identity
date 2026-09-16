@@ -66,6 +66,17 @@ Auto-Konfiguration:
    entfernt Konto, Rollenzuordnung und Tokens endgültig. Eigene Daten der
    Anwendung zu dieser Kennung vorher selbst aufräumen — der Baustein kennt
    sie nicht.
+7. **Einladen** (ab 0.6.0): `InvitationService` führt eine Person über einen
+   Mail-Link zu ihrem Konto, statt ein Startpasswort zu verschicken.
+   `inviteToClaim(userId, email)` für ein bestehendes verwaltetes Konto — die
+   `userId` und damit alles, was die Anwendung daran hängt, bleibt stabil;
+   `inviteNewAccount(email, name)` legt eines an. Mit
+   `self-registration-enabled=false` ist das der einzige Weg herein. Die
+   Ansicht liegt in `identity-vaadin` unter `IdentityRoutes.CLAIM_ACCOUNT`; wer
+   einladen darf, entscheidet die Anwendung — der Baustein prüft es nicht.
+   Wer einen **eigenen `IdentityMailSender`** mitbringt, setzt dafür
+   `sendInvitation(..)` um; bis dahin scheitert der Versand mit einer klaren
+   Meldung, statt still nichts zu tun.
 
 ## Konfiguration (`zs.identity.*`)
 
@@ -74,6 +85,7 @@ Auto-Konfiguration:
 | `self-registration-enabled`   | `true`                   | Selbstregistrierung erlaubt |
 | `email-verification-required` | `true`                   | Konto erst nach bestätigter Adresse nutzbar |
 | `token-validity`              | `24h`                    | Gültigkeit von Bestätigungs-/Reset-Links |
+| `invitation-validity`         | `7d`                     | Gültigkeit von Einladungslinks |
 | `password-min-length`         | `12`                     | Mindestlänge (≥ 8) |
 | `from-address` / `from-name`  | `noreply@localhost` / `Application` | Absender der Mails |
 | `base-url`                    | `http://localhost:8080`  | Basis der Links in Mails |

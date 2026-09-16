@@ -214,13 +214,13 @@ class JavaMailIdentityMailSenderTest {
     }
 
     private static IdentityProperties propertiesWithValidity(Duration validity) {
-        return new IdentityProperties(true, true, validity, 12,
+        return new IdentityProperties(true, true, validity, validity, 12,
                 "noreply@localhost", "Terminplanung", "http://localhost:8080", "USER", NameMode.FULL_NAME,
                 Locale.GERMAN);
     }
 
     private static IdentityProperties englishProperties() {
-        return new IdentityProperties(true, true, Duration.ofHours(24), 12,
+        return new IdentityProperties(true, true, Duration.ofHours(24), Duration.ofDays(7), 12,
                 "noreply@localhost", "Terminplanung", "http://localhost:8080", "USER", NameMode.FULL_NAME,
                 Locale.ENGLISH);
     }

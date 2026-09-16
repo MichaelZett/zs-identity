@@ -1,6 +1,7 @@
 package de.zettsystems.identity.configuration;
 
 import de.zettsystems.identity.application.IdentityMailSender;
+import de.zettsystems.identity.application.InvitationService;
 import de.zettsystems.identity.application.PasswordResetService;
 import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.application.RoleCatalog;
@@ -89,6 +90,7 @@ class AutoConfigurationIT {
     void theServicesAreAvailableWithoutAnyWiringByTheApplication() {
         assertThat(context.getBean(RegistrationService.class)).isNotNull();
         assertThat(context.getBean(PasswordResetService.class)).isNotNull();
+        assertThat(context.getBean(InvitationService.class)).isNotNull();
         assertThat(context.getBean(UserAccountService.class)).isNotNull();
         assertThat(context.getBean(UserDetailsService.class)).isNotNull();
         assertThat(context.getBean(IdentityProperties.class)).isNotNull();

@@ -45,6 +45,9 @@ class JavaMailIdentityMailSender implements IdentityMailSender {
     private static final String RESET_SUBJECT = "identity.mail.reset.subject";
     private static final String RESET_BODY = "identity.mail.reset.body";
     private static final String RESET_BODY_HTML = "identity.mail.reset.body.html";
+    private static final String INVITATION_SUBJECT = "identity.mail.invitation.subject";
+    private static final String INVITATION_BODY = "identity.mail.invitation.body";
+    private static final String INVITATION_BODY_HTML = "identity.mail.invitation.body.html";
 
     private final JavaMailSender mailSender;
     private final IdentityProperties properties;
@@ -58,18 +61,26 @@ class JavaMailIdentityMailSender implements IdentityMailSender {
 
     @Override
     public void sendEmailVerification(UserAccountDto user, String confirmationUrl) {
-        send(user, VERIFICATION_SUBJECT, VERIFICATION_BODY, VERIFICATION_BODY_HTML, confirmationUrl);
+        send(user, VERIFICATION_SUBJECT, VERIFICATION_BODY, VERIFICATION_BODY_HTML, confirmationUrl,
+                properties.tokenValidity());
     }
 
     @Override
     public void sendPasswordReset(UserAccountDto user, String resetUrl) {
-        send(user, RESET_SUBJECT, RESET_BODY, RESET_BODY_HTML, resetUrl);
+        send(user, RESET_SUBJECT, RESET_BODY, RESET_BODY_HTML, resetUrl, properties.tokenValidity());
     }
 
-    private void send(UserAccountDto user, String subjectKey, String bodyKey, String htmlBodyKey, String url) {
+    @Override
+    public void sendInvitation(UserAccountDto user, String invitationUrl) {
+        send(user, INVITATION_SUBJECT, INVITATION_BODY, INVITATION_BODY_HTML, invitationUrl,
+                properties.invitationValidity());
+    }
+
+    private void send(UserAccountDto user, String subjectKey, String bodyKey, String htmlBodyKey, String url,
+                      Duration linkValidity) {
         Locale locale = properties.locale();
         String subject = messages.get(subjectKey, locale);
-        String validity = humanReadableValidity(locale);
+        String validity = humanReadableValidity(locale, linkValidity);
         String text = messages.get(bodyKey, locale, user.displayName(), url, validity);
         // Die Platzhalter werden vor dem Einsetzen maskiert: MessageFormat
         // kennt kein HTML, und ein Anzeigename darf die Auszeichnung nicht
@@ -104,9 +115,19 @@ class JavaMailIdentityMailSender implements IdentityMailSender {
         }
     }
 
-    private String humanReadableValidity(Locale locale) {
-        Duration validity = properties.tokenValidity();
+    /**
+     * Die Frist in der größten Einheit, die aufgeht: Eine Einladung über sieben
+     * Tage als „168 Stunden" zu schreiben, wäre richtig und unlesbar.
+     *
+     * <p>Erst <strong>oberhalb</strong> eines Tages, und nur bei glatten Tagen:
+     * Die bisherige Frist von 24 Stunden soll in den bestehenden Mails weiter
+     * als „24 Stunden" stehen, und „25 Stunden" ist ehrlicher als „ein Tag".
+     */
+    private String humanReadableValidity(Locale locale, Duration validity) {
         long hours = validity.toHours();
+        if (hours > 24 && validity.toHoursPart() == 0 && validity.toMinutesPart() == 0) {
+            return messages.get("identity.mail.validity.days", locale, validity.toDays());
+        }
         if (hours >= 1) {
             return messages.get("identity.mail.validity.hours", locale, hours);
         }

@@ -169,6 +169,33 @@ public class UserAccount extends AbstractAuthEntity {
         this.enabled = false;
     }
 
+    /**
+     * Trägt die Adresse an einem verwalteten Konto nach — der erste Schritt,
+     * wenn die echte Person es beansprucht. Das Konto bleibt bis zum Einlösen
+     * der Einladung ohne Passwort und damit ohne Anmeldeweg; genau diesen
+     * Zwischenzustand beschreibt V1_1 („E-Mail gesetzt, Passwort noch nicht").
+     *
+     * @throws IllegalStateException wenn schon eine Adresse dranhängt — sie zu
+     *                               überschreiben hieße, ein fremdes Konto zu
+     *                               übernehmen
+     */
+    public void assignEmail(String newEmail) {
+        if (this.email != null) {
+            throw new IllegalStateException("Account " + id + " already has an email address");
+        }
+        this.email = normalizeEmail(newEmail);
+    }
+
+    /**
+     * Löst die Einladung ein: erstes Passwort, Adresse gilt als bestätigt,
+     * Konto ist nutzbar. Der Link ging an genau diese Adresse — eine zweite
+     * Bestätigungsmail wäre nur ein Umweg.
+     */
+    public void claimWithPassword(String newPasswordHash) {
+        changePassword(newPasswordHash);
+        activateAfterEmailVerification();
+    }
+
     public void changePassword(String newPasswordHash) {
         this.passwordHash = Objects.requireNonNull(newPasswordHash, "newPasswordHash");
         this.mustChangePassword = false;

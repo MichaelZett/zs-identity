@@ -20,8 +20,9 @@ public final class IdentityRoutes {
     public static final String FORGOT_PASSWORD = IdentityPaths.FORGOT_PASSWORD;
     public static final String RESET_PASSWORD = IdentityPaths.RESET_PASSWORD;
     public static final String CHANGE_PASSWORD = IdentityPaths.CHANGE_PASSWORD;
+    public static final String CLAIM_ACCOUNT = IdentityPaths.CLAIM_ACCOUNT;
 
-    /** Parametername des Tokens in Bestätigungs- und Reset-Links. */
+    /** Parametername des Tokens in Bestätigungs-, Reset- und Einladungslinks. */
     public static final String TOKEN_PARAMETER = IdentityPaths.TOKEN_PARAMETER;
 
     private IdentityRoutes() {
