@@ -11,16 +11,15 @@ import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.values.IdentityProperties;
 
 /**
- * Fordert die Bestätigungsmail erneut an.
+ * Requests the verification mail again.
  *
- * <p>Ohne diesen Weg ist ein Konto verloren, dessen Bestätigungsmail nicht
- * angekommen ist: Die Anmeldung scheitert am gesperrten Konto, und der Token
- * liegt nur als Hash in der Datenbank — der Link lässt sich also nirgends
- * nachschlagen.
+ * <p>Without this route an account whose verification mail never arrived is
+ * lost: sign-in fails because the account is blocked, and the token is stored
+ * only as a hash, so the link cannot be looked up anywhere.
  *
- * <p>Wie beim Zurücksetzen des Passworts ist die Rückmeldung immer dieselbe,
- * egal ob es zu der Adresse ein Konto gibt. Der Dienst schweigt aus demselben
- * Grund: Sonst ließe sich hier durchprobieren, wer registriert ist.
+ * <p>As with the password reset, the feedback is always the same whether or
+ * not an account exists for the address. The service stays silent for the same
+ * reason: otherwise this could be used to work out who is registered.
  */
 @Route(value = IdentityRoutes.RESEND_VERIFICATION, autoLayout = false)
 @AnonymousAllowed

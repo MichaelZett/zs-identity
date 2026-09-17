@@ -7,14 +7,14 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
-  # spring.flyway.locations ist hier bewusst NICHT gesetzt: Der Baustein muss
-  # seinen eigenen Ablageort über IdentityFlywayAutoConfiguration beisteuern.
-  # Kaeme er nicht an, blieben die auth_-Tabellen aus und jeder Test hier
-  # scheiterte an der Hibernate-Schemapruefung.
+  # spring.flyway.locations is deliberately NOT set here: the building block
+  # has to contribute its own location through IdentityFlywayAutoConfiguration.
+  # If it did not arrive, the auth_ tables would be missing and every test here
+  # would fail on Hibernate's schema validation.
   flyway:
     enabled: true
-  # Kein Mailversand im Test: RecordingMailSender aus IdentityTestApplication
-  # verdrängt die JavaMailSender-Variante.
+  # No mail delivery in tests: RecordingMailSender from IdentityTestApplication
+  # displaces the JavaMailSender variant.
   mail:
     host: localhost
     port: 1025

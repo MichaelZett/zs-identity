@@ -66,7 +66,7 @@ class IdentityPropertiesTest {
         assertThat(defaults.defaultRoleCode()).isEqualTo("USER");
         assertThat(defaults.locale()).isEqualTo(Locale.GERMAN);
         assertThat(defaults.invitationValidity())
-                .as("eine Einladung liegt im Postfach, bis jemand Zeit hat")
+                .as("an invitation sits in the inbox until someone has time")
                 .isEqualTo(Duration.ofDays(7));
     }
 

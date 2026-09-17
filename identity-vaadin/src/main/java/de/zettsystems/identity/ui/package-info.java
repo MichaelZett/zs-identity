@@ -1,18 +1,18 @@
 /**
- * Vaadin-Oberfläche des Auth-Bausteins: Login, Registrierung, Bestätigung,
- * Passwort-Reset und Passwort ändern (samt erzwungenem Wechsel über
- * {@code PasswordChangeGuard}).
+ * Vaadin UI of the authentication building block: sign-in, registration,
+ * verification, password reset and changing the password (including the forced
+ * change through {@code PasswordChangeGuard}).
  *
- * <p>Damit Vaadin die {@code @Route}-Klassen aus dieser Bibliothek findet, muss
- * die einbindende Anwendung dieses Paket in {@code vaadin.allowed-packages}
- * aufführen. Fehlt der Eintrag, sind die Views schlicht nicht erreichbar — ohne
- * Fehlermeldung.
+ * <p>For Vaadin to find the {@code @Route} classes from this library, the
+ * embedding application has to list this package in
+ * {@code vaadin.allowed-packages}. Without that entry the views are simply
+ * unreachable, and no error is reported.
  *
- * <p>Alle Routen hier tragen {@code autoLayout = false}. Eine einbindende
- * Anwendung setzt üblicherweise ein {@code @Layout} mit Kopfzeile, Navigation
- * und Abmelde-Knopf um alle ihre Ansichten; dieser Rahmen würde sonst auch die
- * Anmeldeseite umschließen. Der Baustein sagt damit nur "kein Anwendungslayout"
- * und muss die Anwendung dafür nicht kennen.
+ * <p>Every route here carries {@code autoLayout = false}. An embedding
+ * application usually puts a {@code @Layout} with a header, navigation and a
+ * sign-out button around all of its views; that frame would otherwise wrap the
+ * sign-in page as well. The building block only says "no application layout"
+ * and does not have to know the application for that.
  */
 @NullMarked
 package de.zettsystems.identity.ui;

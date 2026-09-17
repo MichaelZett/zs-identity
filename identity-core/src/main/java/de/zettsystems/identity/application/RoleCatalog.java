@@ -5,16 +5,16 @@ import de.zettsystems.identity.values.RoleDefinition;
 import java.util.Set;
 
 /**
- * Liefert die Rollen, die eine Anwendung braucht.
+ * Supplies the roles an application needs.
  *
- * <p>Das ist der Grund, warum dieser Baustein wiederverwendbar ist: Welche
- * Rollen es gibt, weiß nur die Anwendung. Sie stellt eine Bean bereit, der
- * Baustein spiegelt den Katalog beim Start idempotent in die Datenbank. Ein fest
- * verdrahtetes Enum im Baustein wäre in der zweiten Anwendung sofort falsch.
+ * <p>This is the reason this building block is reusable: only the application
+ * knows which roles exist. It provides a bean, and at startup the building
+ * block mirrors the catalog into the database idempotently. A hard-wired enum
+ * inside the building block would already be wrong in the second application.
  *
- * <p>Der Baustein bringt seine eigenen Basisrollen über
- * {@code BuiltinRoleCatalog} mit; die Kataloge aller Beans werden vereinigt.
- * Beispiel aus der Anwendung:
+ * <p>The building block brings its own base roles through
+ * {@code BuiltinRoleCatalog}; the catalogs of all beans are merged. An example
+ * from an application:
  *
  * <pre>
  * &#64;Component
@@ -27,9 +27,9 @@ import java.util.Set;
  * }
  * </pre>
  *
- * <p>Rollen, die aus keinem Katalog mehr kommen, bleiben in der Datenbank
- * stehen. Automatisches Löschen würde bei einem Tippfehler im Katalog
- * schlagartig allen Betroffenen die Rechte entziehen.
+ * <p>Roles that no catalog lists any more stay in the database. Deleting them
+ * automatically would, on a single typo in a catalog, strip the rights from
+ * everyone holding them at once.
  */
 @FunctionalInterface
 public interface RoleCatalog {

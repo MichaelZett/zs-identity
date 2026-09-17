@@ -15,8 +15,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Rollen mit Geltungsbereich, von der Vergabe bis in die Berechtigungen der
- * Anmeldung — der Weg, den eine mandantenfähige Anwendung geht.
+ * Roles with a scope, from granting them through to the authorities of the
+ * sign-in: the route a multi-tenant application takes.
  */
 class ScopedRolesIT extends AbstractIdentityIntegrationTest {
 
@@ -54,7 +54,7 @@ class ScopedRolesIT extends AbstractIdentityIntegrationTest {
         assertThat(withBoth.scopesOf("club")).containsExactlyInAnyOrder(CLUB_17, CLUB_4);
     }
 
-    /** Die Frage, um die es überhaupt geht: „darf Anna das <em>hier</em>?" */
+    /** The question this is all about: "may Anna do this <em>here</em>?" */
     @Test
     void aScopedRoleCountsOnlyInItsOwnScope() {
         UserAccountDto created = anna();
@@ -64,7 +64,7 @@ class ScopedRolesIT extends AbstractIdentityIntegrationTest {
         assertThat(granted.hasRole("GROUP_ADMIN", CLUB_17)).isTrue();
         assertThat(granted.hasRole("GROUP_ADMIN", CLUB_4)).isFalse();
         assertThat(granted.hasRole("GROUP_ADMIN"))
-                .as("sie ist nicht überall Admin, nur in Verein 17")
+                .as("she is not admin everywhere, only in club 17")
                 .isFalse();
     }
 
@@ -73,7 +73,7 @@ class ScopedRolesIT extends AbstractIdentityIntegrationTest {
         UserAccountDto created = anna();
 
         assertThat(created.roleCodes())
-                .as("die Standardrolle bleibt global")
+                .as("the default role stays global")
                 .containsExactly("USER");
         assertThat(created.hasRole("USER", CLUB_17)).isTrue();
         assertThat(created.rolesIn(CLUB_17)).contains("USER");
@@ -89,7 +89,7 @@ class ScopedRolesIT extends AbstractIdentityIntegrationTest {
         UserAccountDto afterRevoke = userAccountService.revokeRole(created.id(), "GROUP_ADMIN", CLUB_17);
 
         assertThat(afterRevoke.hasRole("GROUP_ADMIN", CLUB_17))
-                .as("global vergeben gilt sie weiterhin überall")
+                .as("granted globally it still applies everywhere")
                 .isTrue();
         assertThat(afterRevoke.roleAssignments())
                 .doesNotContain(ScopedRole.of("GROUP_ADMIN", CLUB_17))
@@ -117,13 +117,13 @@ class ScopedRolesIT extends AbstractIdentityIntegrationTest {
         assertThat(userAccountService.scopesOf(created.id(), "club"))
                 .containsExactlyInAnyOrder(CLUB_17, CLUB_4);
         assertThat(userAccountService.rolesOf(-1L, CLUB_17))
-                .as("ein unbekanntes Konto darf hier nichts")
+                .as("an unknown account may do nothing here")
                 .isEmpty();
     }
 
     /**
-     * Was am Ende in der Sitzung landet: bereichsgebundene Rollen qualifiziert,
-     * dazu die feingranularen Berechtigungen der Rolle mit demselben Zusatz.
+     * What ends up in the session: scoped roles in qualified form, plus the
+     * fine-grained permissions of the role carrying the same suffix.
      */
     @Test
     void theSignInCarriesTheScopeInTheAuthorities() {
@@ -139,7 +139,7 @@ class ScopedRolesIT extends AbstractIdentityIntegrationTest {
                 .doesNotContain("ROLE_MEMBER", "season:read");
     }
 
-    /** Die Zuweisungen müssen den Neustart überleben — sie stehen in der Datenbank. */
+    /** The assignments have to survive a restart, since they live in the database. */
     @Test
     void scopedAssignmentsSurviveALoadFromTheDatabase() {
         UserAccountDto created = anna();

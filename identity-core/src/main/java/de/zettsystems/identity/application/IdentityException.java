@@ -3,13 +3,13 @@ package de.zettsystems.identity.application;
 import java.io.Serial;
 
 /**
- * Fachlicher Fehler des Identity-Bausteins — etwas, das der Oberfläche als
- * verständliche Meldung angezeigt werden darf (Adresse schon vergeben, Token
- * abgelaufen, Passwort zu kurz).
+ * A domain error of the identity building block: something that may be shown
+ * to the user as an understandable message (address already taken, token
+ * expired, password too short).
  *
- * <p>Trägt einen {@code messageKey}, damit die Anwendung die Meldung in ihrer
- * eigenen Sprache ausgeben kann; {@code getMessage()} liefert einen englischen
- * Klartext fürs Log.
+ * <p>It carries a {@code messageKey} so that the application can render the
+ * message in its own language; {@code getMessage()} returns English plain text
+ * for the log.
  */
 public class IdentityException extends RuntimeException {
 

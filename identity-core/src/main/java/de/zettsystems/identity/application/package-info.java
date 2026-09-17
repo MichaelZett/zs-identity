@@ -1,6 +1,6 @@
 /**
- * Dienste und Ports des Identity-Bausteins. Was hier {@code public} ist, ist die
- * Schnittstelle nach außen; alles andere bleibt paket-privat.
+ * Services and ports of the identity building block. Whatever is {@code public}
+ * here is the interface to the outside; everything else stays package-private.
  */
 @NullMarked
 package de.zettsystems.identity.application;

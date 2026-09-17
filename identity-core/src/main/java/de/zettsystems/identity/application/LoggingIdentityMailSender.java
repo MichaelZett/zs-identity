@@ -5,22 +5,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Rückfallebene, wenn die Anwendung gar keinen Mailversand eingerichtet hat.
+ * Fallback for when the application has set up no mail delivery at all.
  *
- * <p>Schreibt die Adresse samt Link ins Log, statt den Start scheitern zu lassen.
- * Zwei Gründe: Ein fehlender {@code JavaMailSender} würde sonst mit einer
- * schwer deutbaren Bean-Meldung abbrechen, und in der Entwicklung ist ein Link
- * im Log oft genau das, was man braucht.
+ * <p>Writes the address together with the link to the log instead of letting
+ * startup fail. Two reasons: a missing {@code JavaMailSender} would otherwise
+ * abort with a hard-to-read bean message, and during development a link in the
+ * log is often exactly what is wanted.
  *
- * <p>Für den Produktivbetrieb ist das nichts — die WARN-Zeile beim Start sagt
- * das auch deutlich.
+ * <p>It is nothing for production, and the WARN line at startup says so
+ * plainly.
  */
 class LoggingIdentityMailSender implements IdentityMailSender {
 
     private static final Logger LOG = LoggerFactory.getLogger(LoggingIdentityMailSender.class);
 
     LoggingIdentityMailSender() {
-        LOG.warn("No JavaMailSender and no custom IdentityMailSender found — "
+        LOG.warn("No JavaMailSender and no custom IdentityMailSender found - "
                 + "verification and password reset links will only be written to the log. "
                 + "Configure spring.mail.* or provide an IdentityMailSender bean.");
     }

@@ -3,13 +3,13 @@ package de.zettsystems.identity.ui;
 import de.zettsystems.identity.values.IdentityPaths;
 
 /**
- * Die Pfade der Identity-Ansichten an einer Stelle.
+ * The paths of the identity views in one place.
  *
- * <p>Die einbindende Anwendung braucht sie für die Spring-Security-Konfiguration
- * und für Verweise aus dem eigenen Menü. Die Werte stammen aus
- * {@link IdentityPaths} im Kern, wo die Dienste daraus die Links in den Mails
- * bauen; hier nur der Vaadin-nahe Zugriff, damit die Ansichten und die
- * einbindende Anwendung keinen zweiten Satz Konstanten pflegen.
+ * <p>The embedding application needs them for its Spring Security configuration
+ * and for links from its own menu. The values come from {@link IdentityPaths}
+ * in the core, where the services build the links in the mails from them; this
+ * is only the Vaadin-side access, so that the views and the embedding
+ * application do not maintain a second set of constants.
  */
 public final class IdentityRoutes {
 
@@ -22,10 +22,10 @@ public final class IdentityRoutes {
     public static final String CHANGE_PASSWORD = IdentityPaths.CHANGE_PASSWORD;
     public static final String CLAIM_ACCOUNT = IdentityPaths.CLAIM_ACCOUNT;
 
-    /** Parametername des Tokens in Bestätigungs-, Reset- und Einladungslinks. */
+    /** Name of the token parameter in verification, reset and invitation links. */
     public static final String TOKEN_PARAMETER = IdentityPaths.TOKEN_PARAMETER;
 
     private IdentityRoutes() {
-        // Konstanten-Klasse
+        // Constants class
     }
 }

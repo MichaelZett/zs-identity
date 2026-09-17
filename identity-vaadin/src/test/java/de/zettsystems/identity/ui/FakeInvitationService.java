@@ -13,14 +13,14 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
-/** Siehe {@link FakeRegistrationService}. */
+/** See {@link FakeRegistrationService}. */
 class FakeInvitationService implements InvitationService {
 
-    /** Wenn gesetzt, scheitert der nächste {@link #claim} damit. */
+    /** When set, the next {@link #claim} fails with it. */
     @Nullable
     IdentityException failure;
 
-    /** Wenn leer, kennt der Dienst das Token nicht — die Ansicht zeigt dann die Sackgasse. */
+    /** When empty, the service does not know the token and the view shows the dead end. */
     @Nullable
     UserAccountDto invitee = new UserAccountDto(7L, "ida@example.com",
             AccountName.of("Ida", "Beispiel"), true, false, Instant.EPOCH, Set.of("USER"));

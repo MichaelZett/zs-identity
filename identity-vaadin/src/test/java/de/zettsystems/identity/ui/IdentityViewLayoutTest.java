@@ -27,20 +27,20 @@ import static com.github.mvysny.kaributesting.v10.NotificationsKt.getNotificatio
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Die Oberflächen-Regeln aus {@link IdentityFormView} — hier festgeschrieben,
- * damit sie nicht nur im Javadoc stehen.
+ * The UI rules from {@link IdentityFormView}, pinned down here so that they do
+ * not live in the Javadoc alone.
  *
- * <p>Der Test läuft über <strong>alle</strong> anonym erreichbaren Ansichten
- * des Bausteins: Die Regeln sind nur dann welche, wenn keine Ansicht sie
- * auslässt. Eine neue Ansicht gehört deshalb in {@link #allViews()}. Fehlt
- * dort nur die {@code ChangePasswordView} — sie zeigt ohne angemeldetes Konto
- * gar nichts an, und ihre Gestalt prüft der {@code ChangePasswordViewTest}.
+ * <p>The test runs across <strong>every</strong> anonymously reachable view of
+ * the building block: the rules are only rules if no view leaves them out. A
+ * new view therefore belongs in {@link #allViews()}. The only one missing there
+ * is {@code ChangePasswordView}, which shows nothing at all without a signed-in
+ * account; its shape is checked by {@code ChangePasswordViewTest}.
  */
 class IdentityViewLayoutTest extends AbstractViewTest {
 
     private static final IdentityProperties PROPERTIES = IdentityProperties.defaults();
 
-    /** Jede Ansicht in dem Zustand, in dem eine Person sie zuerst sieht. */
+    /** Every view in the state a person first sees it in. */
     static Stream<Arguments> allViews() {
         return Stream.of(
                 view("login", () -> new LoginView(new FakeRegistrationService(), PROPERTIES, MESSAGES)),
@@ -66,14 +66,14 @@ class IdentityViewLayoutTest extends AbstractViewTest {
         IdentityFormView view = show(factory.get());
 
         assertThat(view.getClassNames())
-                .as("ohne feste Klassen kann eine Anwendung die Ansichten nicht mitstylen")
+                .as("without fixed classes an application cannot style the views along")
                 .contains(IdentityFormView.VIEW_CLASS, IdentityFormView.VIEW_CLASS + "--" + name);
     }
 
     /**
-     * Die Untergrenze aus dem Backlog: brauchbar am Telefon wie am Rechner,
-     * kein Querscrollen bei 375 px. Eine feste Pixelbreite wäre genau der
-     * Fehler, der das bricht.
+     * The lower bound from the backlog: usable on a phone as on a desktop, no
+     * horizontal scrolling at 375 px. A fixed pixel width would be exactly the
+     * mistake that breaks it.
      */
     @ParameterizedTest(name = "{0}")
     @MethodSource("allViews")
@@ -81,7 +81,7 @@ class IdentityViewLayoutTest extends AbstractViewTest {
         IdentityFormView view = show(factory.get());
 
         assertThat(widthsIn(view))
-                .as("%s enthält eine feste Breite — am Telefon scrollt die Seite dann quer", name)
+                .as("%s contains a fixed width, so the page scrolls sideways on a phone", name)
                 .noneMatch(width -> width.endsWith("px"));
     }
 
@@ -96,7 +96,7 @@ class IdentityViewLayoutTest extends AbstractViewTest {
                 .toList();
 
         assertThat(interactive)
-                .as("%s zeigt weder Feld noch Knopf — dann prüft der Test nichts", name)
+                .as("%s shows neither a field nor a button, so the test checks nothing", name)
                 .isNotEmpty()
                 .allSatisfy(component -> assertThat(((HasSize) component).getWidth()).isEqualTo("100%"));
     }
@@ -111,8 +111,8 @@ class IdentityViewLayoutTest extends AbstractViewTest {
     }
 
     /**
-     * Die Anmeldung ist die Ausnahme: Sie nimmt die ganze Seite ein und setzt
-     * ihren Inhalt in die Mitte, statt oben am Rand zu kleben.
+     * Sign-in is the exception: it takes up the whole page and puts its content
+     * in the middle instead of sticking to the top edge.
      */
     @Test
     void theLoginFillsThePageInstead() {
@@ -122,7 +122,7 @@ class IdentityViewLayoutTest extends AbstractViewTest {
         assertThat(view.getHeight()).isEqualTo("100%");
     }
 
-    /** Der Andockpunkt für das Theme einer Anwendung. */
+    /** The hook for an application's theme. */
     @Test
     void theApplicationCanHangItsOwnClassesOnEveryView() {
         IdentityProperties styled = PROPERTIES.withUi(
@@ -139,7 +139,7 @@ class IdentityViewLayoutTest extends AbstractViewTest {
                 new UiSettings("28rem", List.of(), Duration.ofSeconds(12)));
         RegistrationView view = show(new RegistrationView(new FakeRegistrationService(), patient, MESSAGES));
 
-        // Leeres Formular abschicken: Das ist der kürzeste Weg zu einem Hinweis.
+        // Submit an empty form: the shortest route to a notification.
         _click(_get(view, Button.class, spec -> spec.withId("registration-submit-button")));
 
         assertThat(getNotifications())
@@ -148,7 +148,7 @@ class IdentityViewLayoutTest extends AbstractViewTest {
                 .isEqualTo(12_000);
     }
 
-    /** Erst sagen, worum es geht, dann fragen — auch das ist eine Regel. */
+    /** Say what this is about before asking; that is a rule too. */
     @Test
     void aFormExplainsItselfBeforeItAsksForSomething() {
         ForgotPasswordView view = show(new ForgotPasswordView(new FakePasswordResetService(), PROPERTIES, MESSAGES));
@@ -161,7 +161,7 @@ class IdentityViewLayoutTest extends AbstractViewTest {
         return Arguments.of(name, factory);
     }
 
-    /** Ansichten, die ihren Inhalt erst in {@code beforeEnter} aufbauen. */
+    /** Views that build their content only in {@code beforeEnter}. */
     private static <V extends IdentityFormView & BeforeEnterObserver> IdentityFormView entered(V view, String route) {
         view.beforeEnter(enterEventWithToken(route, "ein-token"));
         return view;

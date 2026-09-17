@@ -6,12 +6,13 @@ import com.vaadin.flow.server.VaadinServiceInitListener;
 import java.io.Serial;
 
 /**
- * Hängt den {@link PasswordChangeGuard} an jede neue {@code UI}.
+ * Attaches the {@link PasswordChangeGuard} to every new {@code UI}.
  *
- * <p>Registriert über {@code META-INF/services} (ServiceLoader), nicht als
- * Spring-Bean: So braucht der Baustein keine Vaadin-Auto-Konfiguration, und
- * die Regel „kein {@code @ComponentScan}" bleibt unberührt. Vaadin findet den
- * Listener, sobald {@code identity-vaadin} auf dem Klassenpfad liegt.
+ * <p>Registered through {@code META-INF/services} (the ServiceLoader) rather
+ * than as a Spring bean: that way the building block needs no Vaadin
+ * auto-configuration, and the rule "no {@code @ComponentScan}" stays
+ * untouched. Vaadin finds the listener as soon as {@code identity-vaadin} is on
+ * the classpath.
  */
 public final class PasswordChangeServiceInitListener implements VaadinServiceInitListener {
 

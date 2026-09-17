@@ -6,12 +6,12 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
- * Basis der Integrationstests dieses Bausteins.
+ * Base class of the integration tests of this building block.
  *
- * <p>Der Container wird <strong>einmal</strong> statisch gestartet und von allen
- * Testklassen geteilt. Bewusst nicht {@code @Testcontainers}/{@code @Container}
- * auf Klassenebene: Das startet einen Container pro Testklasse und bringt Docker
- * schnell an seine Grenzen.
+ * <p>The container is started statically <strong>once</strong> and shared by
+ * every test class. Deliberately not {@code @Testcontainers}/{@code @Container}
+ * at class level: that starts one container per test class and pushes Docker to
+ * its limits in no time.
  */
 @SpringBootTest(classes = IdentityTestApplication.class)
 public abstract class AbstractIdentityIntegrationTest {

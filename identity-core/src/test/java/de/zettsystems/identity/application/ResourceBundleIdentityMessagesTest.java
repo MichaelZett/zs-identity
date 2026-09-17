@@ -23,7 +23,7 @@ class ResourceBundleIdentityMessagesTest {
                 .isEqualTo("An account already exists for this e-mail address.");
     }
 
-    /** Ohne eigene Datei greift die Basisdatei, nicht die Sprache des Servers. */
+    /** Without a bundle of its own the base bundle applies, not the language of the server. */
     @Test
     void anUnknownLanguageFallsBackToTheBaseFile() {
         assertThat(testee.get(IdentityMessageKeys.ACCOUNT_NOT_FOUND, Locale.JAPANESE))
@@ -51,8 +51,8 @@ class ResourceBundleIdentityMessagesTest {
     }
 
     /**
-     * Kein Absturz und keine leere Fläche: Ein unbekannter Schlüssel landet
-     * sichtbar auf dem Bildschirm und fällt damit auf.
+     * No crash and no empty space: an unknown key ends up visible on screen and
+     * is therefore noticed.
      */
     @Test
     void anUnknownKeyIsReturnedAsItIs() {
@@ -60,14 +60,14 @@ class ResourceBundleIdentityMessagesTest {
     }
 
     /**
-     * Die Oberflächentexte liegen in {@code identity-vaadin}. Eine reine
-     * REST-Anwendung bindet nur den Kern ein — dann fehlt der Dateisatz, und
-     * die Suche muss ihn stillschweigend überspringen statt zu scheitern.
+     * The UI texts live in {@code identity-vaadin}. A pure REST application
+     * embeds the core only, in which case that set of bundles is missing and
+     * the lookup has to skip it silently rather than fail.
      */
     @Test
     void aMissingBundleIsSkipped() {
         assertThat(testee.get("identity.login.title", Locale.GERMAN))
-                .as("identity-vaadin ist hier nicht auf dem Klassenpfad")
+                .as("identity-vaadin is not on the classpath here")
                 .isEqualTo("identity.login.title");
     }
 }

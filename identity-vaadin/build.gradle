@@ -1,13 +1,15 @@
-// Vaadin-Oberflaeche zum Auth-Baustein: Login, Registrierung, Bestaetigung,
-// Passwort-Reset. Getrennt von :identity-core, damit der Kern frei von Vaadin
-// bleibt. Kein Vaadin-Gradle-Plugin hier — der Frontend-Build laeuft in der
-// einbindenden Anwendung, die die Views ueber vaadin.allowed-packages einsammelt.
+// Vaadin UI for the authentication building block: sign-in, registration,
+// verification, password reset. Separate from :identity-core so that the core
+// stays free of Vaadin. No Vaadin Gradle plugin here -- the frontend build runs
+// in the embedding application, which collects the views through
+// vaadin.allowed-packages.
 dependencies {
     api platform("com.vaadin:vaadin-bom:${vaadinVersion}")
     api project(':identity-core')
     api 'com.vaadin:vaadin-spring-boot-starter'
 
-    // Browserlose Vaadin-Tests: baut VaadinSession/UI im Speicher nach, damit
-    // die Views ohne Servlet-Container und ohne Selenium pruefbar sind.
+    // Browserless Vaadin tests: recreates VaadinSession/UI in memory, so that
+    // the views can be checked without a servlet container and without
+    // Selenium.
     testImplementation "com.github.mvysny.kaributesting:karibu-testing-v24:${karibuVersion}"
 }

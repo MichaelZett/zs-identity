@@ -44,13 +44,13 @@ class ActiveScopeServiceTest {
 
         assertThat(testee.current()).hasValue(CLUB_17);
         assertThat(authorityNames())
-                .as("erst damit trifft @RolesAllowed(\"GROUP_ADMIN\") in diesem Verein")
+                .as("only this makes @RolesAllowed(\"GROUP_ADMIN\") apply in this club")
                 .contains("ROLE_GROUP_ADMIN", "ROLE_GROUP_ADMIN@club:17");
     }
 
     /**
-     * Die Berechtigungen der <em>Anmeldung</em> müssen mitwandern, nicht nur
-     * die im Prinzipal: Spring Security prüft gegen
+     * The authorities of the <em>authentication</em> have to travel along, not
+     * only those in the principal: Spring Security checks against
      * {@code Authentication#getAuthorities()}.
      */
     @Test
@@ -78,7 +78,7 @@ class ActiveScopeServiceTest {
         assertThat(authorityNames()).contains("ROLE_USER").doesNotContain("ROLE_GROUP_ADMIN");
     }
 
-    /** Ohne Anmeldung ist der Wechsel wirkungslos — und keine Ausnahme wert. */
+    /** Without a sign-in the switch has no effect, and is not worth an exception. */
     @Test
     void withoutASignedInAccountNothingHappens() {
         assertThatCode(() -> testee.switchTo(CLUB_17)).doesNotThrowAnyException();

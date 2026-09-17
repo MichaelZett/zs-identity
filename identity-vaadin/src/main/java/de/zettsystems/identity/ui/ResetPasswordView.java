@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
-/** Nimmt den Link aus der Reset-Mail entgegen und setzt das neue Passwort. */
+/** Receives the link from the reset mail and sets the new password. */
 @Route(value = IdentityRoutes.RESET_PASSWORD, autoLayout = false)
 @AnonymousAllowed
 public class ResetPasswordView extends IdentityFormView implements BeforeEnterObserver {
@@ -35,8 +35,8 @@ public class ResetPasswordView extends IdentityFormView implements BeforeEnterOb
         this.passwordMinLength = properties.passwordMinLength();
         password.setLabel(text("identity.reset.password"));
         passwordRepeat.setLabel(text("identity.reset.passwordRepeat"));
-        // Signal an den Passwortmanager: Hier entsteht ein neues Passwort —
-        // erst damit bieten Chrome & Co. die Generierung an (wie in der
+        // A hint to the password manager that a new password is being created
+        // here; only then do Chrome and friends offer to generate one (as in
         // RegistrationView).
         password.setAutocomplete(Autocomplete.NEW_PASSWORD);
         passwordRepeat.setAutocomplete(Autocomplete.NEW_PASSWORD);

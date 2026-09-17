@@ -1,14 +1,14 @@
 package de.zettsystems.identity.values;
 
 /**
- * Die Pfade der Identity-Ansichten, relativ zum Kontextpfad und ohne
- * führenden Schrägstrich.
+ * The paths of the identity views, relative to the context path and without a
+ * leading slash.
  *
- * <p>Sie liegen im Kern, weil die Dienste daraus die Links in den Mails bauen
- * und weil auch eine REST-Anwendung ohne {@code identity-vaadin} die Pfade
- * für ihre Sicherheitskonfiguration braucht. Die Vaadin-Ansichten verweisen
- * über {@code IdentityRoutes} auf dieselben Konstanten, damit ein Pfadwechsel
- * nur an einer Stelle gepflegt wird.
+ * <p>They live in the core because the services build the links in the mails
+ * from them, and because a REST application without {@code identity-vaadin}
+ * needs the paths for its security configuration too. The Vaadin views point
+ * at the same constants through {@code IdentityRoutes}, so that changing a
+ * path stays a single edit.
  */
 public final class IdentityPaths {
 
@@ -18,16 +18,16 @@ public final class IdentityPaths {
     public static final String RESEND_VERIFICATION = "register/resend";
     public static final String FORGOT_PASSWORD = "password/forgot";
     public static final String RESET_PASSWORD = "password/reset";
-    /** Passwort ändern für angemeldete Konten — Ziel des erzwungenen Wechsels. */
+    /** Change the password while signed in; the target of a forced change. */
     public static final String CHANGE_PASSWORD = "password/change";
 
-    /** Einladung einlösen: Konto beanspruchen und erstes Passwort setzen. */
+    /** Redeem an invitation: claim the account and set a first password. */
     public static final String CLAIM_ACCOUNT = "invitation";
 
-    /** Parametername des Tokens in Bestätigungs-, Reset- und Einladungslinks. */
+    /** Name of the token parameter in verification, reset and invitation links. */
     public static final String TOKEN_PARAMETER = "token";
 
     private IdentityPaths() {
-        // Konstanten-Klasse
+        // Constants class
     }
 }

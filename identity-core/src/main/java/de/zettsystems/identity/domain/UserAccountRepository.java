@@ -10,9 +10,9 @@ import java.util.Optional;
 public interface UserAccountRepository extends JpaRepository<UserAccount, Long> {
 
     /**
-     * Lädt ein Konto samt Rollen. Der Anmeldepfad braucht die Rollen sofort;
-     * ohne den EntityGraph läuft er außerhalb der Transaktion in eine
-     * LazyInitializationException.
+     * Loads an account together with its roles. The sign-in path needs the
+     * roles immediately; without the entity graph it runs into a
+     * LazyInitializationException outside the transaction.
      */
     @EntityGraph(attributePaths = {"roleAssignments", "roleAssignments.role",
             "roleAssignments.role.authorities"})
@@ -23,7 +23,7 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
     @EntityGraph(attributePaths = {"roleAssignments", "roleAssignments.role"})
     List<UserAccount> findAllByOrderByDisplayNameAsc();
 
-    /** Mehrere Konten samt Rollen in einer Abfrage — für Mitgliederlisten. */
+    /** Several accounts including roles in one query, for member lists. */
     @EntityGraph(attributePaths = {"roleAssignments", "roleAssignments.role"})
     List<UserAccount> findAllWithRolesByIdIn(Collection<Long> ids);
 }

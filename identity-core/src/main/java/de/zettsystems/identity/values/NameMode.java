@@ -1,15 +1,15 @@
 package de.zettsystems.identity.values;
 
 /**
- * Welche Namensangaben eine Anwendung von neuen Konten verlangt. Wirkt auf
- * das Registrierungsformular; im Kern sind beide Gestalten immer zulässig
- * (siehe {@link AccountName}).
+ * Which name an application requires from new accounts. This affects the
+ * registration form only; the core always accepts both shapes (see
+ * {@link AccountName}).
  */
 public enum NameMode {
 
-    /** Vor- und Nachname sind Pflicht; der Anzeigename wird daraus gebildet. */
+    /** First and last name are mandatory; the display name is derived from them. */
     FULL_NAME,
 
-    /** Nur ein frei gewählter Anzeigename (Spielername, Nickname). */
+    /** A freely chosen display name only (player name, nickname). */
     DISPLAY_NAME
 }

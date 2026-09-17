@@ -99,7 +99,7 @@ class LoginViewTest extends AbstractViewTest {
         assertThat(currentPath()).isEqualTo(IdentityRoutes.RESEND_VERIFICATION);
     }
 
-    /** Spring Security hängt bei fehlgeschlagener Anmeldung {@code ?error} an. */
+    /** Spring Security appends {@code ?error} after a failed sign-in. */
     @Test
     void theErrorParameterSwitchesTheFormIntoItsErrorState() {
         LoginView view = showLoginView(IdentityProperties.defaults());

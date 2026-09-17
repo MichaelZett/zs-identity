@@ -17,7 +17,7 @@ import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Der Aufräumlauf: eingelöste und lange abgelaufene Token gehen, gültige und frisch abgelaufene bleiben. */
+/** The cleanup run: redeemed and long-expired tokens go, valid and recently expired ones stay. */
 class TokenCleanupSchedulerIT extends AbstractIdentityIntegrationTest {
 
     @Autowired

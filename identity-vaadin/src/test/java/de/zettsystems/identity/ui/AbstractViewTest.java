@@ -25,15 +25,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Gemeinsamer Rahmen der Ansichtstests: Karibu baut {@code VaadinSession} und
- * {@code UI} im Speicher nach, sodass die Views ohne Servlet-Container und ohne
- * Browser prüfbar sind.
+ * The shared frame of the view tests: Karibu recreates {@code VaadinSession}
+ * and {@code UI} in memory, so that the views can be checked without a servlet
+ * container and without a browser.
  *
- * <p>Registriert werden nur leere Ziel-Ansichten unter den Pfaden des
- * Bausteins. Die echten Views brauchen Konstruktorargumente, ließen sich also
- * gar nicht vom Router erzeugen — die Tests bauen sie selbst und hängen sie an
- * die UI. Die Ziele sind trotzdem nötig: Ohne sie scheitert jeder
- * Navigations-Knopf an einem unbekannten Pfad.
+ * <p>Only empty target views are registered under the paths of the building
+ * block. The real views need constructor arguments and could therefore not be
+ * created by the router at all -- the tests build them themselves and attach
+ * them to the UI. The targets are needed nonetheless: without them every
+ * navigation button fails on an unknown path.
  */
 abstract class AbstractViewTest {
 
@@ -53,12 +53,12 @@ abstract class AbstractViewTest {
     public static class ForgotPasswordTarget extends Div {
     }
 
-    /** Die Wurzel der Anwendung — Ziel nach dem Passwortwechsel. */
+    /** The root of the application, the target after a password change. */
     @Route(value = "", autoLayout = false)
     public static class RootTarget extends Div {
     }
 
-    /** Irgendeine Fachansicht — der Wächter soll sie versperren. */
+    /** Some view of the application; the guard is meant to block it. */
     @Route(value = "somewhere", autoLayout = false)
     public static class SomewhereTarget extends Div {
     }
@@ -67,7 +67,7 @@ abstract class AbstractViewTest {
     public static class ChangePasswordTarget extends Div {
     }
 
-    /** Die mitgelieferte Auflösung — die Tests prüfen die echten Texte, keine Attrappen. */
+    /** The shipped resolution: the tests check the real texts, not stand-ins. */
     protected static final IdentityMessages MESSAGES = IdentityMessages.resourceBundles();
 
     @BeforeEach
@@ -84,7 +84,7 @@ abstract class AbstractViewTest {
         MockVaadin.tearDown();
     }
 
-    /** Hängt die Ansicht an die UI — erst dann finden Karibus Suchfunktionen sie. */
+    /** Attaches the view to the UI; only then do Karibu's lookups find it. */
     protected static <T extends Component> T show(T view) {
         UI.getCurrent().add(view);
         return view;
@@ -95,9 +95,9 @@ abstract class AbstractViewTest {
     }
 
     /**
-     * {@code BeforeEnterEvent} lässt sich nicht sinnvoll von Hand bauen — der
-     * echte Konstruktor verlangt einen Router samt Navigationsziel. Gebraucht
-     * wird ohnehin nur die Adresse.
+     * {@code BeforeEnterEvent} cannot sensibly be built by hand: the real
+     * constructor demands a router together with a navigation target. Only the
+     * address is needed anyway.
      */
     protected static BeforeEnterEvent enterEventWith(String path, Map<String, List<String>> parameters) {
         BeforeEnterEvent event = mock(BeforeEnterEvent.class);

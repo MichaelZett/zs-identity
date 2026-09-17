@@ -14,17 +14,17 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Spiegelt die {@link RoleCatalog}-Beans beim Start in die Datenbank.
+ * Mirrors the {@link RoleCatalog} beans into the database at startup.
  *
- * <p>Idempotent: Neue Rollen werden angelegt, bestehende bekommen Anzeigename
- * und Berechtigungen aus dem Katalog nachgezogen. So wirkt eine Änderung am
- * Katalog ohne eigene Migration.
+ * <p>Idempotent: new roles are created, existing ones have their display name
+ * and permissions brought in line with the catalog. A change to the catalog
+ * therefore takes effect without a migration of its own.
  *
- * <p>Rollen, die in keinem Katalog mehr vorkommen, bleiben <strong>stehen</strong>.
- * Automatisches Löschen würde bei einem Tippfehler im Katalog schlagartig
- * allen Betroffenen die Rechte entziehen — und wegen des Fremdschlüssels auf
- * {@code auth_user_role} ohnehin scheitern. Verwaiste Rollen räumt eine
- * bewusste Migration ab.
+ * <p>Roles that appear in no catalog any more <strong>stay</strong>. Deleting
+ * them automatically would, on a single typo in a catalog, strip the rights
+ * from everyone holding them at once -- and would fail anyway because of the
+ * foreign key on {@code auth_user_role}. Orphaned roles are cleared out by a
+ * deliberate migration.
  */
 class RoleSynchronizer implements ApplicationRunner {
 
@@ -62,9 +62,8 @@ class RoleSynchronizer implements ApplicationRunner {
     }
 
     /**
-     * Vereinigt alle Kataloge. Liefern zwei Beans denselben Code, gewinnt der
-     * zuletzt gelesene — das ist der Weg, wie eine Anwendung eine eingebaute
-     * Rolle umdefinieren kann.
+     * Merges all catalogs. If two beans supply the same code, the one read last
+     * wins; that is how an application can redefine a built-in role.
      */
     private Map<String, RoleDefinition> collectDefinitions() {
         Map<String, RoleDefinition> byCode = new HashMap<>();

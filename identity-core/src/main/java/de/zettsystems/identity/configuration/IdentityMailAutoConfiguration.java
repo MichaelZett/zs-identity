@@ -14,35 +14,35 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.mail.javamail.JavaMailSender;
 
 /**
- * Wählt den Mailversand des Bausteins.
+ * Picks the mail delivery of the building block.
  *
- * <p>Bewusst eine eigene Auto-Konfiguration mit {@code after =
- * MailSenderAutoConfiguration} und nicht einfach eine Bean in
- * {@code IdentityBeans}: {@code @ConditionalOnBean} entscheidet anhand dessen,
- * was zum Zeitpunkt der Auswertung <em>schon</em> registriert ist. In einer per
- * {@code @Import} eingebundenen {@code @Configuration} läuft die Prüfung, bevor
- * Spring Boot den {@code JavaMailSender} angelegt hat — die Bedingung ist dann
- * immer falsch, und die Anwendung startet mit "required a bean of type
- * IdentityMailSender that could not be found" gar nicht erst.
+ * <p>Deliberately an auto-configuration of its own with {@code after =
+ * MailSenderAutoConfiguration} rather than simply a bean in
+ * {@code IdentityBeans}: {@code @ConditionalOnBean} decides from what is
+ * <em>already</em> registered at the time it is evaluated. Inside a
+ * {@code @Configuration} pulled in through {@code @Import}, that check runs
+ * before Spring Boot has created the {@code JavaMailSender}, so the condition
+ * is always false and the application does not even start, failing with
+ * "required a bean of type IdentityMailSender that could not be found".
  *
- * <p><strong>Zweigeteilt, weil {@code spring-boot-starter-mail} seit 0.7.0
- * optional ist.</strong> Alles, was eine Mail-Bibliothek anfasst, steckt in
- * {@link JavaMail} unter {@code @ConditionalOnClass} — ohne die Bibliothek
- * wird diese Klasse nie geladen. Die Rückfallebene hier draußen kommt ohne sie
- * aus und prüft deshalb auf den <em>Namen</em> statt auf die Klasse: Ein
- * Klassenliteral in {@code @ConditionalOnMissingBean} läse Spring zwar per ASM
- * aus dem Bytecode, aber der Name sagt hier klarer, was gemeint ist.
+ * <p><strong>Split in two because {@code spring-boot-starter-mail} is optional
+ * as of 0.7.0.</strong> Everything that touches a mail library sits in
+ * {@link JavaMail} under {@code @ConditionalOnClass}; without the library that
+ * class is never loaded. The fallback out here does without it and therefore
+ * checks the <em>name</em> instead of the class: Spring would read a class
+ * literal in {@code @ConditionalOnMissingBean} from the bytecode through ASM,
+ * but the name says more clearly what is meant.
  *
- * <p>Der Verweis auf {@code MailSenderAutoConfiguration} steht aus demselben
- * Grund als Zeichenkette ({@code afterName}).
+ * <p>The reference to {@code MailSenderAutoConfiguration} is a string for the
+ * same reason ({@code afterName}).
  */
 @AutoConfiguration(afterName = "org.springframework.boot.mail.autoconfigure.MailSenderAutoConfiguration")
 public class IdentityMailAutoConfiguration {
 
     /**
-     * Rückfallebene ohne konfigurierten Mailversand: schreibt die Links ins Log,
-     * damit die Anwendung wenigstens startet und benutzbar bleibt. Greift auch
-     * dann, wenn die Anwendung die Mail-Bibliothek gar nicht mitbringt.
+     * Fallback without configured mail delivery: writes the links to the log,
+     * so that the application at least starts and stays usable. It applies as
+     * well when the application does not bring the mail library at all.
      */
     @Bean
     @ConditionalOnMissingBean(value = IdentityMailSender.class,
@@ -51,7 +51,7 @@ public class IdentityMailAutoConfiguration {
         return IdentityMailFactory.logOnly();
     }
 
-    /** Der Normalfall: Die Anwendung bringt die Mail-Bibliothek mit und hat {@code spring.mail.*} gesetzt. */
+    /** The normal case: the application brings the mail library and has set {@code spring.mail.*}. */
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnClass(JavaMailSender.class)
     static class JavaMail {

@@ -13,12 +13,12 @@ import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Voreingestellte Textauflösung über die mitgelieferten Sprachdateien.
+ * The default text resolution through the shipped message bundles.
  *
- * <p>Zwei Dateisätze, weil zwei Artefakte Texte beisteuern: {@code core} liegt
- * in {@code identity-core} (Mails, Fehlermeldungen), {@code ui} in
- * {@code identity-vaadin} (Oberfläche). Eine REST-Anwendung bindet nur den Kern
- * ein — dann fehlt der zweite Satz schlicht, und die Suche überspringt ihn.
+ * <p>Two sets of files, because two artifacts contribute texts: {@code core}
+ * lives in {@code identity-core} (mails, error messages), {@code ui} in
+ * {@code identity-vaadin} (the UI). A REST application embeds the core only,
+ * in which case the second set is simply absent and the lookup skips it.
  */
 class ResourceBundleIdentityMessages implements IdentityMessages {
 
@@ -29,15 +29,14 @@ class ResourceBundleIdentityMessages implements IdentityMessages {
             "de.zettsystems.identity.messages.ui");
 
     /**
-     * Ohne Rückfall auf {@code Locale.getDefault()}: Sonst entscheidet die
-     * Spracheinstellung des Servers mit, welchen Text ein Browser bekommt.
-     * Gesucht wird also nur die angefragte Sprache, danach die Basisdatei
-     * (Englisch).
+     * Without a fallback to {@code Locale.getDefault()}: otherwise the language
+     * setting of the server would have a say in which text a browser receives.
+     * Only the requested language is looked up, then the base bundle (English).
      */
     private static final ResourceBundle.Control CONTROL =
             ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES);
 
-    /** {@code getBundle} wirft bei fehlender Datei — die Fundlage einmal pro Sprache merken. */
+    /** {@code getBundle} throws when a bundle is missing, so remember what was found per language. */
     private final Map<Locale, List<ResourceBundle>> bundlesByLocale = new ConcurrentHashMap<>();
 
     @Override
@@ -69,8 +68,8 @@ class ResourceBundleIdentityMessages implements IdentityMessages {
     }
 
     private static String format(String text, Locale locale, Object... args) {
-        // Ohne Platzhalterwerte roh durchreichen: MessageFormat wuerde sonst
-        // einfache Anfuehrungszeichen im Text als Maskierung deuten.
+        // Pass through untouched when there are no placeholder values:
+        // MessageFormat would otherwise read single quotes as escaping.
         return args.length == 0 ? text : new MessageFormat(text, locale).format(args);
     }
 }

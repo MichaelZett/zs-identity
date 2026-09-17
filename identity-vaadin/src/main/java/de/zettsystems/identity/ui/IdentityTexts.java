@@ -10,17 +10,18 @@ import java.io.Serializable;
 import java.util.Locale;
 
 /**
- * Texte einer Ansicht in der Sprache der aufrufenden Person.
+ * The texts of a view in the language of the person calling it.
  *
- * <p>Die Sprache wird einmal beim Aufbau der Ansicht bestimmt — Ansichten
- * entstehen pro Aufruf neu, ein Wechsel während der Anzeige ist also kein Fall.
+ * <p>The language is determined once while the view is being built: views are
+ * created anew per navigation, so switching while one is on screen is not a
+ * case that occurs.
  *
- * <p>Maßgeblich ist die Sprache der {@code UI}, aber nur wenn die Anwendung
- * überhaupt eine Sprachwahl betreibt, also einen {@code I18NProvider}
- * mitbringt. Ohne einen solchen setzt Vaadin die UI-Sprache auf die
- * Voreinstellung der Server-JVM — die sagt nichts über die Anwendung aus und
- * unterscheidet sich zwischen Entwicklungsrechner und Container. Dann gilt
- * {@code zs.identity.locale}.
+ * <p>What counts is the language of the {@code UI}, but only when the
+ * application runs a language selection at all, that is when it brings an
+ * {@code I18NProvider}. Without one, Vaadin sets the UI language to the default
+ * of the server JVM, which says nothing about the application and differs
+ * between a development machine and a container. In that case
+ * {@code zs.identity.locale} applies.
  */
 final class IdentityTexts implements Serializable {
 
@@ -35,7 +36,7 @@ final class IdentityTexts implements Serializable {
         this.locale = resolveLocale(properties.locale());
     }
 
-    /** Siehe {@link IdentityMessages#get(String, Locale, Object...)}. */
+    /** See {@link IdentityMessages#get(String, Locale, Object...)}. */
     String get(String key, Object... args) {
         return messages.get(key, locale, args);
     }

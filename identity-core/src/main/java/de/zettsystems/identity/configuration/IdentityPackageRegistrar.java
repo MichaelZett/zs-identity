@@ -6,18 +6,19 @@ import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.type.AnnotationMetadata;
 
 /**
- * Meldet {@code de.zettsystems.identity} als zusätzliches Auto-Konfigurations-Paket an.
+ * Registers {@code de.zettsystems.identity} as an additional
+ * auto-configuration package.
  *
- * <p>Warum das nötig ist: Spring Boot sucht Entities und Repositories nur
- * unterhalb der Klasse mit {@code @SpringBootApplication}. Dieser Baustein liegt
- * in einem eigenen Paketbaum, seine Entities und Repositories wären also
- * unsichtbar.
+ * <p>Why that is needed: Spring Boot looks for entities and repositories only
+ * below the class carrying {@code @SpringBootApplication}. This building block
+ * lives in a package tree of its own, so its entities and repositories would
+ * be invisible.
  *
- * <p>Warum nicht {@code @EntityScan} / {@code @EnableJpaRepositories}: Beide
- * <strong>ersetzen</strong> die Voreinstellung, statt sie zu erweitern — die
- * Anwendung würde damit ihre eigenen Entities verlieren. {@link
- * AutoConfigurationPackages#register} hängt dagegen an die bestehende Liste an
- * und wirkt auf beides zugleich.
+ * <p>Why not {@code @EntityScan} / {@code @EnableJpaRepositories}: both
+ * <strong>replace</strong> the default instead of extending it, which would
+ * cost the application its own entities. {@link
+ * AutoConfigurationPackages#register} appends to the existing list instead and
+ * affects both at once.
  */
 public class IdentityPackageRegistrar implements ImportBeanDefinitionRegistrar {
 

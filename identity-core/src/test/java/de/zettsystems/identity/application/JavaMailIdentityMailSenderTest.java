@@ -35,14 +35,15 @@ class JavaMailIdentityMailSenderTest {
             AccountName.of("Anna", "Beispiel"), true, true, Instant.parse("2026-09-01T10:00:00Z"), Set.of("USER"));
 
     /**
-     * Eigenes Testdoppel statt Mockito: Der Test will die tatsächlich gebaute
-     * Nachricht sehen, nicht nur prüfen, dass eine Methode aufgerufen wurde.
+     * A test double of our own rather than Mockito: the test wants to see the
+     * message that was actually built, not merely check that a method was
+     * called.
      */
     private static class CapturingMailSender implements JavaMailSender {
 
         private final List<MimeMessage> sent = new ArrayList<>();
 
-        // Spring 7 deklariert in MailSender nur noch die Varargs-Form.
+        // Spring 7 declares only the varargs form in MailSender.
         @Override
         public void send(SimpleMailMessage... simpleMessages) {
             throw new UnsupportedOperationException("die Mails gehen als MIME-Nachricht hinaus");
@@ -89,8 +90,8 @@ class JavaMailIdentityMailSenderTest {
     }
 
     /**
-     * Der eigentliche Grund für die MIME-Nachricht: Outlook macht aus einem
-     * langen Link in einer Nur-Text-Mail keinen anklickbaren mehr.
+     * The actual reason for the MIME message: Outlook no longer turns a long
+     * link in a plain-text mail into a clickable one.
      */
     @Test
     void theVerificationMailAlsoCarriesTheLinkAsAnHtmlAnchor() throws Exception {
@@ -100,14 +101,14 @@ class JavaMailIdentityMailSenderTest {
         testee.sendEmailVerification(USER, "http://example.com/register/confirm?token=abc");
 
         MimeMessage message = mailSender.sent.getFirst();
-        // Den Kopf schreibt JavaMail erst beim Absenden; hier gibt es keinen
-        // echten Versand, also von Hand.
+        // JavaMail writes the header only when sending; there is no real
+        // delivery here, so it is done by hand.
         message.saveChanges();
         assertThat(message.getContentType()).contains("multipart/");
         assertThat(htmlPart(message))
                 .contains("<a href=\"http://example.com/register/confirm?token=abc\">")
-                // Die Adresse steht zusätzlich im Klartext, für alles, was den
-                // Verweis nicht öffnet.
+                // The address also appears in plain text, for anything that
+                // does not open the link.
                 .contains("<br>http://example.com/register/confirm?token=abc");
     }
 
@@ -124,7 +125,7 @@ class JavaMailIdentityMailSenderTest {
         assertThat(htmlPart(message)).contains("<a href=\"http://example.com/password/reset?token=xyz\">");
     }
 
-    /** Ein Anzeigename darf die Auszeichnung des HTML-Teils nicht aufbrechen. */
+    /** A display name must not break out of the markup of the HTML part. */
     @Test
     void aDisplayNameWithMarkupIsEscapedInTheHtmlPart() throws Exception {
         CapturingMailSender mailSender = new CapturingMailSender();
@@ -168,8 +169,8 @@ class JavaMailIdentityMailSenderTest {
                 IdentityProperties.defaults(), MESSAGES);
 
         assertThatCode(() -> testee.sendEmailVerification(USER, "http://example.com/x"))
-                .as("sonst rollt ein unerreichbarer SMTP-Server die gesamte Registrierung "
-                        + "zurück, obwohl das Konto korrekt angelegt wurde")
+                .as("otherwise an unreachable SMTP server rolls back the whole "
+                        + "registration although the account was created correctly")
                 .doesNotThrowAnyException();
     }
 
@@ -187,9 +188,9 @@ class JavaMailIdentityMailSenderTest {
     }
 
     /**
-     * Der Grund, warum die Sprache seit V1_4 am Konto steht: Die Einstellung
-     * der Anwendung sagt „deutsch", das Konto hat sich englisch registriert —
-     * und die Mail entsteht ohne Browser, den man fragen könnte.
+     * The reason the language sits on the account since V1_4: the setting of
+     * the application says "German", the account registered in English -- and
+     * the mail is created without a browser that could be asked.
      */
     @Test
     void theAccountLanguageBeatsTheApplicationLanguage() throws Exception {
@@ -223,10 +224,11 @@ class JavaMailIdentityMailSenderTest {
     }
 
     /**
-     * Spring schachtelt Text- und HTML-Teil in ein {@code multipart/alternative}
-     * — Teil 0 ist der Text, Teil 1 das HTML. Je nach Modus des
-     * {@code MimeMessageHelper} steckt das Ganze noch in einem
-     * {@code multipart/mixed}, deshalb die Suche nach dem alternativen Teil.
+     * Spring nests the text and HTML parts into a {@code multipart/alternative},
+     * where part 0 is the text and part 1 the HTML. Depending on the mode of the
+     * {@code MimeMessageHelper} the whole thing sits inside a
+     * {@code multipart/mixed} as well, hence the search for the alternative
+     * part.
      */
     private static String plainPart(MimeMessage message) throws Exception {
         return partContent(message, 0);

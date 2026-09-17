@@ -16,38 +16,37 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Security-Prinzipal des Bausteins.
+ * The security principal of this building block.
  *
- * <p>Neben dem Anmeldenamen (E-Mail) trägt er die stabile Konto-ID. Anwendungen
- * verknüpfen ihre Fachobjekte über diese ID — die Adresse kann sich ändern,
- * die ID nicht — und holen sie sich aus dem {@code SecurityContext}, ohne
- * dafür die Datenbank zu fragen.
+ * <p>Besides the sign-in name (the email address) it carries the stable
+ * account id. Applications link their own objects through that id -- the
+ * address can change, the id cannot -- and take it from the
+ * {@code SecurityContext} without asking the database for it.
  *
- * <h2>Rollen mit Geltungsbereich</h2>
+ * <h2>Roles with a scope</h2>
  *
- * <p>Die Berechtigungen liegen in <strong>qualifizierter</strong> Gestalt vor:
- * global als {@code ROLE_ADMIN}, bereichsgebunden als
- * {@code ROLE_ADMIN@club:17}. Dazu kommt ein <strong>aktiver Bereich</strong>
- * ({@link #activeScope()}); dessen Berechtigungen erscheinen
- * <em>zusätzlich</em> unqualifiziert.
+ * <p>The authorities are held in <strong>qualified</strong> form: global as
+ * {@code ROLE_ADMIN}, scoped as {@code ROLE_ADMIN@club:17}. On top of that
+ * there is an <strong>active scope</strong> ({@link #activeScope()}), whose
+ * authorities appear <em>additionally</em> in unqualified form.
  *
- * <p>Der Grund ist die Lesbarkeit der Prüfungen. Mit aktivem Verein 17 gilt:
+ * <p>The reason is that the checks stay readable. With club 17 active:
  *
  * <pre>{@code
  * @RolesAllowed("ADMIN")                          // im aktiven Verein
  * hasAuthority("ROLE_ADMIN@club:4")               // gezielt anderswo, etwa bei einem Deep-Link
  * }</pre>
  *
- * <p>Ohne den aktiven Bereich müsste jede Prüfung in jeder Anwendung den
- * Bereich selbst zusammensetzen — und eine vergessene Qualifizierung prüfte
- * dann nicht etwa zu streng, sondern <strong>gar nichts</strong>. Ohne die
- * qualifizierte Gestalt wiederum wäre ein Verweis in einen anderen Mandanten
- * nur nach einem Wechsel prüfbar.
+ * <p>Without the active scope, every check in every application would have to
+ * assemble the scope itself -- and a forgotten qualification would then not
+ * check too strictly but <strong>not at all</strong>. Without the qualified
+ * form, in turn, a link into another tenant could only be checked after
+ * switching.
  */
 public final class IdentityUserDetails implements UserDetails {
 
-    // Liegt in der HTTP-Session; ohne feste UID bricht jeder Klassenwechsel
-    // eine noch offene Sitzung.
+    // Lives in the HTTP session; without a fixed UID every change to this
+    // class breaks a session that is still open.
     @Serial
     private static final long serialVersionUID = 2L;
 
@@ -57,21 +56,21 @@ public final class IdentityUserDetails implements UserDetails {
     private final String passwordHash;
     private final boolean enabled;
     private final boolean mustChangePassword;
-    /** Qualifiziert: global ohne Zusatz, bereichsgebunden mit {@code @club:17}. */
+    /** Qualified: global without a suffix, scoped with {@code @club:17}. */
     private final List<GrantedAuthority> grantedAuthorities;
     private final @Nullable Scope activeScope;
 
     /**
-     * Öffentlich, damit einbindende Anwendungen den Prinzipal in Tests bauen
-     * können; im Betrieb erzeugt ihn allein der {@code IdentityUserDetailsService}.
+     * Public so that embedding applications can build the principal in their
+     * tests; in production only the {@code IdentityUserDetailsService} creates
+     * it.
      *
-     * <p>Ein Prinzipal entsteht immer <strong>ohne</strong> aktiven Bereich —
-     * welcher es sein soll, entscheidet die Anwendung erst später
-     * ({@link #withActiveScope(Scope)}) und nicht schon beim Anmelden.
+     * <p>A principal is always created <strong>without</strong> an active
+     * scope. Which one it should be is decided by the application later
+     * ({@link #withActiveScope(Scope)}), not already at sign-in time.
      *
-     * @param authorities die Berechtigungen in qualifizierter Gestalt:
-     *                    {@code ROLE_USER} global, {@code ROLE_ADMIN@club:17}
-     *                    mit Bereich
+     * @param authorities the authorities in qualified form: {@code ROLE_USER}
+     *                    when global, {@code ROLE_ADMIN@club:17} when scoped
      */
     public IdentityUserDetails(Long userId, String email, String displayName, String passwordHash,
                                boolean enabled, boolean mustChangePassword,
@@ -86,7 +85,7 @@ public final class IdentityUserDetails implements UserDetails {
         this.activeScope = null;
     }
 
-    /** Kopie mit anderem aktivem Bereich — siehe {@link #withActiveScope(Scope)}. */
+    /** Copy with a different active scope; see {@link #withActiveScope(Scope)}. */
     private IdentityUserDetails(IdentityUserDetails source, @Nullable Scope newActiveScope) {
         this.userId = source.userId;
         this.email = source.email;
@@ -98,49 +97,49 @@ public final class IdentityUserDetails implements UserDetails {
         this.activeScope = newActiveScope;
     }
 
-    /** Stabile Kennung des Kontos. */
+    /** Stable identifier of the account. */
     public Long userId() {
         return userId;
     }
 
-    /** Anzeigename zum Zeitpunkt der Anmeldung. */
+    /** Display name as of sign-in time. */
     public String displayName() {
         return displayName;
     }
 
     /**
-     * Das Konto muss sein Passwort ändern, bevor es die Anwendung benutzt.
-     * Steht in der Sitzung, damit die Erzwingung nicht bei jedem Seitenaufruf
-     * die Datenbank fragt; nach dem Wechsel frischt der Dienst die Sitzung auf.
+     * The account has to change its password before using the application.
+     * Kept in the session so that enforcing it does not query the database on
+     * every page load; after the change the service refreshes the session.
      */
     public boolean mustChangePassword() {
         return mustChangePassword;
     }
 
-    /** Der Bereich, in dem die Person gerade arbeitet — leer, wenn keiner gewählt ist. */
+    /** The scope the person is currently working in; empty when none is chosen. */
     public Optional<Scope> activeScope() {
         return Optional.ofNullable(activeScope);
     }
 
     /**
-     * Derselbe Prinzipal mit einem anderen aktiven Bereich. Die Zuweisungen
-     * ändern sich dabei nicht — nur, welche von ihnen unqualifiziert gelten.
+     * The same principal with a different active scope. The assignments do not
+     * change in the process; only which of them apply unqualified does.
      *
-     * <p>Wechseln allein genügt nicht: Damit die laufende Sitzung es merkt,
-     * geht der Weg über {@code ActiveScopeService}.
+     * <p>Switching alone is not enough: for the running session to notice, the
+     * route goes through {@code ActiveScopeService}.
      */
     public IdentityUserDetails withActiveScope(@Nullable Scope newActiveScope) {
         return new IdentityUserDetails(this, newActiveScope);
     }
 
-    /** Die Berechtigungen, wie sie vergeben wurden — ohne die Auflösung des aktiven Bereichs. */
+    /** The authorities as granted, without resolving the active scope. */
     public Collection<GrantedAuthority> grantedAuthorities() {
         return grantedAuthorities;
     }
 
     /**
-     * Die qualifizierten Berechtigungen und, für den aktiven Bereich,
-     * dieselben noch einmal ohne Qualifizierung.
+     * The qualified authorities and, for the active scope, the same ones once
+     * more without the qualification.
      */
     @Override
     public Collection<GrantedAuthority> getAuthorities() {
@@ -150,9 +149,9 @@ public final class IdentityUserDetails implements UserDetails {
         String suffix = Scope.AUTHORITY_SEPARATOR + activeScope.toString();
         Set<GrantedAuthority> effective = new LinkedHashSet<>(grantedAuthorities);
         for (GrantedAuthority authority : grantedAuthorities) {
-            // getAuthority() darf laut Vertrag null liefern (etwa bei
-            // Berechtigungen, die sich nicht als Zeichenkette ausdrücken
-            // lassen) — solche kennen wir nicht, sie bleiben unangetastet.
+            // By contract getAuthority() may return null (for authorities
+            // that cannot be expressed as a string, say). We have none of
+            // those, and they are left untouched.
             String name = authority.getAuthority();
             if (name != null && name.endsWith(suffix)) {
                 effective.add(new SimpleGrantedAuthority(name.substring(0, name.length() - suffix.length())));

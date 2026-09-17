@@ -33,18 +33,18 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Beantwortet die Frage "lässt sich der Baustein wirklich allein per
- * Auto-Konfiguration einbauen?" mit einem Beweis statt mit einer Behauptung.
+ * Answers the question "can the building block really be embedded through
+ * auto-configuration alone?" with a proof rather than a claim.
  *
- * <p>Die Anwendung unten ist so minimal, wie ein fremdes Projekt nur sein kann:
- * {@code @SpringBootApplication} in einem <strong>anderen Paketbaum</strong>,
- * eine {@code RoleCatalog}-Bean, ein Mail-Ersatz fürs Testen. Kein
- * {@code @EntityScan}, kein {@code @EnableJpaRepositories}, kein
- * {@code @Import}, und — der Punkt, an dem es zuvor scheiterte — kein Eintrag
- * in {@code spring.flyway.locations}.
+ * <p>The application below is as minimal as an outside project can be:
+ * {@code @SpringBootApplication} in a <strong>different package tree</strong>,
+ * a {@code RoleCatalog} bean, a mail stand-in for testing. No
+ * {@code @EntityScan}, no {@code @EnableJpaRepositories}, no {@code @Import},
+ * and -- the point where it used to fail -- no entry in
+ * {@code spring.flyway.locations}.
  *
- * <p>Bricht dieser Test, ist der Einbau in das nächste Projekt Handarbeit
- * geworden.
+ * <p>If this test breaks, embedding into the next project has turned into
+ * manual work.
  */
 @SpringBootTest(classes = AutoConfigurationIT.BareMinimumApplication.class)
 class AutoConfigurationIT {
@@ -66,7 +66,7 @@ class AutoConfigurationIT {
         registry.add("spring.datasource.password", POSTGRES::getPassword);
     }
 
-    /** So wenig, wie eine einbindende Anwendung mitbringen muss. */
+    /** As little as an embedding application has to bring along. */
     @SpringBootApplication
     static class BareMinimumApplication {
 
@@ -102,8 +102,8 @@ class AutoConfigurationIT {
 
     @Test
     void repositoriesAreFoundAlthoughTheyLiveOutsideTheApplicationPackage() {
-        // Ohne IdentityPackageRegistrar wäre hier Schluss: Spring Boot sucht
-        // Repositories nur unterhalb der @SpringBootApplication-Klasse.
+        // Without IdentityPackageRegistrar this would be the end: Spring Boot
+        // looks for repositories only below the @SpringBootApplication class.
         assertThat(context.getBean(UserAccountRepository.class)).isNotNull();
         assertThat(context.getBean(RoleRepository.class)).isNotNull();
         assertThat(context.getBean(AuthTokenRepository.class)).isNotNull();
@@ -121,8 +121,8 @@ class AutoConfigurationIT {
 
     @Test
     void theModuleBringsItsOwnDatabaseTables() {
-        // Der eigentliche Beweis für IdentityFlywayAutoConfiguration: Die
-        // Anwendung hat spring.flyway.locations nie angefasst.
+        // The actual proof for IdentityFlywayAutoConfiguration: the application
+        // never touched spring.flyway.locations.
         Integer tables = jdbcTemplate.queryForObject("""
                 select count(*) from information_schema.tables
                  where table_schema = 'public'
@@ -144,13 +144,13 @@ class AutoConfigurationIT {
 
     @Test
     void theApplicationCanReplaceIndividualBeans() {
-        // Die Anwendung oben stellt eine eigene IdentityMailSender-Bean bereit.
-        // Sie muss die Voreinstellung des Bausteins verdrängt haben — genau das
-        // funktionierte nicht, solange die Beans per Komponentensuche kamen.
+        // The application above provides an IdentityMailSender bean of its own.
+        // It has to have displaced the default of the building block -- exactly
+        // what did not work while the beans came from a component scan.
         assertThat(context.getBean(IdentityMailSender.class))
                 .isInstanceOf(RecordingMailSender.class);
         assertThat(context.getBeanNamesForType(IdentityMailSender.class))
-                .as("keine zweite Bean daneben")
+                .as("no second bean next to it")
                 .hasSize(1);
     }
 

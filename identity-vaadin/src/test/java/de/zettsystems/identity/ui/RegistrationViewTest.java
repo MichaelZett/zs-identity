@@ -129,13 +129,13 @@ class RegistrationViewTest extends AbstractViewTest {
         assertThat(registrationService.registeredNames).containsExactly(AccountName.of("Anna", "Beispiel"));
         assertThat(_get(view, H2.class).getText()).isEqualTo("Fast geschafft");
         assertThat(_get(view, Paragraph.class).getText())
-                .as("die Adresse gehört in die Bestätigung, damit ein Tippfehler auffällt")
+                .as("the address belongs in the confirmation, so that a typo is noticed")
                 .contains("anna@example.com");
     }
 
     /**
-     * Die Sprache der Registrierung wird die Sprache des Kontos: Beim späteren
-     * Mailversand gibt es keinen Browser mehr, den man fragen könnte.
+     * The language of the registration becomes the language of the account:
+     * when mail is sent later there is no browser left to ask.
      */
     @Test
     void theLanguageOfTheViewIsHandedToTheService() {
@@ -186,7 +186,7 @@ class RegistrationViewTest extends AbstractViewTest {
         assertThat(notificationTexts()).containsExactly("Das Passwort muss mindestens 12 Zeichen lang sein.");
     }
 
-    /** Ein eigener {@code RegistrationService} darf keinen rohen Schlüssel auf den Bildschirm bringen. */
+    /** A custom {@code RegistrationService} must not put a raw key on the screen. */
     @Test
     void anUnknownMessageKeyBecomesTheGeneralMessage() {
         registrationService.failure = new IdentityException("app.something.went.wrong", "custom failure");

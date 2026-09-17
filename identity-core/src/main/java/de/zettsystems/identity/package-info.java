@@ -1,11 +1,11 @@
 /**
- * Wiederverwendbarer Auth-Baustein: Benutzerkonto, Registrierung, Anmeldung,
- * Passwort-Reset, Rollen und Rechte.
+ * Reusable authentication building block: user account, registration, sign-in,
+ * password reset, roles and permissions.
  *
- * <p>Dieses Paket kennt keine Anwendung, die es einbindet. Nach außen sichtbar
- * sind ausschließlich Service-Schnittstellen und unveränderliche Records; die
- * JPA-Entities verlassen das Modul nicht. Anwendungen verknüpfen ihre
- * Fachobjekte über die reine {@code userId}.
+ * <p>This package knows nothing about the application that embeds it. Only
+ * service interfaces and immutable records are visible from the outside; the
+ * JPA entities never leave the module. Applications link their own objects
+ * through the plain {@code userId}.
  */
 @NullMarked
 package de.zettsystems.identity;

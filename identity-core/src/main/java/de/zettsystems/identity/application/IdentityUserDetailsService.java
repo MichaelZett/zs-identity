@@ -15,17 +15,17 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * Verbindet die Konten dieses Bausteins mit Spring Security.
+ * Connects the accounts of this building block to Spring Security.
  *
- * <p>Jede Rolle liefert zwei Arten von Authorities: {@code ROLE_<code>} für
- * {@code hasRole(...)} und {@code @RolesAllowed}, dazu die feingranularen
- * Berechtigungen im Klartext für {@code hasAuthority(...)}.
+ * <p>Every role yields two kinds of authority: {@code ROLE_<code>} for
+ * {@code hasRole(...)} and {@code @RolesAllowed}, plus the fine-grained
+ * permissions verbatim for {@code hasAuthority(...)}.
  *
- * <p>Eine Zuweisung mit Geltungsbereich trägt beide Arten qualifiziert
- * ({@code ROLE_ADMIN@club:17}). Ein <strong>aktiver</strong> Bereich wird hier
- * noch nicht gesetzt: Welcher das beim Anmelden sein soll, weiß nur die
- * Anwendung — sie setzt ihn über {@code ActiveScopeService}. Bis dahin gelten
- * die globalen Rollen, und das ist die sichere Vorgabe.
+ * <p>An assignment with a scope carries both kinds in qualified form
+ * ({@code ROLE_ADMIN@club:17}). An <strong>active</strong> scope is not set
+ * here yet: only the application knows which one that should be at sign-in
+ * time, and it sets it through {@code ActiveScopeService}. Until then the
+ * global roles apply, which is the safe default.
  */
 class IdentityUserDetailsService implements UserDetailsService {
 
@@ -41,9 +41,10 @@ class IdentityUserDetailsService implements UserDetailsService {
         UserAccount user = userRepository.findByEmail(UserAccount.normalizeEmail(username))
                 .orElseThrow(() -> new UsernameNotFoundException("No account for " + username));
 
-        // Verwaltete Konten (ohne E-Mail) findet die Suche gar nicht erst.
-        // Die Prüfung auf den Hash ist die zweite Verteidigungslinie: Ein
-        // Konto ohne Passwort darf Spring Security nie erreichen.
+        // Managed accounts (without an email address) are not found by the
+        // lookup in the first place. Checking the hash is the second line of
+        // defence: an account without a password must never reach Spring
+        // Security.
         String email = user.getEmail();
         String passwordHash = user.getPasswordHash();
         if (email == null || passwordHash == null) {

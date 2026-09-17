@@ -58,7 +58,7 @@ class InvitationServiceIT extends AbstractIdentityIntegrationTest {
         testClock.reset();
     }
 
-    /** Der Kern der Sache: Die Kennung bleibt, damit die fachlichen Daten daran hängen bleiben. */
+    /** The heart of the matter: the id stays, so that the domain data stays attached to it. */
     @Test
     void claimingAManagedAccountKeepsItsId() {
         Long userId = userAccountService.createManagedAccount("Ida", "Beispiel").id();
@@ -69,7 +69,7 @@ class InvitationServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(claimed.id()).isEqualTo(userId);
         assertThat(claimed.email()).isEqualTo(EMAIL);
         assertThat(claimed.emailVerified())
-                .as("der Link ging an genau diese Adresse — eine zweite Bestätigung wäre ein Umweg")
+                .as("the link went to exactly this address, so a second confirmation would be a detour")
                 .isTrue();
         assertThat(claimed.enabled()).isTrue();
     }
@@ -86,7 +86,7 @@ class InvitationServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(details.isEnabled()).isTrue();
     }
 
-    /** Vor dem Einlösen fehlt das Passwort — bis dahin gibt es keinen Anmeldeweg. */
+    /** Before redemption there is no password, and until then no way to sign in. */
     @Test
     void anInvitedAccountCannotSignInBeforeClaiming() {
         Long userId = userAccountService.createManagedAccount("Ida", "Beispiel").id();
@@ -103,7 +103,7 @@ class InvitationServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(invited.email()).isEqualTo(EMAIL);
         assertThat(invited.emailVerified()).isFalse();
         assertThat(userRepository.findByEmail(EMAIL).orElseThrow().getPasswordHash())
-                .as("ein Startpasswort müsste jemand übermitteln — genau das soll die Einladung ersparen")
+                .as("an initial password would have to be transmitted by someone, which the invitation avoids")
                 .isNull();
         assertThat(mails.lastMailTo(EMAIL).orElseThrow().kind())
                 .isEqualTo(RecordingMailSender.Kind.INVITATION);
@@ -122,7 +122,7 @@ class InvitationServiceIT extends AbstractIdentityIntegrationTest {
                 .isEqualTo(IdentityMessageKeys.TOKEN_EXPIRED);
     }
 
-    /** Sieben Tage ist die Vorgabe — nach einem Tag gilt der Link also noch. */
+    /** Seven days is the default, so after one day the link is still valid. */
     @Test
     void anInvitationOutlivesTheOtherTokens() {
         Long userId = userAccountService.createManagedAccount("Ida", "Beispiel").id();
@@ -148,7 +148,7 @@ class InvitationServiceIT extends AbstractIdentityIntegrationTest {
                 .isEqualTo(IdentityMessageKeys.TOKEN_EXPIRED);
     }
 
-    /** Eine zweite Einladung entwertet die erste — sonst gäbe es zwei gültige Wege ins Konto. */
+    /** A second invitation voids the first; otherwise there would be two valid ways into the account. */
     @Test
     void resendingInvalidatesTheEarlierInvitation() {
         Long userId = userAccountService.createManagedAccount("Ida", "Beispiel").id();
@@ -174,7 +174,7 @@ class InvitationServiceIT extends AbstractIdentityIntegrationTest {
                 .isEqualTo(IdentityMessageKeys.ACCOUNT_ALREADY_CLAIMED);
     }
 
-    /** Sonst wäre die Einladung ein Weg, ein fremdes Konto zu übernehmen. */
+    /** Otherwise the invitation would be a way to take over somebody else's account. */
     @Test
     void anAddressThatAlreadyHasAnAccountIsRejected() {
         registrationService.register(EMAIL, PASSWORD, "Ida", "Beispiel");
@@ -197,7 +197,7 @@ class InvitationServiceIT extends AbstractIdentityIntegrationTest {
                 .extracting(e -> ((IdentityException) e).getMessageKey())
                 .isEqualTo(IdentityMessageKeys.PASSWORD_TOO_SHORT);
 
-        // Das Token darf durch den Fehlversuch nicht verbraucht sein.
+        // The failed attempt must not have consumed the token.
         assertThat(invitationService.claim(token, PASSWORD).id()).isEqualTo(userId);
     }
 

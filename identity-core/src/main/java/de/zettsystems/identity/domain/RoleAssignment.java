@@ -17,17 +17,18 @@ import org.jspecify.annotations.Nullable;
 import java.util.Objects;
 
 /**
- * Eine Rolle, die einem Konto zugeteilt ist — entweder <strong>global</strong>
- * oder für einen {@link Scope} („Admin von Verein 17").
+ * A role granted to an account, either <strong>globally</strong> or for a
+ * {@link Scope} ("admin of club 17").
  *
- * <p>Seit V1_5 eine eigene Entity und keine {@code @ManyToMany}-Tabelle mehr:
- * Eine Zuordnung, die selbst etwas aussagt, ist keine reine Verknüpfung.
+ * <p>Since V1_5 an entity of its own rather than a {@code @ManyToMany} table:
+ * a link that says something itself is not a plain link any more.
  *
- * <p>Der Bereich liegt als zwei <strong>nicht nullbare</strong> Spalten vor,
- * leer heißt global. Grund steht in V1_5: In einem eindeutigen Index gelten
- * NULL-Werte in PostgreSQL als paarweise verschieden — dieselbe globale Rolle
- * ließe sich sonst beliebig oft vergeben. Nach außen ist der Bereich trotzdem
- * {@code null}, nicht ein leerer Wert ({@link #getScope()}).
+ * <p>The scope is stored as two <strong>non-nullable</strong> columns, where
+ * empty means global. The reason is written down in V1_5: inside a unique
+ * index, PostgreSQL treats NULL values as distinct from each other, so the
+ * same global role could otherwise be granted any number of times. To the
+ * outside the scope is still {@code null} rather than an empty value (see
+ * {@link #getScope()}).
  */
 @Entity
 @Table(name = "auth_user_role")
@@ -44,9 +45,9 @@ public class RoleAssignment extends AbstractAuthEntity {
     @SuppressWarnings("NullAway.Init")
     private UserAccount user;
 
-    // EAGER wäre hier verlockend — die Rolle wird praktisch immer gebraucht —,
-    // holt aber bei jeder Benutzerliste jede Rolle einzeln nach (N+1). Die
-    // Lesepfade laden sie über ihren EntityGraph mit.
+    // EAGER would be tempting here, since the role is needed almost always,
+    // but it fetches every role separately for every list of users (N+1). The
+    // read paths pull it in through their entity graph instead.
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "role_id", nullable = false)
     @SuppressWarnings("NullAway.Init")
@@ -69,7 +70,7 @@ public class RoleAssignment extends AbstractAuthEntity {
         this.scopeId = scope == null ? "" : scope.id();
     }
 
-    /** Der Geltungsbereich, {@code null} bei einer globalen Rolle. */
+    /** The scope, {@code null} for a global role. */
     public @Nullable Scope getScope() {
         return scopeType.isEmpty() ? null : new Scope(scopeType, scopeId);
     }
@@ -78,7 +79,7 @@ public class RoleAssignment extends AbstractAuthEntity {
         return scopeType.isEmpty();
     }
 
-    /** Ob diese Zuweisung genau für den gefragten Bereich gilt ({@code null} = global). */
+    /** Whether this assignment applies to exactly the given scope ({@code null} = global). */
     public boolean appliesTo(@Nullable Scope scope) {
         return Objects.equals(getScope(), scope);
     }

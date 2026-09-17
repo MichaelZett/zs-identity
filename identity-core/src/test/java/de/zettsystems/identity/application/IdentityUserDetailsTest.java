@@ -10,8 +10,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Der aktive Bereich — die Hälfte der Rollenprüfung, die nicht in der
- * Datenbank steht.
+ * The active scope: the half of the role check that is not in the database.
  */
 class IdentityUserDetailsTest {
 
@@ -36,9 +35,9 @@ class IdentityUserDetailsTest {
     }
 
     /**
-     * Der Sinn der Sache: In Verein 17 bedeutet {@code @RolesAllowed("ADMIN")}
-     * „Admin von Verein 17" — ohne dass die Anwendung den Bereich in jede
-     * Prüfung hineinschreiben muss.
+     * The whole point: in club 17, {@code @RolesAllowed("ADMIN")} means "admin
+     * of club 17", without the application having to write the scope into every
+     * check.
      */
     @Test
     void theActiveScopeMakesItsOwnRolesCountUnqualified() {
@@ -46,7 +45,7 @@ class IdentityUserDetailsTest {
 
         assertThat(names(inClub17))
                 .contains("ROLE_ADMIN", "season:read")
-                .as("die qualifizierte Gestalt bleibt zusätzlich bestehen")
+                .as("the qualified form remains in place as well")
                 .contains("ROLE_ADMIN@club:17", "ROLE_MEMBER@club:4", "ROLE_USER");
     }
 
@@ -55,7 +54,7 @@ class IdentityUserDetailsTest {
         IdentityUserDetails inClub17 = anna().withActiveScope(CLUB_17);
 
         assertThat(names(inClub17))
-                .as("Mitglied in Verein 4 zu sein, darf in Verein 17 nichts bedeuten")
+                .as("being a member of club 4 must mean nothing in club 17")
                 .doesNotContain("ROLE_MEMBER");
     }
 
@@ -74,7 +73,7 @@ class IdentityUserDetailsTest {
         assertThat(names(inStrangeClub)).containsExactlyInAnyOrderElementsOf(names(anna()));
     }
 
-    /** Der Prinzipal liegt in der Sitzung — die Zuweisungen müssen den Wechsel überleben. */
+    /** The principal lives in the session, so the assignments have to survive the switch. */
     @Test
     void theGrantedAuthoritiesThemselvesNeverChange() {
         IdentityUserDetails switched = anna().withActiveScope(CLUB_17);

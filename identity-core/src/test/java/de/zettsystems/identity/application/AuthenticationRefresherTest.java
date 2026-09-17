@@ -27,9 +27,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Der Auffrischer hängt an drei Rahmenbedingungen — Sitzung, Transaktion und
- * Servlet-Umgebung. Die Tests bauen jede davon einzeln nach, statt eine
- * Anwendung zu starten.
+ * The refresher depends on three surrounding conditions: the session, the
+ * transaction and the servlet environment. The tests recreate each of them
+ * individually instead of starting an application.
  */
 class AuthenticationRefresherTest {
 
@@ -37,7 +37,7 @@ class AuthenticationRefresherTest {
 
     private final RecordingContextRepository contextRepository = new RecordingContextRepository();
 
-    /** Liefert das Konto mit einer <em>neuen</em> Rolle — genau der Fall, um den es geht. */
+    /** Returns the account with a <em>new</em> role, which is exactly the case at hand. */
     private final UserDetailsService userDetailsService = username ->
             User.withUsername(username).password("irrelevant").authorities("ROLE_USER", "ROLE_GROUP_LEADER").build();
 
@@ -77,9 +77,9 @@ class AuthenticationRefresherTest {
     }
 
     /**
-     * Erst nach dem Commit: Würde die Sitzung innerhalb der Transaktion
-     * aufgefrischt und diese danach zurückgerollt, liefe die Person mit
-     * Rechten weiter, die es in der Datenbank nie gab.
+     * Only after the commit: if the session were refreshed inside the
+     * transaction and that were then rolled back, the person would carry on
+     * with rights that never existed in the database.
      */
     @Test
     void insideATransactionTheRefreshWaitsForTheCommit() {
@@ -89,7 +89,7 @@ class AuthenticationRefresherTest {
         testee.refreshAfterCommit(EMAIL);
 
         assertThat(currentAuthorities())
-                .as("noch nicht festgeschrieben")
+                .as("not committed yet")
                 .doesNotContain("ROLE_GROUP_LEADER");
 
         List<TransactionSynchronization> synchronizations =
@@ -125,7 +125,7 @@ class AuthenticationRefresherTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
-    /** Die Adresse ist nicht schreibweisenabhängig — das Konto ist dasselbe. */
+    /** The address is not case-sensitive, so it is the same account. */
     @Test
     void theComparisonIgnoresUpperAndLowerCase() {
         signIn("Anna@Example.com");
@@ -136,9 +136,9 @@ class AuthenticationRefresherTest {
     }
 
     /**
-     * Seit Spring Security 6 schreibt der Rahmen den Kontext nicht mehr von
-     * selbst in die Sitzung zurück; ohne das ausdrückliche Speichern hielte die
-     * Auffrischung genau einen Aufruf lang.
+     * Since Spring Security 6 the framework no longer writes the context back
+     * into the session by itself; without saving it explicitly the refresh
+     * would last exactly one request.
      */
     @Test
     void inAServletRequestTheRefreshedContextIsStoredInTheSession() {
@@ -154,7 +154,7 @@ class AuthenticationRefresherTest {
                 .contains("ROLE_GROUP_LEADER");
     }
 
-    /** Ohne Antwortobjekt gibt es keine Sitzung, in die sich schreiben ließe. */
+    /** Without a response object there is no session to write into. */
     @Test
     void withoutAResponseNothingIsStored() {
         signIn(EMAIL);
@@ -177,8 +177,8 @@ class AuthenticationRefresherTest {
     }
 
     /**
-     * Ein zwischenzeitlich gelöschtes Konto darf die gerade erfolgreiche
-     * Fachaktion nicht nachträglich als Fehler erscheinen lassen.
+     * An account deleted in the meantime must not make the business action that
+     * just succeeded look like a failure after the fact.
      */
     @Test
     void aVanishedAccountLeavesTheOldSessionStanding() {
@@ -193,7 +193,7 @@ class AuthenticationRefresherTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
     }
 
-    /** Ohne Testdoppel entsteht das Repository erst beim Speichern — auch dieser Weg muss tragen. */
+    /** Without a test double the repository is created when saving; that route has to hold too. */
     @Test
     void theProductionConstructorWorksWithoutARepository() {
         signIn(EMAIL);

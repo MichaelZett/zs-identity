@@ -12,29 +12,28 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import java.util.Optional;
 
 /**
- * Der Bereich, in dem die angemeldete Person gerade arbeitet — „ich bin jetzt
- * bei Verein 17".
+ * The scope the signed-in person is currently working in: "I am at club 17
+ * now".
  *
- * <p>Nach dem Wechsel gelten die Rollen dieses Bereichs unqualifiziert:
- * {@code @RolesAllowed("ADMIN")} meint dann „Admin von Verein 17". Die
- * Zuweisungen selbst ändert der Wechsel nicht; er ändert nur, welche davon
- * ohne Zusatz gelten (siehe {@link IdentityUserDetails}).
+ * <p>After the switch the roles of that scope apply unqualified:
+ * {@code @RolesAllowed("ADMIN")} then means "admin of club 17". The switch
+ * does not change the assignments themselves; it only changes which of them
+ * apply without a suffix (see {@link IdentityUserDetails}).
  *
- * <p><strong>Beim Anmelden ist kein Bereich aktiv.</strong> Welcher es sein
- * soll, weiß nur die Anwendung: Sie kennt den letzten besuchten Mandanten,
- * die Adresszeile oder die Auswahl auf ihrer Startseite. „Automatisch den
- * einzigen nehmen" wäre bequem und genau deshalb gefährlich — aus einer
- * zweiten Mitgliedschaft würde stillschweigend ein anderes Verhalten.
+ * <p><strong>No scope is active at sign-in.</strong> Only the application
+ * knows which one it should be: it knows the last tenant visited, the address
+ * bar, or the selection on its start page. "Just take the only one
+ * automatically" would be convenient and dangerous for exactly that reason --
+ * a second membership would silently turn into different behaviour.
  *
- * <p>Ein Bereich, in dem die Person keine Rolle hat, ist erlaubt und ergibt
- * schlicht keine zusätzlichen Berechtigungen; die Prüfung bleibt also bei den
- * globalen Rollen.
+ * <p>A scope in which the person holds no role is allowed and simply yields no
+ * additional permissions, so the check falls back on the global roles.
  */
 public class ActiveScopeService {
 
     private static final Logger LOG = LoggerFactory.getLogger(ActiveScopeService.class);
 
-    /** Nur für Tests gesetzt; im Betrieb entsteht das Repository beim Speichern. */
+    /** Set in tests only; in production the repository is created when saving. */
     private final @Nullable SecurityContextRepository contextRepository;
 
     public ActiveScopeService() {
@@ -45,19 +44,19 @@ public class ActiveScopeService {
         this.contextRepository = contextRepository;
     }
 
-    /** Der aktive Bereich, oder leer — auch ohne Anmeldung. */
+    /** The active scope, or empty, which is also the answer without a sign-in. */
     public Optional<Scope> current() {
         return currentUser().flatMap(IdentityUserDetails::activeScope);
     }
 
     /**
-     * Wechselt den aktiven Bereich der laufenden Sitzung. {@code null} gibt
-     * ihn auf; danach gelten nur noch die globalen Rollen.
+     * Switches the active scope of the running session. {@code null} gives it
+     * up, after which only the global roles apply.
      *
-     * <p>Ohne Anmeldung — oder wenn die Anwendung einen eigenen Prinzipal
-     * benutzt — passiert nichts. Eine Ausnahme wäre hier falsch: Der Wechsel
-     * ist eine Bequemlichkeit, keine Sicherheitsentscheidung; die
-     * qualifizierten Berechtigungen gelten unabhängig davon.
+     * <p>Without a sign-in -- or when the application uses a principal of its
+     * own -- nothing happens. An exception would be wrong here: the switch is
+     * a convenience, not a security decision, and the qualified permissions
+     * apply regardless of it.
      */
     public void switchTo(@Nullable Scope scope) {
         Authentication current = SecurityContextHolder.getContext().getAuthentication();

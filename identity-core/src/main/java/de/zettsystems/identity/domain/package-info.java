@@ -1,6 +1,6 @@
 /**
- * JPA-Entities und Repositories des Identity-Bausteins. Verlassen das Modul
- * nicht — nach außen gehen ausschließlich die Records aus dem values-Paket.
+ * JPA entities and repositories of the identity building block. They never
+ * leave the module -- only the records from the values package do.
  */
 @NullMarked
 package de.zettsystems.identity.domain;

@@ -60,7 +60,7 @@ class PasswordResetServiceIT extends AbstractIdentityIntegrationTest {
         mails.clear();
     }
 
-    /** Auch der Weg über „Passwort vergessen" räumt einen verlangten Wechsel ab. */
+    /** The "forgot password" route clears a required change as well. */
     @Test
     void theResetClearsARequiredPasswordChange() {
         Long userId = userRepository.findByEmail(EMAIL).orElseThrow().getId();
@@ -83,7 +83,7 @@ class PasswordResetServiceIT extends AbstractIdentityIntegrationTest {
         String stored = userRepository.findByEmail(EMAIL).orElseThrow().getPasswordHash();
         assertThat(passwordEncoder.matches(NEW_PASSWORD, stored)).isTrue();
         assertThat(passwordEncoder.matches(OLD_PASSWORD, stored))
-                .as("das alte Passwort darf danach nicht mehr passen")
+                .as("the old password must no longer match afterwards")
                 .isFalse();
     }
 
@@ -117,7 +117,7 @@ class PasswordResetServiceIT extends AbstractIdentityIntegrationTest {
         passwordResetService.requestReset("niemand@example.com");
 
         assertThat(mails.sentMails())
-                .as("wer hier eine Fehlermeldung bekäme, könnte damit Konten aufspüren")
+                .as("anyone getting an error message here could use it to find accounts")
                 .isEmpty();
     }
 
@@ -131,7 +131,7 @@ class PasswordResetServiceIT extends AbstractIdentityIntegrationTest {
                 .extracting(e -> ((IdentityException) e).getMessageKey())
                 .isEqualTo(IdentityMessageKeys.PASSWORD_TOO_SHORT);
 
-        // Das Token darf durch den Fehlversuch nicht verbraucht sein.
+        // The failed attempt must not have consumed the token.
         passwordResetService.resetPassword(token, NEW_PASSWORD);
     }
 

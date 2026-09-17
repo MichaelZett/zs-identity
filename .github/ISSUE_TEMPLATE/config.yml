@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/MichaelZett/zs-identity/security/advisories/new
+    about: Never report a security flaw in a public issue. Use the private form.
+  - name: How to embed the library
+    url: https://github.com/MichaelZett/zs-identity#readme
+    about: Configuration, roles, scopes and the shipped views are documented in the README.

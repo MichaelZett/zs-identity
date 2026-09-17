@@ -12,16 +12,15 @@ import java.util.Optional;
 public interface AuthTokenRepository extends JpaRepository<AuthToken, Long> {
 
     /**
-     * Der Benutzer wird mitgeladen: Jeder Einlösepfad arbeitet direkt danach
-     * mit dem Konto weiter.
+     * The user is fetched along with it: every redemption path continues with
+     * the account right afterwards.
      */
     @EntityGraph(attributePaths = {"user"})
     Optional<AuthToken> findByTokenHashAndType(String tokenHash, AuthTokenType type);
 
     /**
-     * Entwertet alle offenen Token eines Typs für einen Benutzer. Wird vor dem
-     * Ausstellen eines neuen Tokens aufgerufen, damit immer nur der zuletzt
-     * verschickte Link gilt.
+     * Voids every open token of one type for a user. Called before issuing a
+     * new token, so that only the most recently sent link is ever valid.
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
@@ -35,7 +34,7 @@ public interface AuthTokenRepository extends JpaRepository<AuthToken, Long> {
                              @Param("type") AuthTokenType type,
                              @Param("now") Instant now);
 
-    /** Räumt abgelaufene oder eingelöste Token ab. */
+    /** Clears out expired or redeemed tokens. */
     @Modifying
     @Query("delete from AuthToken t where t.expiresAt < :cutoff or t.usedAt is not null")
     int deleteObsolete(@Param("cutoff") Instant cutoff);

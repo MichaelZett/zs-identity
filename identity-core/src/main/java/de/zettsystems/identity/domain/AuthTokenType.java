@@ -1,19 +1,19 @@
 package de.zettsystems.identity.domain;
 
-/** Wozu ein {@link AuthToken} berechtigt. */
+/** What an {@link AuthToken} entitles its holder to do. */
 public enum AuthTokenType {
 
-    /** Bestätigt, dass die angegebene E-Mail-Adresse dem Konto gehört. */
+    /** Confirms that the given email address belongs to the account. */
     EMAIL_VERIFICATION,
 
-    /** Erlaubt einmalig das Setzen eines neuen Passworts. */
+    /** Allows setting a new password once. */
     PASSWORD_RESET,
 
     /**
-     * Lädt eine Person ein, ein Konto zu beanspruchen: Adresse bestätigen und
-     * erstes Passwort setzen. Gilt länger als die übrigen Token
-     * ({@code zs.identity.invitation-validity}) — eine Einladung liest niemand
-     * so schnell wie eine selbst angeforderte Mail.
+     * Invites someone to claim an account: confirm the address and set a first
+     * password. It lives longer than the other tokens
+     * ({@code zs.identity.invitation-validity}) -- nobody reads an invitation
+     * as promptly as a mail they asked for themselves.
      */
     INVITATION
 }

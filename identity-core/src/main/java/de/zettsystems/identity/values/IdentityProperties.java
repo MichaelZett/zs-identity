@@ -7,39 +7,41 @@ import java.time.Duration;
 import java.util.Locale;
 
 /**
- * Einstellungen des Identity-Bausteins, Präfix {@code zs.identity}.
+ * Settings of the identity building block, prefix {@code zs.identity}.
  *
- * @param selfRegistrationEnabled  ob sich Personen selbst registrieren dürfen.
- *                                 Aus bedeutet: Konten legt nur eine
- *                                 Administration an.
- * @param emailVerificationRequired ob ein Konto erst nach bestätigter Adresse
- *                                 nutzbar ist. Aus bedeutet: sofort freigeschaltet
- *                                 — nur sinnvoll, wenn kein Mailversand da ist.
- * @param tokenValidity            wie lange Bestätigungs- und Reset-Links gelten
- * @param invitationValidity       wie lange Einladungen gelten. Eigene Frist,
- *                                 weil eine Einladung niemand angefordert hat:
- *                                 Sie liegt im Postfach, bis jemand Zeit hat,
- *                                 und darf nicht über Nacht verfallen.
- * @param passwordMinLength        Mindestlänge neuer Passwörter
- * @param fromAddress              Absender der Bausteinsmails
- * @param fromName                 Anzeigename des Absenders
- * @param baseUrl                  öffentliche Basis-URL für die Links in den
- *                                 Mails, ohne abschließenden Schrägstrich
- * @param defaultRoleCode          Rolle, die neue Konten bekommen
- * @param nameMode                 welche Namensangaben die Registrierung
- *                                 verlangt (siehe {@link NameMode})
- * @param locale                   Sprache der Mails und Rückfallsprache der
- *                                 Oberfläche. Bringt die Anwendung eine eigene
- *                                 Sprachwahl mit (Vaadins {@code I18NProvider}),
- *                                 folgen die Ansichten dieser; sonst gilt diese
- *                                 Einstellung. Mitgeliefert sind {@code de} und
- *                                 {@code en}, bei allem anderen greift Englisch.
- *                                 Ein Konto kann eine eigene Sprache tragen —
- *                                 dann gilt dessen (siehe
+ * @param selfRegistrationEnabled  whether people may register themselves. Off
+ *                                 means accounts are created by an
+ *                                 administrator only.
+ * @param emailVerificationRequired whether an account becomes usable only once
+ *                                 its address is confirmed. Off means enabled
+ *                                 immediately, which makes sense only when
+ *                                 there is no mail delivery.
+ * @param tokenValidity            how long verification and reset links are valid
+ * @param invitationValidity       how long invitations are valid. It has a
+ *                                 deadline of its own because nobody asked for
+ *                                 an invitation: it sits in the inbox until
+ *                                 someone has time, and must not expire
+ *                                 overnight.
+ * @param passwordMinLength        minimum length of new passwords
+ * @param fromAddress              sender of the mails this block sends
+ * @param fromName                 display name of the sender
+ * @param baseUrl                  public base URL for the links in the mails,
+ *                                 without a trailing slash
+ * @param defaultRoleCode          role that new accounts receive
+ * @param nameMode                 which name the registration requires (see
+ *                                 {@link NameMode})
+ * @param locale                   language of the mails and fallback language
+ *                                 of the UI. If the application brings its own
+ *                                 language selection (Vaadin's
+ *                                 {@code I18NProvider}), the views follow that
+ *                                 one; otherwise this setting applies. Shipped
+ *                                 are {@code de} and {@code en}; anything else
+ *                                 falls back to English. An account may carry a
+ *                                 language of its own, which then wins (see
  *                                 {@code UserAccountDto#locale()}).
- * @param ui                       Aussehen der mitgelieferten Ansichten
- *                                 (siehe {@link UiSettings}); ohne Vaadin im
- *                                 Klassenpfad ohne Wirkung
+ * @param ui                       appearance of the shipped views (see
+ *                                 {@link UiSettings}); without Vaadin on the
+ *                                 classpath it has no effect
  */
 @ConfigurationProperties(prefix = "zs.identity")
 public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationEnabled,
@@ -69,7 +71,7 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
         baseUrl = stripTrailingSlash(baseUrl);
     }
 
-    /** Baut eine absolute Adresse für den Mailversand. */
+    /** Builds an absolute address for the mails. */
     public String urlFor(String path) {
         return path.startsWith("/") ? baseUrl + path : baseUrl + "/" + path;
     }
@@ -79,10 +81,10 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
     }
 
     /**
-     * Dieselben Einstellungen in einer anderen Sprache. Der Record hat viele
-     * Komponenten, und ein Test, der nur die Sprache wechseln will, soll sie
-     * nicht alle abschreiben müssen — sonst kostet jede neue Einstellung eine
-     * Änderung in jedem Test, auch in denen einbindender Anwendungen.
+     * The same settings in another language. The record has many components,
+     * and a test that only wants to switch the language should not have to
+     * copy them all. Otherwise every new setting costs a change in every test,
+     * including those of embedding applications.
      */
     public IdentityProperties withLocale(Locale newLocale) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
@@ -90,14 +92,14 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                 nameMode, newLocale, ui);
     }
 
-    /** Dieselben Einstellungen mit anderem Erscheinungsbild — siehe {@link #withLocale(Locale)}. */
+    /** The same settings with a different appearance; see {@link #withLocale(Locale)}. */
     public IdentityProperties withUi(UiSettings newUi) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
                 nameMode, locale, newUi);
     }
 
-    /** Voreinstellungen für Tests, die den Record von Hand bauen. */
+    /** Defaults for tests that build the record by hand. */
     public static IdentityProperties defaults() {
         return new IdentityProperties(true, true, Duration.ofHours(24), Duration.ofDays(7), 12,
                 "noreply@localhost", "Application", "http://localhost:8080", "USER", NameMode.FULL_NAME,

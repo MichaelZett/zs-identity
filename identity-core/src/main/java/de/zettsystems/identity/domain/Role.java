@@ -19,11 +19,11 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Eine Rolle mit den Berechtigungen, die an ihr hängen.
+ * A role together with the permissions attached to it.
  *
- * <p>Rollen sind Daten, kein Java-Enum: Welche es gibt, bestimmt die einbindende
- * Anwendung über ihren {@code RoleCatalog}. Ein fest verdrahtetes Enum wäre in
- * der zweiten Anwendung sofort falsch.
+ * <p>Roles are data, not a Java enum: which ones exist is decided by the
+ * embedding application through its {@code RoleCatalog}. A hard-wired enum
+ * would already be wrong in the second application.
  */
 @Entity
 @Table(name = "auth_role")
@@ -36,7 +36,7 @@ public class Role extends AbstractAuthEntity {
     private @Nullable Long id;
 
     @Column(nullable = false, unique = true, length = 64)
-    @SuppressWarnings("NullAway.Init") // von Hibernate per Reflection befüllt
+    @SuppressWarnings("NullAway.Init") // populated by Hibernate through reflection
     private String code;
 
     @Column(name = "display_name_key", nullable = false, length = 128)
@@ -62,9 +62,9 @@ public class Role extends AbstractAuthEntity {
     }
 
     /**
-     * Übernimmt Anzeigename und Berechtigungen aus dem Katalog der Anwendung.
-     * Wird beim Start aufgerufen, damit Änderungen am Katalog ohne Migration
-     * wirksam werden.
+     * Takes over display name and permissions from the application's catalog.
+     * Called at startup, so that changes to the catalog take effect without a
+     * migration.
      */
     public void syncFromCatalog(String newDisplayNameKey, Set<String> newAuthorities) {
         this.displayNameKey = Objects.requireNonNull(newDisplayNameKey, "newDisplayNameKey");

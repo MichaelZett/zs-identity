@@ -1,0 +1,65 @@
+name: Bug report
+description: Something in the library behaves differently than documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Not for security flaws.** If the issue allows someone to sign in as
+        another account, escalate privileges or read data they should not see,
+        close this form and use
+        [private reporting](https://github.com/MichaelZett/zs-identity/security/advisories/new)
+        instead.
+  - type: textarea
+    id: what-happens
+    attributes:
+      label: What happens
+      description: What you observed, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: >
+        The smallest sequence that shows it. A failing test against this
+        repository is ideal; configuration plus steps is fine too.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version of zs-identity
+      placeholder: "0.7.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Which module
+      options:
+        - identity-core
+        - identity-vaadin
+        - both, or not sure
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Spring Boot and Java version
+      placeholder: "Spring Boot 4.1.1, Java 25"
+    validations:
+      required: true
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Relevant configuration
+      description: >
+        Your `zs.identity.*` settings and any bean of the library you replaced.
+        Remove passwords and tokens.
+      render: yaml
+  - type: textarea
+    id: logs
+    attributes:
+      label: Stack trace or log output
+      render: text

@@ -16,13 +16,17 @@ jobs:
       is_snapshot: ${{ steps.version.outputs.is_snapshot }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Sonar needs the history: without it every line looks new, and
+          # "new code" -- the part a quality gate actually judges -- is empty.
+          fetch-depth: 0
 
       - name: Read version
         id: version
         run: |
           VERSION="$(grep '^version=' gradle.properties | cut -d'=' -f2)"
           if [ -z "$VERSION" ]; then
-            echo "version fehlt in gradle.properties"
+            echo "version is missing from gradle.properties"
             exit 1
           fi
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
@@ -42,6 +46,20 @@ jobs:
       - name: Build and test
         run: ./gradlew build --no-daemon
 
+      # Analysis reuses what the build just produced (compiled classes, test
+      # results, the JaCoCo XML report) instead of building a second time.
+      #
+      # It stays dormant until SONAR_TOKEN exists, so the build does not break
+      # on a repository that has not been connected yet. Two cases end up here
+      # without a token and are meant to: a fork's pull request never sees
+      # secrets, and neither does anyone who clones this repository.
+      - name: Analyse with SonarQube Cloud
+        if: env.SONAR_TOKEN != ''
+        run: ./gradlew sonar --no-daemon
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v7
@@ -49,11 +67,11 @@ jobs:
           name: test-reports
           path: '**/build/reports/tests/'
 
-  # Release-Weg wie in terminplanung-halle: Steht in gradle.properties eine
-  # Version ohne -SNAPSHOT auf main, publiziert die Pipeline nach GitHub
-  # Packages, legt Tag + GitHub-Release v<version> an und hebt die Version
-  # anschliessend auf die naechste Patch-SNAPSHOT. SNAPSHOTs werden nie
-  # publiziert - die Apps binden ausschliesslich Release-Versionen ein.
+  # Release path as in terminplanung-halle: if gradle.properties on main holds
+  # a version without -SNAPSHOT, the pipeline publishes to GitHub Packages,
+  # creates the tag and the GitHub release v<version>, and then raises the
+  # version to the next patch SNAPSHOT. SNAPSHOTs are never published -- the
+  # applications depend on release versions only.
   release:
     runs-on: ubuntu-latest
     needs: [build]
@@ -74,7 +92,7 @@ jobs:
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null; then
-            echo "Tag v${VERSION} existiert bereits - Version in gradle.properties hochziehen."
+            echo "Tag v${VERSION} already exists - raise the version in gradle.properties."
             exit 1
           fi
 
@@ -104,7 +122,7 @@ jobs:
           CURRENT: ${{ needs.build.outputs.version }}
         run: |
           if [[ ! "$CURRENT" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Unerwartetes Versionsformat fuer Auto-Bump: $CURRENT"
+            echo "Unexpected version format for the auto bump: $CURRENT"
             exit 1
           fi
           MAJOR="$(echo "$CURRENT" | cut -d. -f1)"

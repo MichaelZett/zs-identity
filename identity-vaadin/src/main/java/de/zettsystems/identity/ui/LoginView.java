@@ -13,15 +13,14 @@ import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.values.IdentityProperties;
 
 /**
- * Anmeldeseite.
+ * The sign-in page.
  *
- * <p>Nutzt Vaadins {@code LoginForm}, weil dessen Formular an
- * {@code /login} POSTet und damit direkt von Spring Securitys
- * Formular-Anmeldung verarbeitet wird — es gibt also keinen eigenen
- * Anmeldecode, der Fehler enthalten könnte.
+ * <p>Uses Vaadin's {@code LoginForm}, because its form POSTs to {@code /login}
+ * and is therefore processed directly by Spring Security's form login. That
+ * means there is no sign-in code of our own that could contain mistakes.
  *
- * <p>Die einzige Ansicht, die {@link #centerOnPage()} benutzt: Sie ist so
- * kurz, dass sie oben am Rand kleben würde.
+ * <p>The only view that uses {@link #centerOnPage()}: it is so short that it
+ * would otherwise stick to the top edge.
  */
 @Route(value = IdentityRoutes.LOGIN, autoLayout = false)
 @AnonymousAllowed
@@ -40,18 +39,18 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
         loginForm.addForgotPasswordListener(
                 event -> getUI().ifPresent(ui -> ui.navigate(IdentityRoutes.FORGOT_PASSWORD)));
 
-        // Die Anmeldung füllt die Seite; damit Formular und Knöpfe trotzdem
-        // eine gemeinsame, begrenzte Breite haben, sitzen sie in einer Spalte.
+        // Sign-in fills the page; for the form and the buttons to still share
+        // one limited width, they sit in a column.
         VerticalLayout column = centeredColumn();
         column.add(fullWidth(loginForm));
 
-        // Der Verweis erscheint nur, wenn die Selbstregistrierung eingeschaltet
-        // ist — sonst führt er auf eine Seite, die jede Eingabe ablehnt.
+        // The link only appears when self-registration is switched on.
+        // Otherwise it leads to a page that rejects every input.
         if (registrationService.isSelfRegistrationEnabled()) {
             column.add(fullWidth(registerButton()));
         }
-        // Ohne Bestätigungspflicht gibt es keine Bestätigungsmail — dann führt
-        // der Weg ins Leere und bleibt weg.
+        // Without a confirmation requirement there is no verification mail, so
+        // that route leads nowhere and stays away.
         if (registrationService.isEmailVerificationRequired()) {
             column.add(fullWidth(resendButton()));
         }
@@ -76,16 +75,16 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        // Spring Security hängt bei fehlgeschlagener Anmeldung ?error an.
+        // Spring Security appends ?error after a failed sign-in.
         if (event.getLocation().getQueryParameters().getParameters().containsKey("error")) {
             loginForm.setError(true);
         }
     }
 
     /**
-     * Paket-sichtbar und statisch, damit der Test die Beschriftungen prüfen
-     * kann: {@code LoginForm.getI18n()} ist geschützt, das gesetzte Objekt
-     * lässt sich von außen also nicht mehr auslesen.
+     * Package-visible and static so that the test can check the labels:
+     * {@code LoginForm.getI18n()} is protected, so the object that was set
+     * cannot be read back from outside.
      */
     static LoginI18n loginI18n(IdentityTexts texts) {
         LoginI18n i18n = LoginI18n.createDefault();

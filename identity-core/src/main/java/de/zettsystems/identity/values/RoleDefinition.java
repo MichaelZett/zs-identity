@@ -4,15 +4,16 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Beschreibt eine Rolle, die die einbindende Anwendung braucht.
+ * Describes a role that the embedding application needs.
  *
- * @param code           technischer Schlüssel, landet als {@code ROLE_<code>} in
- *                       den Spring-Security-Authorities. Konvention: GROSS_MIT_UNTERSTRICH.
- * @param displayNameKey i18n-Schlüssel für die Anzeige. Der Baustein löst ihn
- *                       nicht selbst auf — welche Sprachdateien es gibt, weiß
- *                       nur die Anwendung.
- * @param authorities    feingranulare Berechtigungen, die an der Rolle hängen.
- *                       Landen unverändert als Authorities neben der Rolle.
+ * @param code           technical key; ends up as {@code ROLE_<code>} in the
+ *                       Spring Security authorities. Convention:
+ *                       UPPER_CASE_WITH_UNDERSCORES.
+ * @param displayNameKey i18n key for display. The building block does not
+ *                       resolve it: only the application knows which message
+ *                       bundles exist.
+ * @param authorities    fine-grained permissions attached to the role. They
+ *                       become authorities next to the role, unchanged.
  */
 public record RoleDefinition(String code, String displayNameKey, Set<String> authorities) {
 
@@ -26,12 +27,12 @@ public record RoleDefinition(String code, String displayNameKey, Set<String> aut
         authorities = Set.copyOf(authorities);
     }
 
-    /** Rolle ohne eigene Berechtigungen — der häufige Fall. */
+    /** A role without permissions of its own, which is the common case. */
     public static RoleDefinition of(String code, String displayNameKey) {
         return new RoleDefinition(code, displayNameKey, Set.of());
     }
 
-    /** Wie der Code in den Spring-Security-Authorities auftaucht. */
+    /** How the code appears among the Spring Security authorities. */
     public String authorityName() {
         return "ROLE_" + code;
     }

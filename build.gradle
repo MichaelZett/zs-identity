@@ -13,26 +13,25 @@ plugins {
     id 'org.openrewrite.rewrite' version "${rewriteGradleVersion}"
 }
 
-// OpenRewrite laeuft nur auf Zuruf (./gradlew rewriteDryRun bzw. rewriteRun),
-// nie als Teil von `build`: Ein Werkzeug, das Quellen umschreibt, gehoert
-// nicht in einen Lauf, dessen Ergebnis man nicht ansieht.
+// OpenRewrite runs on demand only (./gradlew rewriteDryRun or rewriteRun),
+// never as part of `build`: a tool that rewrites sources does not belong in a
+// run whose result nobody looks at.
 //
-// Die Rezepte kommen aus dem Nachbarprojekt zettsystems-recipes (Maven
-// Central). Aktiv sind nur die REINEN Refactorings (ZettSystemsRecipes) —
-// UseToListTrue und UseFloorMod aendern Verhalten und werden bewusst einzeln
-// aufgerufen, wenn man den Diff wirklich lesen will.
+// The recipes come from the neighbouring project zettsystems-recipes (Maven
+// Central). Only the PURE refactorings are active (ZettSystemsRecipes);
+// UseToListTrue and UseFloorMod change behaviour and are invoked individually
+// on purpose, when someone really means to read the diff.
 //
-// Aufruf:  ./gradlew rewriteDryRun --no-parallel --no-configuration-cache
-// Das Plugin vertraegt weder org.gradle.parallel (es loest fremde
-// Konfigurationen ohne exklusive Sperre auf) noch den Configuration-Cache
-// (es greift zur Ausfuehrungszeit auf Project zu). Beides steht in
-// gradle.properties an, gilt aber fuer `build` — deshalb die Flags nur hier,
-// statt die Einstellungen des ganzen Projekts fuer ein Werkzeug aufzugeben,
-// das selten laeuft.
+// Invocation:  ./gradlew rewriteDryRun --no-parallel --no-configuration-cache
+// The plugin gets along with neither org.gradle.parallel (it resolves other
+// configurations without an exclusive lock) nor the configuration cache (it
+// reaches for Project at execution time). Both are switched on in
+// gradle.properties, but for `build` -- hence the flags here only, rather than
+// giving up the settings of the whole project for a tool that runs rarely.
 //
-// Plugin bewusst auf 7.39.0: 7.40.0/7.41.0 verweisen auf ein rewrite-bom
-// 8.91.0, das (Stand 2026-09-17) nicht in Maven Central liegt — der Build
-// scheitert dann schon beim Aufloesen.
+// The plugin is deliberately pinned to 7.39.0: 7.40.0 and 7.41.0 point at a
+// rewrite-bom 8.91.0 that is not in Maven Central (as of 2026-09-17), so the
+// build fails while resolving.
 dependencies {
     rewrite platform("org.openrewrite.recipe:rewrite-recipe-bom:${rewriteRecipeBomVersion}")
     rewrite "de.zettsystems:zettsystems-recipes:${zettsystemsRecipesVersion}"
@@ -44,49 +43,49 @@ dependencies {
 }
 
 rewrite {
-    // Kuratiert, nicht "alles, was es gibt": Jedes Rezept hier wurde am
-    // Bestand trocken laufen gelassen und sein Diff gelesen.
+    // Curated, not "everything there is": every recipe here was run against the
+    // codebase as a dry run and its diff was read.
     activeRecipe('de.zettsystems.ZettSystemsRecipes')
     activeRecipe('org.openrewrite.staticanalysis.CodeCleanup')
     activeRecipe('org.openrewrite.java.RemoveUnusedImports')
     //
-    // Geprueft und BEWUSST draussen (2026-09-17):
-    //  - org.openrewrite.java.logging.slf4j.Slf4jBestPractices hebt
-    //    LOG.debug(.., e) auf LOG.error an und macht aus lesbaren Aufrufen die
-    //    Fluent-API. Die Level hier sind begruendete Entscheidungen (siehe die
-    //    Kommentare an den Fangbloecken), keine Nachlaessigkeit.
-    //  - org.openrewrite.java.testing.{junit5,assertj}.* wollen
-    //    `useJUnitPlatform()` in JEDES Teilprojekt-Skript schreiben; es steht
-    //    laengst im subprojects-Block der Wurzel. Die eine echte Verbesserung
-    //    daraus (Optional-Assertions) ist uebernommen.
-    //  - org.openrewrite.java.migrate.UpgradeToJava21 und ...UpgradeToJava25
-    //    aendern am Java-Code NICHTS (er ist laengst auf dem Stand) und
-    //    hinterlassen im Build-Skript nur Marker-Kommentare: Die Toolchain
-    //    steht hier als Property (`JavaLanguageVersion.of("${javaVersion}")`),
-    //    die das Rezept nicht aufloesen kann. `javaVersion=25` in
-    //    gradle.properties ist die Wahrheit, nicht das Rezept.
-    //  - org.openrewrite.java.migrate.lang.UseTextBlocks macht aus umbrochenen
-    //    Meldungen Textbloecke mit Zeilenfortsetzung (\ am Zeilenende). Bei
-    //    mehrzeiligem Text (SQL) ein Gewinn, bei einem umbrochenen Satz das
-    //    Gegenteil — 7 Stellen geprueft, alle waeren schlechter lesbar.
-    //  - org.openrewrite.java.migrate.lang.var.UseVarForObject wuerde an 54
-    //    Stellen `var` einsetzen. Das Projekt schreibt Typen aus (8 `var` im
-    //    ganzen Bestand); das ist Stil, kein Versaeumnis.
-    //  - Spring: Ein `SpringBoot4BestPractices` gibt es nicht — rewrite-spring
-    //    hat nur zwoelf gezielte boot4-Rezepte. Geprueft und ohne Befund:
+    // Checked and DELIBERATELY left out (2026-09-17):
+    //  - org.openrewrite.java.logging.slf4j.Slf4jBestPractices raises
+    //    LOG.debug(.., e) to LOG.error and turns readable calls into the fluent
+    //    API. The levels here are reasoned decisions (see the comments on the
+    //    catch blocks), not carelessness.
+    //  - org.openrewrite.java.testing.{junit5,assertj}.* want to write
+    //    `useJUnitPlatform()` into EVERY subproject script; it has long been in
+    //    the subprojects block of the root. The one real improvement from them
+    //    (Optional assertions) has been taken over.
+    //  - org.openrewrite.java.migrate.UpgradeToJava21 and ...UpgradeToJava25
+    //    change NOTHING in the Java code (it is long since up to date) and
+    //    leave behind only marker comments in the build script: the toolchain
+    //    sits here as a property (`JavaLanguageVersion.of("${javaVersion}")`)
+    //    that the recipe cannot resolve. `javaVersion=25` in gradle.properties
+    //    is the truth, not the recipe.
+    //  - org.openrewrite.java.migrate.lang.UseTextBlocks turns wrapped messages
+    //    into text blocks with line continuations (\ at the end of the line).
+    //    A gain for multi-line text (SQL), the opposite for a wrapped sentence
+    //    -- 7 places checked, all would read worse.
+    //  - org.openrewrite.java.migrate.lang.var.UseVarForObject would introduce
+    //    `var` in 54 places. This project spells types out (8 `var` in the
+    //    whole codebase); that is style, not an omission.
+    //  - Spring: there is no `SpringBoot4BestPractices` -- rewrite-spring has
+    //    only twelve targeted boot4 recipes. Checked with no findings:
     //    SpringBootProperties_4_0/_4_1, MigrateAutoconfigurePackages,
-    //    ReplaceMockBeanAndSpyBean, SpringSecurityBestPractices und
-    //    boot3.SpringBoot3BestPractices. MigrateToModularStarters hatte einen
-    //    Befund (spring-security-test -> spring-boot-starter-security-test);
-    //    er ist angewandt, das Rezept selbst ist eine Einmal-Migration und
-    //    bleibt deshalb draussen.
-    // Die Build-Skripte laufen mit: `exclusion(..)` greift fuer sie nicht.
-    // OpenRewrite kuerzt darin qualifizierte Klassennamen (etwa
-    // com.github.spotbugs.snom.Effort -> Effort) und ergaenzt den Import
-    // NICHT — deshalb stehen die Importe oben im Skript von Hand.
+    //    ReplaceMockBeanAndSpyBean, SpringSecurityBestPractices and
+    //    boot3.SpringBoot3BestPractices. MigrateToModularStarters did have one
+    //    finding (spring-security-test -> spring-boot-starter-security-test);
+    //    it has been applied, and the recipe itself is a one-off migration and
+    //    therefore stays out.
+    // The build scripts are processed too: `exclusion(..)` does not apply to
+    // them. OpenRewrite shortens qualified class names in them (for example
+    // com.github.spotbugs.snom.Effort -> Effort) and does NOT add the import,
+    // which is why the imports sit at the top of the script by hand.
 }
 
-// ErrorProne-Checks, die als Sicherheitsnetz auf ERROR stehen.
+// ErrorProne checks raised to ERROR as a safety net.
 ext.errorproneEnforcedChecks = [
         'ArrayRecordComponent',
         'EmptyCatch',
@@ -104,8 +103,8 @@ ext.errorproneEnforcedChecks = [
         'UnnecessaryMethodReference',
 ]
 
-// Filter fuer `dependencyUpdates`. Vor dem subprojects-Block definieren, damit
-// die Closures dort bereits aufloesbar sind.
+// Filters for `dependencyUpdates`. Defined before the subprojects block so that
+// the closures are already resolvable there.
 ext.depUpdateIsUnstable = { String version ->
     def stableKeywords = ['RELEASE', 'FINAL', 'GA']
     def stable = stableKeywords.any { version.toUpperCase(Locale.ROOT).contains(it) }
@@ -119,8 +118,8 @@ ext.depUpdateIsMajorBump = { String current, String candidate ->
     return cur.isInteger() && cand.isInteger() && cand.toInteger() > cur.toInteger()
 }
 
-// Aus der Coverage-Messung heraus: Auto-Konfiguration und JPA-Entities.
-// Die Vaadin-Ansichten sind seit den Karibu-Tests wieder drin.
+// Excluded from the coverage measurement: auto-configuration and JPA entities.
+// The Vaadin views are back in since the Karibu tests.
 ext.coverageExclusions = [
         '**/configuration/**',
         '**/domain/**',
@@ -146,14 +145,14 @@ subprojects {
         withJavadocJar()
     }
 
-    // Automatic-Module-Name statt module-info.java: Der Baustein laeuft mit
-    // Spring, Hibernate und Vaadin auf dem Klassenpfad, nicht im Modulpfad —
-    // ein echter Moduldeskriptor waere dort wirkungslos und hier eine Fessel
-    // (Reflection braucht `opens`, die Sprachdateien beider Artefakte liegen im
-    // selben Ressourcen-Paket). Der Manifest-Eintrag kostet dagegen nichts und
-    // gibt einer Anwendung, die selbst JPMS benutzt, einen STABILEN Modulnamen:
-    // ohne ihn leitet Java ihn aus dem Dateinamen ab, und der aendert sich mit
-    // jedem Versionssprung.
+    // Automatic-Module-Name instead of module-info.java: the building block
+    // runs with Spring, Hibernate and Vaadin on the classpath, not on the
+    // module path -- a real module descriptor would have no effect there and
+    // would be a shackle here (reflection needs `opens`, and the message
+    // bundles of both artifacts live in the same resource package). The
+    // manifest entry costs nothing by contrast and gives an application that
+    // uses JPMS itself a STABLE module name: without it Java derives one from
+    // the file name, and that changes with every version.
     tasks.named('jar') {
         manifest {
             attributes('Automatic-Module-Name': "de.zettsystems.identity"
@@ -172,9 +171,10 @@ subprojects {
     }
 
     dependencies {
-        // Native Gradle-Platform statt io.spring.dependency-management: Die
-        // BOM landet so in den Modul-Metadaten des Artefakts, und das Plugin
-        // ist mit dem Configuration-Cache beim POM-Erzeugen unvertraeglich.
+        // A native Gradle platform instead of io.spring.dependency-management:
+        // this way the BOM ends up in the module metadata of the artifact, and
+        // the plugin is incompatible with the configuration cache when
+        // generating the POM.
         api platform("org.springframework.boot:spring-boot-dependencies:${bootVersion}")
         annotationProcessor platform("org.springframework.boot:spring-boot-dependencies:${bootVersion}")
         testAnnotationProcessor platform("org.springframework.boot:spring-boot-dependencies:${bootVersion}")
@@ -199,16 +199,16 @@ subprojects {
     }
 
     tasks.withType(JavaCompile).configureEach {
-        // Explizit UTF-8 statt Plattform-Default (Windows: CP1252) — die Quellen
-        // enthalten durchgaengig Umlaute.
+        // Explicitly UTF-8 rather than the platform default (Windows: CP1252):
+        // the German message bundles contain umlauts throughout.
         options.encoding = 'UTF-8'
         options.compilerArgs += ['-parameters']
     }
 
     tasks.withType(Javadoc).configureEach {
         options.encoding = 'UTF-8'
-        // Doclint stolpert ueber freie Inline-Tags in deutschsprachigen
-        // Kommentaren; Doku-Form ist kein Build-Kriterium.
+        // Doclint trips over free-standing inline tags; the form of the
+        // documentation is not a build criterion.
         options.addStringOption('Xdoclint:none', '-quiet')
         failOnError = false
     }
@@ -217,9 +217,9 @@ subprojects {
         options.errorprone {
             disableWarningsInGeneratedCode = true
             excludedPaths = '.*/build/generated/.*'
-            // Meldet jedes Inline-Tag in Dateien mit Nicht-ASCII-Zeichen.
+            // Reports every inline tag in files containing non-ASCII characters.
             disable('UnrecognisedJavadocTag')
-            // Wirft intermittierend eine interne Exception (Bug im Check).
+            // Throws an internal exception intermittently (a bug in the check).
             disable('StringConcatToTextBlock')
             nullaway {
                 severity = CheckSeverity.ERROR
@@ -234,8 +234,8 @@ subprojects {
     }
 
     spotbugs {
-        // Echte Enum-Werte statt der Zeichenketten 'max'/'low': Gradle 9 warnt
-        // vor der stillen Umwandlung, Gradle 10 lehnt sie ab.
+        // Real enum values instead of the strings 'max'/'low': Gradle 9 warns
+        // about the silent conversion, Gradle 10 rejects it.
         effort = Effort.valueOf('MAX')
         reportLevel = Confidence.valueOf('LOW')
         excludeFilter = rootProject.file('config/spotbugs/exclude.xml')
@@ -255,7 +255,7 @@ subprojects {
         }
     }
 
-    // SpotBugs auf Testcode bringt fast nur Rauschen (Serializable-, EI_EXPOSE-Muster).
+    // SpotBugs on test code is almost pure noise (Serializable, EI_EXPOSE patterns).
     tasks.named('spotbugsTest') {
         enabled = false
     }
@@ -275,8 +275,8 @@ subprojects {
 
     jacocoTestCoverageVerification {
         dependsOn tasks.named('jacocoTestReport')
-        // setFrom, nicht from: from() addiert zur vom Plugin gesetzten Default-Menge,
-        // die Ausschluesse waeren damit wirkungslos.
+        // setFrom, not from: from() adds to the default set the plugin
+        // installed, which would leave the exclusions without effect.
         classDirectories.setFrom(files(sourceSets.main.output).asFileTree.matching {
             rootProject.ext.coverageExclusions.each { pattern -> exclude pattern }
         })
@@ -301,10 +301,10 @@ subprojects {
         dependsOn tasks.named('jacocoTestCoverageVerification')
     }
 
-    // Veroeffentlichung: GitHub Packages (CI, Releases) und mavenLocal
-    // (./gradlew publishToMavenLocal fuer die lokale Iteration mit einer App).
-    // Zugangsdaten: gpr.user/gpr.key in ~/.gradle/gradle.properties oder
-    // GITHUB_ACTOR/GITHUB_TOKEN in der CI.
+    // Publishing: GitHub Packages (CI, releases) and mavenLocal
+    // (./gradlew publishToMavenLocal for local iteration with an application).
+    // Credentials: gpr.user/gpr.key in ~/.gradle/gradle.properties, or
+    // GITHUB_ACTOR/GITHUB_TOKEN in CI.
     publishing {
         publications {
             maven(MavenPublication) {
@@ -328,9 +328,9 @@ subprojects {
         }
     }
 
-    // Nur stabile Releases und keine Major-Bumps anzeigen. Override:
-    //   ./gradlew dependencyUpdates -Punstable   (RC/M/Beta sichtbar)
-    //   ./gradlew dependencyUpdates -Pmajor      (Major-Bumps sichtbar)
+    // Show stable releases only, and no major bumps. Overrides:
+    //   ./gradlew dependencyUpdates -Punstable   (shows RC/M/beta)
+    //   ./gradlew dependencyUpdates -Pmajor      (shows major bumps)
     dependencyUpdates {
         rejectVersionIf { selection ->
             def allowUnstable = project.hasProperty('unstable')
@@ -349,20 +349,36 @@ subprojects {
     }
 }
 
+// Sonar runs in two places. Locally it talks to the developer's own SonarQube
+// instance; in CI it talks to SonarQube Cloud (formerly SonarCloud), which is
+// free for public projects. The switch is the organization: if one is given,
+// Cloud is meant, otherwise localhost. Nothing has to be passed for the local
+// run -- that is the case that happens daily.
+def sonarOrganization = findProperty('sonar.organization') ?: System.getenv('SONAR_ORGANIZATION')
+def sonarHostDefault = sonarOrganization ? 'https://sonarcloud.io' : 'http://localhost:9000'
+// Cloud derives the project key from owner and repository when a GitHub repo
+// is imported; the local instance has its own short key.
+def sonarKeyDefault = sonarOrganization ? 'MichaelZett_zs-identity' : 'zs-identity'
+
 sonar {
     properties {
-        property 'sonar.projectKey', 'zs-identity'
+        property 'sonar.projectKey', findProperty('sonar.projectKey') ?: sonarKeyDefault
         property 'sonar.projectName', 'zs-identity'
-        property 'sonar.host.url', 'http://localhost:9000'
+        property 'sonar.host.url',
+                findProperty('sonar.host.url') ?: System.getenv('SONAR_HOST_URL') ?: sonarHostDefault
+        if (sonarOrganization) {
+            property 'sonar.organization', sonarOrganization
+        }
         def sonarTokenValue = findProperty('sonar.token') ?: System.getenv('SONAR_TOKEN')
         if (sonarTokenValue) {
             property 'sonar.token', sonarTokenValue
         }
-        // Spiegel von ext.coverageExclusions (dort .class-, hier .java-Muster).
+        // Mirrors ext.coverageExclusions (.class patterns there, .java here).
         property 'sonar.coverage.exclusions', '**/configuration/**,**/domain/**'
-        // Serializable-Regeln erzeugen bei Vaadin/Spring nur Rauschen; java:S2160
-        // meckert bei jeder JPA-Entity, die equals/hashCode aus AbstractAuthEntity
-        // erbt; java:S110 zaehlt die Vererbungstiefe mitsamt der Vaadin-Hierarchie.
+        // The Serializable rules are pure noise with Vaadin and Spring; java:S2160
+        // complains about every JPA entity that inherits equals/hashCode from
+        // AbstractAuthEntity; java:S110 counts the Vaadin hierarchy as our
+        // inheritance depth.
         property 'sonar.issue.ignore.multicriteria', 's1948,s2160,s110'
         property 'sonar.issue.ignore.multicriteria.s2160.ruleKey', 'java:S2160'
         property 'sonar.issue.ignore.multicriteria.s2160.resourceKey', '**/domain/**/*.java'

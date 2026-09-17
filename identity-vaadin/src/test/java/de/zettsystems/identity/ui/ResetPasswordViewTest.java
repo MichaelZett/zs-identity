@@ -139,7 +139,7 @@ class ResetPasswordViewTest extends AbstractViewTest {
         assertThat(notificationTexts()).containsExactly("Das hat nicht geklappt. Bitte versuche es später erneut.");
     }
 
-    /** Ein erneuter Aufruf ohne Token darf das Formular des vorigen nicht stehen lassen. */
+    /** A second visit without a token must not leave the previous form standing. */
     @Test
     void enteringAgainWithoutTokenClearsTheForm() {
         ResetPasswordView view = enteredWithToken(showResetView(), "token-123");

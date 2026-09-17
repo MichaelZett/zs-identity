@@ -15,32 +15,32 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Frischt die Berechtigungen der <em>laufenden</em> Sitzung auf, nachdem sich
- * die Rollen ihres Kontos geändert haben.
+ * Refreshes the authorities of the <em>running</em> session after the roles of
+ * its account have changed.
  *
- * <p>Ohne das hält Spring Security die Berechtigungen fest, die beim Anmelden
- * galten. Wer sich in derselben Sitzung eine Rolle erwirbt — etwa indem er
- * seine erste Gruppe anlegt und damit deren Leitung wird —, läuft danach in
- * jede rollengeschützte Ansicht hinein und bekommt „Zugriff verweigert", bis
- * er sich neu anmeldet. Das sieht nach einem Fehler aus und ist keiner, aber
- * niemand kann das wissen.
+ * <p>Without this, Spring Security holds on to the authorities that applied at
+ * sign-in time. Someone who gains a role within the same session -- by
+ * creating their first group and thereby becoming its leader, say -- walks
+ * into every role-protected view afterwards and gets "access denied" until
+ * they sign in again. That looks like a bug and is not one, but nobody can
+ * know that.
  *
- * <p>Der Auffrischer greift nur, wenn die Änderung <strong>das gerade
- * angemeldete Konto</strong> betrifft. Vergibt eine Administration jemand
- * anderem eine Rolle, passiert hier nichts — deren Sitzung ist nicht
- * erreichbar, und sie bekommt die Rolle beim nächsten Anmelden.
+ * <p>The refresher only acts when the change concerns <strong>the account that
+ * is currently signed in</strong>. If an administrator grants a role to
+ * somebody else, nothing happens here: that person's session is out of reach,
+ * and they get the role at their next sign-in.
  *
- * <p>Zwei Feinheiten, die leicht übersehen werden:
+ * <p>Two subtleties that are easily overlooked:
  *
  * <ul>
- *   <li><strong>Erst nach dem Commit.</strong> Würde die Sitzung schon
- *       innerhalb der Transaktion aufgefrischt und diese danach
- *       zurückgerollt, liefe die Person mit Rechten weiter, die es in der
- *       Datenbank nie gab.</li>
- *   <li><strong>Der Kontext muss gespeichert werden.</strong> Seit Spring
- *       Security 6 schreibt der Rahmen den {@code SecurityContext} nicht mehr
- *       von sich aus in die Sitzung zurück. Ohne das ausdrückliche Speichern
- *       hielte die Auffrischung genau einen Aufruf lang.</li>
+ *   <li><strong>Only after the commit.</strong> If the session were refreshed
+ *       inside the transaction and that transaction were then rolled back, the
+ *       person would carry on with rights that never existed in the
+ *       database.</li>
+ *   <li><strong>The context has to be saved.</strong> Since Spring Security 6
+ *       the framework no longer writes the {@code SecurityContext} back into
+ *       the session by itself. Without saving it explicitly the refresh would
+ *       last exactly one request.</li>
  * </ul>
  */
 public class AuthenticationRefresher {
@@ -48,7 +48,7 @@ public class AuthenticationRefresher {
     private static final Logger LOG = LoggerFactory.getLogger(AuthenticationRefresher.class);
 
     private final UserDetailsService userDetailsService;
-    /** Nur für Tests gesetzt; im Betrieb entsteht das Repository beim Speichern. */
+    /** Set in tests only; in production the repository is created when saving. */
     private final @Nullable SecurityContextRepository contextRepository;
 
     public AuthenticationRefresher(UserDetailsService userDetailsService) {
@@ -62,19 +62,19 @@ public class AuthenticationRefresher {
     }
 
     /**
-     * Frischt die Sitzung auf, sobald die laufende Transaktion festgeschrieben
-     * ist — sofern {@code email} das angemeldete Konto ist.
+     * Refreshes the session as soon as the running transaction is committed,
+     * provided {@code email} is the account that is signed in.
      *
-     * @param email die Adresse des Kontos, dessen Rollen sich geändert haben;
-     *              {@code null} bei verwalteten Konten, die sich ohnehin nicht
-     *              anmelden können
+     * @param email the address of the account whose roles have changed;
+     *              {@code null} for managed accounts, which cannot sign in
+     *              anyway
      */
     public void refreshAfterCommit(@Nullable String email) {
         if (email == null || !isCurrentUser(email)) {
             return;
         }
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            // Ohne laufende Transaktion ist die Änderung bereits geschrieben.
+            // Without a running transaction the change is already written.
             refresh(email);
             return;
         }
@@ -108,15 +108,15 @@ public class AuthenticationRefresher {
             SecurityContextHolder.setContext(context);
             saveToSession(context);
 
-            LOG.debug("Berechtigungen der laufenden Sitzung aufgefrischt: {}",
+            LOG.debug("Refreshed the authorities of the running session: {}",
                     fresh.getAuthorities());
         } catch (UsernameNotFoundException e) {
-            // Das Konto ist zwischenzeitlich verschwunden oder hat keine
-            // Anmeldedaten mehr. Die alte Sitzung stehen zu lassen ist hier
-            // richtig: Der nächste geschützte Aufruf scheitert ohnehin, und
-            // eine Ausnahme würde die gerade erfolgreiche Fachaktion
-            // nachträglich als Fehler erscheinen lassen.
-            LOG.debug("Kein Konto zum Auffrischen für {}", email, e);
+            // The account has disappeared in the meantime, or has no
+            // credentials any more. Leaving the old session in place is right
+            // here: the next protected call fails anyway, and an exception
+            // would make the business action that just succeeded look like a
+            // failure after the fact.
+            LOG.debug("No account to refresh for {}", email, e);
         }
     }
 

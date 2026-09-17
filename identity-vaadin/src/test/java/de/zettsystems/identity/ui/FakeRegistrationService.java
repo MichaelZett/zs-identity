@@ -13,8 +13,8 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Testdoppel statt Mockito-Attrappe: Die Ansichtstests wollen sehen, was
- * tatsächlich beim Dienst ankommt, und steuern, wann er scheitert.
+ * A test double rather than a Mockito stand-in: the view tests want to see what
+ * actually arrives at the service, and to control when it fails.
  */
 class FakeRegistrationService implements RegistrationService {
 
@@ -25,7 +25,7 @@ class FakeRegistrationService implements RegistrationService {
     boolean selfRegistrationEnabled = true;
     boolean emailVerificationRequired = true;
 
-    /** Wenn gesetzt, scheitert der nächste Aufruf damit. */
+    /** When set, the next call fails with it. */
     IdentityException failure;
 
     final List<String> registeredEmails = new ArrayList<>();

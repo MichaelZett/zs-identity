@@ -11,12 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 
 /**
- * Hält fest, wann sich jemand zuletzt angemeldet hat.
+ * Records when someone last signed in.
  *
- * <p>Über ein Spring-Security-Ereignis und nicht im {@code UserDetailsService}:
- * Der wird auch bei einem gescheiterten Anmeldeversuch aufgerufen, das wäre
- * also kein Login-Zeitpunkt. {@link AuthenticationSuccessEvent} feuert nur nach
- * erfolgreicher Prüfung.
+ * <p>Through a Spring Security event rather than in the
+ * {@code UserDetailsService}: that one is called for a failed sign-in attempt
+ * too, so it would not be a sign-in time at all.
+ * {@link AuthenticationSuccessEvent} fires only after a successful check.
  */
 class LoginRecorder {
 

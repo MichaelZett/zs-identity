@@ -8,15 +8,15 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Merkt sich die verschickten Mails, statt sie zuzustellen.
+ * Remembers the mails that were sent instead of delivering them.
  *
- * <p>Ein echtes Testdoppel statt eines Mockito-Mocks: Die Tests brauchen den
- * Link aus der Mail, um den Ablauf weiterzuspielen — genau so, wie es ein Mensch
- * im Posteingang täte.
+ * <p>A real test double rather than a Mockito mock: the tests need the link
+ * from the mail to play the flow through, exactly as a human would from their
+ * inbox.
  */
 public class RecordingMailSender implements IdentityMailSender {
 
-    /** Eine verschickte Mail. */
+    /** One mail that was sent. */
     public record SentMail(Kind kind, String email, String url) {
     }
 
@@ -53,7 +53,7 @@ public class RecordingMailSender implements IdentityMailSender {
                 .reduce((first, second) -> second);
     }
 
-    /** Zieht das Token aus der Adresse in der Mail. */
+    /** Pulls the token out of the address in the mail. */
     public String tokenFromLastMailTo(String email) {
         String url = lastMailTo(email)
                 .orElseThrow(() -> new AssertionError("No mail was sent to " + email))

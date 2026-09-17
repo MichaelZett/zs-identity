@@ -5,13 +5,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Objects;
 
 /**
- * Dünne Hülle um den {@link PasswordEncoder}.
+ * A thin wrapper around the {@link PasswordEncoder}.
  *
- * <p>Zweck: {@code PasswordEncoder#encode} ist in Spring Security so deklariert,
- * dass es {@code null} liefern darf. Ohne diese Prüfung wandert ein
- * möglicherweise leerer Hash bis in die Entity, und die Analysewerkzeuge melden
- * an jeder Aufrufstelle einen möglichen Nullzugriff. Hier wird der Vertrag
- * einmal an der Grenze festgezurrt, statt ihn an vier Stellen zu wiederholen.
+ * <p>Its purpose: in Spring Security, {@code PasswordEncoder#encode} is
+ * declared so that it may return {@code null}. Without this check a possibly
+ * empty hash travels all the way into the entity, and the analysis tools
+ * report a possible null dereference at every call site. The contract is
+ * pinned down once at the boundary instead of being repeated in four places.
  */
 class PasswordHasher {
 

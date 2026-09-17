@@ -3,16 +3,16 @@ package de.zettsystems.identity.testsupport;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Das PostgreSQL-Abbild der Tests. Die Version kommt aus
- * {@code gradle.properties} und wird von Gradle als Systemeigenschaft gesetzt;
- * der Rückfallwert greift nur bei direkten Läufen aus der IDE.
+ * The PostgreSQL image used by the tests. The version comes from
+ * {@code gradle.properties} and is passed by Gradle as a system property; the
+ * fallback value only applies when running directly from the IDE.
  */
 public final class PostgresTestImage {
 
     private static final String FALLBACK_VERSION = "17.10";
 
     private PostgresTestImage() {
-        // Hilfsklasse
+        // Utility class
     }
 
     public static DockerImageName resolve() {

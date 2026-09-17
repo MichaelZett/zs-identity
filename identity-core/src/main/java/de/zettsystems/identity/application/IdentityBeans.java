@@ -17,20 +17,20 @@ import java.time.Clock;
 import java.util.List;
 
 /**
- * Alle Beans des Bausteins — explizit deklariert statt per Komponentensuche
- * eingesammelt.
+ * Every bean of this building block, declared explicitly instead of collected
+ * by a component scan.
  *
- * <p>Jede steht unter {@code @ConditionalOnMissingBean}: Definiert die Anwendung
- * eine eigene Bean desselben Typs, gewinnt ihre. Das ist der Unterschied
- * zwischen "der Baustein lässt sich anpassen" und "der Baustein diktiert" —
- * bei gescannten Komponenten gäbe es diese Wahl nicht.
+ * <p>Each one sits under {@code @ConditionalOnMissingBean}: if the application
+ * defines a bean of the same type, that one wins. This is the difference
+ * between "the building block can be adapted" and "the building block
+ * dictates" -- with scanned components there would be no such choice.
  */
 @Configuration(proxyBeanMethods = false)
 public class IdentityBeans {
 
     /**
-     * Als Bean und nicht als {@code Instant.now()} im Code: Tests können die Zeit
-     * damit festhalten und den Ablauf von Token prüfen, ohne zu warten.
+     * A bean instead of {@code Instant.now()} in the code: this lets tests hold
+     * time still and check that tokens expire, without waiting.
      */
     @Bean
     @ConditionalOnMissingBean
@@ -38,7 +38,7 @@ public class IdentityBeans {
         return Clock.systemUTC();
     }
 
-    /** Texte des Bausteins; die Anwendung kann sie durch eine eigene Bean ersetzen. */
+    /** Texts of the building block; the application can replace them with its own bean. */
     @Bean
     @ConditionalOnMissingBean
     IdentityMessages identityMessages() {
@@ -77,7 +77,7 @@ public class IdentityBeans {
                 properties, clock, authenticationRefresher);
     }
 
-    /** Der tägliche Token-Aufräumlauf; abschaltbar über {@code zs.identity.token-cleanup.enabled}. */
+    /** The daily token cleanup run; can be switched off through {@code zs.identity.token-cleanup.enabled}. */
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnProperty(name = "zs.identity.token-cleanup.enabled", havingValue = "true", matchIfMissing = true)
@@ -86,8 +86,8 @@ public class IdentityBeans {
     }
 
     /**
-     * Hält die Berechtigungen der laufenden Sitzung aktuell, wenn sich die
-     * Rollen des angemeldeten Kontos ändern.
+     * Keeps the authorities of the running session up to date when the roles of
+     * the signed-in account change.
      */
     @Bean
     @ConditionalOnMissingBean
@@ -96,9 +96,9 @@ public class IdentityBeans {
     }
 
     /**
-     * Der Wechsel des aktiven Geltungsbereichs. Ohne Mandanten in der
-     * Anwendung ungenutzt — die Bean kostet nichts und erspart der ersten
-     * mandantenfähigen Anwendung die Frage, woher sie ihn bekommt.
+     * Switching the active scope. Unused in an application without tenants; the
+     * bean costs nothing and saves the first multi-tenant application the
+     * question of where to get it from.
      */
     @Bean
     @ConditionalOnMissingBean
@@ -154,7 +154,7 @@ public class IdentityBeans {
         return new LoginRecorder(userRepository, clock);
     }
 
-    /** Basisrollen des Bausteins; die fachlichen kommen aus der Anwendung. */
+    /** Base roles of the building block; the domain roles come from the application. */
     @Bean
     @ConditionalOnMissingBean(BuiltinRoleCatalog.class)
     RoleCatalog builtinRoleCatalog() {
@@ -162,8 +162,8 @@ public class IdentityBeans {
     }
 
     /**
-     * Muss vor allem laufen, was Rollen erwartet — sonst findet die erste
-     * Registrierung ihre Standardrolle nicht.
+     * Has to run before anything that expects roles, otherwise the first
+     * registration does not find its default role.
      */
     @Bean
     @ConditionalOnMissingBean

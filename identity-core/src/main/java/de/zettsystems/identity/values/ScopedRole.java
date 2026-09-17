@@ -6,15 +6,15 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Eine Rollenzuweisung, wie sie nach außen sichtbar ist: Rollencode und der
- * Bereich, in dem er gilt.
+ * A role assignment as it is visible from the outside: the role code and the
+ * scope it applies to.
  *
- * <p>{@link Serializable} wie {@link Scope} — Zuweisungen wandern mit dem
- * Konto-Dto durch Ansichten, die eine Sitzung überdauern.
+ * <p>{@link Serializable} like {@link Scope}: assignments travel with the
+ * account DTO through views that outlive a single request.
  *
- * @param roleCode Rollencode ohne {@code ROLE_}-Präfix
- * @param scope    Geltungsbereich; {@code null} heißt <strong>global</strong>,
- *                 die Rolle gilt dann überall
+ * @param roleCode role code without the {@code ROLE_} prefix
+ * @param scope    the scope; {@code null} means <strong>global</strong>, in
+ *                 which case the role applies everywhere
  */
 public record ScopedRole(String roleCode, @Nullable Scope scope) implements Serializable {
 
@@ -22,7 +22,7 @@ public record ScopedRole(String roleCode, @Nullable Scope scope) implements Seri
         Objects.requireNonNull(roleCode, "roleCode");
     }
 
-    /** Eine Rolle, die überall gilt. */
+    /** A role that applies everywhere. */
     public static ScopedRole global(String roleCode) {
         return new ScopedRole(roleCode, null);
     }
@@ -36,20 +36,20 @@ public record ScopedRole(String roleCode, @Nullable Scope scope) implements Seri
     }
 
     /**
-     * Der Name, unter dem Spring Security diese Zuweisung kennt:
-     * {@code ROLE_ADMIN} global, {@code ROLE_ADMIN@club:17} mit Bereich.
+     * The name Spring Security knows this assignment by: {@code ROLE_ADMIN}
+     * when global, {@code ROLE_ADMIN@club:17} when scoped.
      *
-     * <p>Der Bereich hängt hinten dran, weil {@code ROLE_}-Präfix und
-     * Rollencode dadurch unverändert bleiben — Ausdrücke wie
-     * {@code hasAuthority("ROLE_ADMIN@club:17")} lesen sich noch, und
-     * {@link Scope} verbietet die Zeichen, mit denen sich hier etwas
-     * einschmuggeln ließe.
+     * <p>The scope is appended rather than prepended so that the {@code ROLE_}
+     * prefix and the role code stay untouched. Expressions such as
+     * {@code hasAuthority("ROLE_ADMIN@club:17")} remain readable, and
+     * {@link Scope} forbids exactly the characters that could smuggle
+     * something in here.
      */
     public String authorityName() {
         return qualify("ROLE_" + roleCode);
     }
 
-    /** Wie {@link #authorityName()}, aber für eine feingranulare Berechtigung. */
+    /** Like {@link #authorityName()}, but for a fine-grained permission. */
     public String qualify(String authority) {
         return scope == null ? authority : authority + Scope.AUTHORITY_SEPARATOR + scope;
     }

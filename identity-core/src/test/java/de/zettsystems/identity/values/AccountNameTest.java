@@ -35,7 +35,7 @@ class AccountNameTest {
         assertThat(name.firstName()).isEqualTo("Anna");
     }
 
-    /** Leere Eingaben werden zu {@code null} — sonst hinge ein Leerstring in der Datenbank. */
+    /** Blank input becomes {@code null}; otherwise an empty string would sit in the database. */
     @Test
     void blankPartsBecomeNull() {
         AccountName name = new AccountName("Anna", "   ", "");

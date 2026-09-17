@@ -10,18 +10,18 @@ import java.time.Clock;
 import java.util.Set;
 
 /**
- * Minimale Anwendung, die den Baustein einbindet — so, wie es ein fremdes
- * Projekt tun würde.
+ * A minimal application embedding the building block, the way an outside
+ * project would.
  *
- * <p>Das ist zugleich die Probe aufs Exempel: Diese Klasse liegt in einem
- * anderen Paketbaum als {@code de.zettsystems.identity}. Findet Spring die
- * Entities und Repositories des Bausteins trotzdem, funktioniert der
- * Paket-Registrar der Auto-Konfiguration.
+ * <p>This is also the proof of the pudding: this class lives in a different
+ * package tree from {@code de.zettsystems.identity}. If Spring finds the
+ * entities and repositories of the building block anyway, the package registrar
+ * of the auto-configuration works.
  */
 @SpringBootApplication
 public class IdentityTestApplication {
 
-    /** Steht für die fachlichen Rollen, die eine echte Anwendung mitbringt. */
+    /** Stands for the domain roles a real application brings along. */
     @Bean
     RoleCatalog testRoleCatalog() {
         return () -> Set.of(
@@ -29,13 +29,13 @@ public class IdentityTestApplication {
                 new RoleDefinition("MEMBER", "role.member", Set.of("season:read")));
     }
 
-    /** Sammelt Mails im Speicher, statt sie zu verschicken. */
+    /** Collects mails in memory instead of sending them. */
     @Bean
     IdentityMailSender recordingMailSender() {
         return new RecordingMailSender();
     }
 
-    /** Feste Zeit, damit Tests den Ablauf von Token steuern können. */
+    /** A fixed time, so that tests can control when tokens expire. */
     @Bean
     Clock testClock() {
         return new MutableTestClock();

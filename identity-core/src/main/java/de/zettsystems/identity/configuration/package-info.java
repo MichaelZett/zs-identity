@@ -1,5 +1,5 @@
 /**
- * Spring-Verdrahtung des Identity-Bausteins.
+ * Spring wiring of the identity building block.
  */
 @NullMarked
 package de.zettsystems.identity.configuration;

@@ -62,8 +62,8 @@ class PasswordResetServiceImpl implements PasswordResetService {
         UserAccount user = tokenIssuer.redeem(token, AuthTokenType.PASSWORD_RESET);
         user.changePassword(passwordHasher.hash(newRawPassword));
 
-        // Wer sein Passwort über den Mail-Link zurücksetzt, hat damit auch
-        // bewiesen, dass ihm die Adresse gehört.
+        // Resetting the password through the link in the mail also proves that
+        // the address belongs to this person.
         if (!user.isEmailVerified()) {
             user.activateAfterEmailVerification();
         }

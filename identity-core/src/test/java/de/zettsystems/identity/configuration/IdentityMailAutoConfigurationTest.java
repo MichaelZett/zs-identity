@@ -13,13 +13,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 /**
- * Der Mailversand ist seit 0.7.0 optional: {@code spring-boot-starter-mail}
- * hängt nur noch {@code compileOnly} am Baustein.
+ * Mail delivery has been optional since 0.7.0:
+ * {@code spring-boot-starter-mail} only hangs {@code compileOnly} off the
+ * building block.
  *
- * <p>Dieser Test ist der Beweis dafür, dass das auch trägt. Ohne ihn wäre es
- * eine Behauptung — im eigenen Testlauf liegt die Mail-Bibliothek ja auf dem
- * Klassenpfad, und der Fall „Anwendung ohne Mailversand" käme nie vor. Der
- * {@code FilteredClassLoader} blendet sie gezielt aus.
+ * <p>This test is the proof that this actually holds. Without it, it would be a
+ * claim: in our own test run the mail library is on the classpath after all,
+ * and the case "application without mail delivery" would never occur. The
+ * {@code FilteredClassLoader} hides it deliberately.
  */
 class IdentityMailAutoConfigurationTest {
 
@@ -29,25 +30,25 @@ class IdentityMailAutoConfigurationTest {
             .withBean(IdentityProperties.class, IdentityProperties::defaults);
 
     /**
-     * Der Fall, für den die Entkopplung gemacht ist: eine REST-Anwendung ohne
-     * jede Mail-Bibliothek. Sie muss starten — mit dem Log-Versand.
+     * The case the decoupling was made for: a REST application without any mail
+     * library at all. It has to start, with delivery to the log.
      */
     @Test
     void withoutTheMailLibraryTheModuleFallsBackToTheLog() {
         contextRunner
                 .withClassLoader(new FilteredClassLoader(JavaMailSender.class))
                 .run(context -> assertThat(context)
-                        .as("ohne Rückfallebene bliebe die Anwendung mit einer fehlenden Bean stehen")
+                        .as("without the fallback the application would stop with a missing bean")
                         .hasSingleBean(IdentityMailSender.class));
     }
 
-    /** Mail-Bibliothek da, aber kein {@code spring.mail.*} konfiguriert: ebenfalls Log-Versand. */
+    /** Mail library present but no {@code spring.mail.*} configured: delivery to the log as well. */
     @Test
     void withTheLibraryButWithoutAConfiguredSenderTheLogStaysTheFallback() {
         contextRunner.run(context -> assertThat(context).hasSingleBean(IdentityMailSender.class));
     }
 
-    /** Der Normalfall: Die Anwendung hat einen {@code JavaMailSender}. */
+    /** The normal case: the application has a {@code JavaMailSender}. */
     @Test
     void withAJavaMailSenderTheMailsGoOut() {
         contextRunner
@@ -59,18 +60,18 @@ class IdentityMailAutoConfigurationTest {
                                 .isEqualTo("JavaMailIdentityMailSender")));
     }
 
-    /** Eine eigene Bean der Anwendung verdrängt beide Varianten. */
+    /** A bean of the application's own displaces both variants. */
     @Test
     void anApplicationCanBringItsOwnSender() {
         IdentityMailSender own = new IdentityMailSender() {
             @Override
             public void sendEmailVerification(de.zettsystems.identity.values.UserAccountDto user, String url) {
-                // Testdoppel
+                // Test double
             }
 
             @Override
             public void sendPasswordReset(de.zettsystems.identity.values.UserAccountDto user, String url) {
-                // Testdoppel
+                // Test double
             }
         };
 

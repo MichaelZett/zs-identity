@@ -17,7 +17,7 @@ class UserAccountDtoTest {
         return new UserAccountDto(1L, email, name, true, true, CREATED, roles);
     }
 
-    /** Klarnamen-Anwendungen sollen ohne Fallunterscheidung auskommen. */
+    /** Applications using real names should get by without a case distinction. */
     @Test
     void aMissingFirstOrLastNameBecomesAnEmptyString() {
         UserAccountDto account = accountWith("anna@example.com", AccountName.display("Sternenflotte"), Set.of());
@@ -35,7 +35,7 @@ class UserAccountDtoTest {
         assertThat(account.lastName()).isEqualTo("Beispiel");
     }
 
-    /** Verwaltete Konten haben keine Adresse und können sich nicht anmelden. */
+    /** Managed accounts have no address and cannot sign in. */
     @Test
     void anAccountWithoutAnAddressIsManaged() {
         assertThat(accountWith(null, AccountName.display("Gastkonto"), Set.of()).managed()).isTrue();
@@ -50,7 +50,7 @@ class UserAccountDtoTest {
         assertThat(account.hasRole("ADMIN")).isFalse();
     }
 
-    /** Die Rollenmenge wird kopiert: Ein DTO ist eine Momentaufnahme, kein Fenster. */
+    /** The set of roles is copied: a DTO is a snapshot, not a window. */
     @Test
     void theRoleSetIsCopiedAndUnmodifiable() {
         Set<String> roles = new HashSet<>(Set.of("USER"));

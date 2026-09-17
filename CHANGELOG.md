@@ -1,246 +1,295 @@
 # Changelog
 
-Nennenswerte Änderungen an zs-identity. Format nach
-[Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach
-[SemVer](https://semver.org/lang/de/). Beim Release wird `## Unreleased` in
-`## <version> - <Datum>` umbenannt.
+Notable changes to zs-identity. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows
+[SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
+`## <version> - <date>`.
+
+## 0.7.1 - 2026-09-17
+
+### Fixed
+- **Granting the same role a second time created a second assignment** and
+  broke at commit time with
+  `duplicate key value violates unique constraint "ux_auth_user_role"`.
+  Reported from `terminplanung-halle` while moving to 0.7.0 (10 failing
+  integration tests). Up to 0.6.0 such a call simply had no effect; only the
+  unique index from V1_5 makes it visible.
+
+  The cause was `AbstractAuthEntity.equals`: it compared types through
+  `getClass()`. Since V1_5, `RoleAssignment.role` is mapped LAZY, so
+  `getRole()` returns a Hibernate proxy, and a proxy delegates `equals` to its
+  target -- what got compared was `Role` against `Role$HibernateProxy`. So
+  `UserAccount.hasRole` took the very same row for a different one, and the
+  supposedly idempotent `grant` added another. It now uses
+  `Hibernate.getClass(..)` on both sides: the type check remains -- every
+  entity has its own sequence, so ids do collide across types -- it just sees
+  through the proxy.
+
+  **The bug only shows** when the same account was loaded earlier in the
+  *same* transaction; the assignment and its proxy are then already in the
+  session. That is exactly why `ScopedRolesIT` did not reveal it.
+  `UserAccountServiceIT.grantingAgainAfterTheAccountWasLoadedChangesNothing`
+  now pins that sequence down.
+
+### Added
+- **`LICENSE` (Apache-2.0).** Until now the building block was formally "all
+  rights reserved" -- nobody was allowed to use it, and Maven Central would not
+  have accepted it. Apache-2.0 allows use in commercial applications too and
+  contains the patent clause that MIT lacks.
+- **`SECURITY.md`** with the reporting route for security flaws: privately
+  through the security tab, never as a public issue. For a building block that
+  manages sign-in and permissions, an issue publishes the flaw before a fix
+  exists.
+- **`CONTRIBUTING.md`** -- how to build, and the non-negotiable rules of the
+  building block, for contributions from outside.
+- **Issue templates** under `.github/ISSUE_TEMPLATE/` for bugs and feature
+  requests; blank issues are switched off and the security route is linked.
+- **Analysis through SonarQube Cloud** in CI, next to the local instance. The
+  build picks between them by the organization (`SONAR_ORGANIZATION`); the step
+  stays dormant until `SONAR_TOKEN` exists, so a fork's pull request does not
+  fail on a missing secret.
+
+### Changed
+- **Comments and Javadoc are now English** throughout both modules, as are
+  README, CHANGELOG, the build scripts and the CI workflow. The message bundles
+  stay bilingual -- that is their purpose. The one exception is the comments
+  inside the Flyway migration scripts: Flyway checksums the whole file, so
+  editing an applied migration would make every existing installation fail
+  validation.
 
 ## 0.7.0 - 2026-09-17
 
-> Sprache am Konto, Oberflächen-Regeln und Rollen mit Geltungsbereich sind
-> zusammen entstanden, ohne ein Release dazwischen.
+> The language on the account, the UI rules and roles with a scope grew
+> together, without a release in between.
 
 ### Added
-- **Rollen mit Geltungsbereich** (Migration **V1_5**). Eine Rolle kann jetzt
-  für einen Bereich gelten statt überall: „Admin **von Verein 17**".
-  Hintergrund sind mehrere einbindende Anwendungen, die mandantenfähig werden;
-  ohne den Bereich baut jede von ihnen dieselbe Zuordnungstabelle nach.
-  - **`Scope(type, id)`** (`club:17`) als Wert. Der Baustein **deutet** ihn
-    nie — er speichert, gibt zurück und vergleicht. Verboten sind `@`, `:`
-    und Leerzeichen: Aus Rolle und Bereich wird ein Authority-Name, und eine
-    Kennung mit diesen Zeichen könnte eine Berechtigung erfinden.
+- **Roles with a scope** (migration **V1_5**). A role can now apply to one area
+  instead of everywhere: "admin **of club 17**". The background is several
+  embedding applications becoming multi-tenant; without the scope each of them
+  rebuilds the same mapping table.
+  - **`Scope(type, id)`** (`club:17`) as a value. The building block never
+    **interprets** it -- it stores, returns and compares. Forbidden are `@`,
+    `:` and whitespace: role and scope are combined into an authority name, and
+    an identifier containing those characters could invent a permission.
   - **`grantRole(userId, code, scope)`** / **`revokeRole(..)`**,
-    **`rolesOf(userId, scope)`**, **`scopesOf(userId, type)`** — alle als
-    `default`-Methoden, eigene Dienste kompilieren unverändert weiter. Eine
-    globale Rolle bleibt beim Entzug im Bereich bestehen; sie ist eine andere
-    Zuweisung.
-  - **`UserAccountDto.roleAssignments()`** mit `hasRole(code, scope)`,
-    `rolesIn(scope)` und `scopesOf(type)`. Globale Rollen zählen überall mit.
-  - **Authorities sind qualifiziert**: `ROLE_ADMIN@club:17`, feingranulare
-    Berechtigungen ebenso (`season:read@club:17`).
-  - **`ActiveScopeService`**: Der Bereich, in dem die Person gerade arbeitet.
-    Dessen Rollen gelten zusätzlich **ohne** Zusatz — nur deshalb bedeutet
-    `@RolesAllowed("ADMIN")` weiterhin etwas Lesbares, nämlich „hier". Beim
-    Anmelden ist kein Bereich aktiv; welcher es sein soll, weiß nur die
-    Anwendung.
-  - `auth_user_role` ist damit eine eigene Entity (`RoleAssignment`) statt
-    einer `@ManyToMany`-Tabelle. Bestehende Zuweisungen wandern auf den
-    leeren Bereich und verhalten sich unverändert.
-- **Sprache am Konto** (`auth_user.locale`, Migration **V1_4**). Bisher ging
-  jede Mail in `zs.identity.locale` hinaus, auch an Konten, die sich in einer
-  anderen Sprache registriert hatten — beim Versand gibt es keinen Browser,
-  den man fragen könnte. Jetzt entscheidet die Sprache des Kontos, und erst
-  ohne eigene Wahl (`null`) gilt wieder die der Anwendung.
-  Neu dafür: `UserAccountDto.locale()` und `localeOr(fallback)`,
-  `UserAccountService#changeLocale(userId, locale)` — der Weg, den eine
-  Anwendung ihren Kontoeinstellungen unterlegt —, sowie die Überladungen
+    **`rolesOf(userId, scope)`**, **`scopesOf(userId, type)`** -- all as
+    `default` methods, so custom services keep compiling unchanged. A global
+    role survives a revoke within a scope; it is a different assignment.
+  - **`UserAccountDto.roleAssignments()`** with `hasRole(code, scope)`,
+    `rolesIn(scope)` and `scopesOf(type)`. Global roles count everywhere.
+  - **Authorities are qualified**: `ROLE_ADMIN@club:17`, and fine-grained
+    permissions likewise (`season:read@club:17`).
+  - **`ActiveScopeService`**: the scope the person is currently working in. Its
+    roles additionally apply **without** the suffix -- only that keeps
+    `@RolesAllowed("ADMIN")` meaning something readable, namely "here". At
+    sign-in time no scope is active; which one it should be is known only to
+    the application.
+  - `auth_user_role` is therefore an entity of its own (`RoleAssignment`)
+    rather than a `@ManyToMany` table. Existing assignments move to the empty
+    scope and behave unchanged.
+- **The language on the account** (`auth_user.locale`, migration **V1_4**).
+  Until now every mail went out in `zs.identity.locale`, even to accounts that
+  had registered in another language -- at delivery time there is no browser to
+  ask. Now the language of the account decides, and only without a choice of
+  its own (`null`) does the application's language apply again.
+  New for this: `UserAccountDto.locale()` and `localeOr(fallback)`,
+  `UserAccountService#changeLocale(userId, locale)` -- the route an application
+  puts behind its account settings -- plus the overloads
   `RegistrationService#register(email, password, name, locale)`,
-  `InvitationService#inviteNewAccount(email, name, locale)` und
-  `InvitationService#claim(token, password, locale)`. Alle drei sind
-  `default`-Methoden: Ein eigener Dienst einer Anwendung kompiliert unverändert
-  weiter. `RegistrationView` und `ClaimAccountView` reichen ihre Sprache von
-  selbst durch. Eine **Ansicht** für die Sprachwahl bringt der Baustein nicht
-  mit — wo sie hingehört, weiß nur die Anwendung.
-- **Oberflächen-Regeln für `identity-vaadin`** (`IdentityFormView`). Alle
-  Ansichten des Bausteins erben jetzt eine gemeinsame Gestalt: eine zentrierte
-  Spalte mit Höchstbreite, `border-box`, keine festen Pixelbreiten, jedes Feld
-  und jeder Knopf über die volle Spaltenbreite — die Untergrenze ist „am
-  Telefon und am Rechner brauchbar, kein Querscrollen bei 375 px", und ein
-  Test hält sie für jede Ansicht fest. Dazu feste CSS-Klassen zum Mitstylen:
-  `identity-view`, je Ansicht `identity-view--<name>`, in der Anmeldung innen
-  `identity-view__column`.
-- **`zs.identity.ui.*`**: `max-width` (Default `28rem`), `class-names` (eigene
-  CSS-Klassen an jeder Ansicht — der Andockpunkt für das Theme der Anwendung)
-  und `notification-duration` (Default `5s`, `0` lässt Hinweise stehen).
-- **`IdentityProperties#withLocale(..)` und `#withUi(..)`**: Damit ein Test,
-  der nur eine Einstellung wechseln will, nicht den ganzen Record abschreiben
-  muss.
-- **`ForgotPasswordView`/`ResendVerificationView`** kennzeichnen ihr
-  Adressfeld als `autocomplete="username"` — der Passwortmanager bietet die
-  Adresse damit an, statt sie tippen zu lassen.
+  `InvitationService#inviteNewAccount(email, name, locale)` and
+  `InvitationService#claim(token, password, locale)`. All three are `default`
+  methods: an application's own service keeps compiling unchanged.
+  `RegistrationView` and `ClaimAccountView` pass their language through by
+  themselves. The building block brings no **view** for the language
+  selection -- where it belongs is known only to the application.
+- **UI rules for `identity-vaadin`** (`IdentityFormView`). Every view of the
+  building block now inherits a shared shape: a centred column with a maximum
+  width, `border-box`, no fixed pixel widths, every field and every button
+  across the full column width. The lower bound is "usable on a phone and on a
+  desktop, no horizontal scrolling at 375 px", and a test pins it down for
+  every view. Alongside that, fixed CSS classes for styling along:
+  `identity-view`, `identity-view--<name>` per view, and
+  `identity-view__column` inside the sign-in page.
+- **`zs.identity.ui.*`**: `max-width` (default `28rem`), `class-names` (your
+  own CSS classes on every view -- the hook for the application's theme) and
+  `notification-duration` (default `5s`, `0` leaves notifications standing).
+- **`IdentityProperties#withLocale(..)` and `#withUi(..)`**: so that a test
+  wanting to change a single setting does not have to copy out the whole
+  record.
+- **`ForgotPasswordView`/`ResendVerificationView`** mark their address field as
+  `autocomplete="username"`, so the password manager offers the address instead
+  of making it be typed.
 
 ### Build
-- **Abhängigkeiten aktualisiert**: Vaadin 25.2.8, Karibu-Testing 2.7.3,
-  NullAway 0.14.1 (Plugin 3.2.0), ErrorProne-Plugin 5.1.1, SpotBugs-Plugin
-  6.5.11, ben-manes 0.64.0, Sonar-Plugin 7.5.0, Gradle-Wrapper 9.7.1.
-- **OpenRewrite eingebunden** (`org.openrewrite.rewrite`, nur auf Zuruf): die
-  eigenen Rezepte aus `de.zettsystems:zettsystems-recipes:1.0.0` plus
-  `staticanalysis.CodeCleanup` und `RemoveUnusedImports` aus dem
-  `rewrite-recipe-bom`. Einmal über den Bestand gelaufen: Import-Blöcke
-  vereinheitlicht, qualifizierte Klassennamen durch Importe ersetzt,
-  `x.equals("literal")` umgedreht, ein toter Import entfernt. Welche
-  Rezeptgruppen geprüft und bewusst abgelehnt wurden, steht im `rewrite`-Block
-  der `build.gradle`.
-- **Boot-4-Testabhängigkeit modularisiert**: `spring-security-test` →
-  `org.springframework.boot:spring-boot-starter-security-test` (Befund aus
+- **Dependencies updated**: Vaadin 25.2.8, Karibu-Testing 2.7.3, NullAway
+  0.14.1 (plugin 3.2.0), ErrorProne plugin 5.1.1, SpotBugs plugin 6.5.11,
+  ben-manes 0.64.0, Sonar plugin 7.5.0, Gradle wrapper 9.7.1.
+- **OpenRewrite wired in** (`org.openrewrite.rewrite`, on demand only): our own
+  recipes from `de.zettsystems:zettsystems-recipes:1.0.0` plus
+  `staticanalysis.CodeCleanup` and `RemoveUnusedImports` from the
+  `rewrite-recipe-bom`. Run once across the codebase: import blocks unified,
+  qualified class names replaced by imports, `x.equals("literal")` flipped
+  around, one dead import removed. Which recipe groups were checked and
+  deliberately rejected is written down in the `rewrite` block of
+  `build.gradle`.
+- **Boot 4 test dependency modularised**: `spring-security-test` ->
+  `org.springframework.boot:spring-boot-starter-security-test` (a finding from
   `spring.boot4.MigrateToModularStarters`).
-- **`spring-boot-starter-validation` entfernt.** Der Baustein benutzt keine
-  einzige Bean-Validation-Annotation; er zwang jeder einbindenden Anwendung
-  Hibernate Validator auf. Wer ihn selbst braucht, nimmt ihn direkt auf.
-- **`Automatic-Module-Name` in beiden Artefakten**: `de.zettsystems.identity`
-  und `de.zettsystems.identity.ui`. Anwendungen, die JPMS benutzen, bekommen
-  damit einen stabilen Modulnamen statt eines aus dem Dateinamen abgeleiteten.
-  Ein `module-info.java` bleibt bewusst aus — Begründung im README.
+- **`spring-boot-starter-validation` removed.** The building block uses not a
+  single Bean Validation annotation; it forced Hibernate Validator on every
+  embedding application. Whoever needs it takes it directly.
+- **`Automatic-Module-Name` in both artifacts**: `de.zettsystems.identity` and
+  `de.zettsystems.identity.ui`. Applications using JPMS get a stable module
+  name instead of one derived from the file name. A `module-info.java` stays
+  out on purpose -- the reasoning is in the README.
 
 ### Changed
-- **`spring-boot-starter-mail` ist optional geworden** (`compileOnly`).
-  **Anwendungen, die Mails verschicken, nehmen ihn selbst auf** — eine Zeile
-  im Build. Ohne ihn startet der Baustein weiterhin und fällt auf den
-  Log-Versand zurück; eine Anwendung mit eigenem `IdentityMailSender` zahlt
-  jakarta.mail gar nicht mehr mit. Dafür ist die Mail-Auto-Konfiguration
-  zweigeteilt (`@ConditionalOnClass`), und `IdentityMailFactory.javaMail(..)`
-  ist nach `JavaMailFactory.javaMail(..)` gewandert: In einer Anwendung ohne
-  Mail-Bibliothek darf keine erreichbare Signatur einen Mail-Typ nennen.
-  `IdentityMailAutoConfigurationTest` prüft das mit einem
-  `FilteredClassLoader`, der die Bibliothek ausblendet.
-- **`IdentityProperties` hat eine Komponente mehr** (`ui`, an letzter Stelle).
-  Wer den Record von Hand baut — in Tests üblich —, passt den Aufruf an oder
-  nimmt künftig `IdentityProperties.defaults().withLocale(..)`. Grund für den
-  Minor-Sprung, wie schon bei 0.6.0.
-- **`UserAccountDto` hat zwei Komponenten mehr** (`locale`; `roleCodes` ist
-  zu `roleAssignments` geworden). Die Konstruktoren mit einfachen
-  Rollencodes bleiben — ihre Rollen gelten dann global —, und `roleCodes()`
-  antwortet weiterhin, jetzt mit den globalen Rollen. Anwendungen ohne
-  Mandanten merken nichts davon.
-- **`UserAccount#getRoles()`** liefert die **globalen** Rollen; alle
-  Zuweisungen gibt es über `getRoleAssignments()`. `replaceRoles(..)` setzt
-  nur die globalen neu — bereichsgebundene bleiben stehen, weil der Aufruf
-  über Mandanten nichts aussagt. (Entity, verlässt das Modul nicht.)
+- **`spring-boot-starter-mail` has become optional** (`compileOnly`).
+  **Applications that send mails take it themselves** -- one line in the build.
+  Without it the building block still starts and falls back to delivery through
+  the log; an application with its own `IdentityMailSender` no longer pays for
+  jakarta.mail at all. For this the mail auto-configuration is split in two
+  (`@ConditionalOnClass`), and `IdentityMailFactory.javaMail(..)` has moved to
+  `JavaMailFactory.javaMail(..)`: in an application without a mail library, no
+  reachable signature may name a mail type.
+  `IdentityMailAutoConfigurationTest` checks this with a `FilteredClassLoader`
+  that hides the library.
+- **`IdentityProperties` has one more component** (`ui`, in last position).
+  Whoever builds the record by hand -- common in tests -- adjusts the call or
+  uses `IdentityProperties.defaults().withLocale(..)` from now on. The reason
+  for the minor bump, as with 0.6.0 before it.
+- **`UserAccountDto` has two more components** (`locale`; `roleCodes` has
+  become `roleAssignments`). The constructors taking plain role codes remain --
+  their roles are then global -- and `roleCodes()` still answers, now with the
+  global roles. Applications without tenants notice none of it.
+- **`UserAccount#getRoles()`** returns the **global** roles; every assignment
+  is available through `getRoleAssignments()`. `replaceRoles(..)` replaces the
+  global ones only -- scoped ones stay, because the call says nothing about
+  tenants. (An entity; it never leaves the module.)
 
 ## 0.6.0 - 2026-09-16
 
 ### Added
-- **Einladungen** (`InvitationService`). Ein Mechanismus für zwei Fälle:
-  Ein **verwaltetes Konto beanspruchen** — `inviteToClaim(userId, email)`
-  trägt die Adresse an einem Konto ohne Anmeldedaten nach und verschickt den
-  Link; die `userId` bleibt stabil, die fachlichen Daten der Anwendung hängen
-  weiter daran. Und **Registrierung nur auf Einladung** —
-  `inviteNewAccount(email, name)` legt ein Konto **ohne Passwort** an und lädt
-  es ein; zusammen mit `zs.identity.self-registration-enabled=false` kommt
-  damit nur herein, wer eingeladen wurde. Ein Startpasswort muss niemand mehr
-  übermitteln.
-  Dazu: `AuthTokenType.INVITATION`, die Ansicht `ClaimAccountView` unter
+- **Invitations** (`InvitationService`). One mechanism for two cases.
+  **Claiming a managed account** -- `inviteToClaim(userId, email)` adds the
+  address to an account without credentials and sends the link; the `userId`
+  stays stable and the application's domain data stays attached to it. And
+  **invitation-only registration** -- `inviteNewAccount(email, name)` creates
+  an account **without a password** and invites it; together with
+  `zs.identity.self-registration-enabled=false` only those who were invited get
+  in. Nobody has to transmit an initial password any more.
+  Along with it: `AuthTokenType.INVITATION`, the view `ClaimAccountView` under
   `IdentityRoutes.CLAIM_ACCOUNT` (`invitation`), `resendInvitation(userId)`
-  (entwertet die vorige Einladung) und `findInvitee(token)`, mit dem die
-  Ansicht den Namen des eingeladenen Kontos anzeigt.
-- **`zs.identity.invitation-validity`** (Default `7d`): eigene Frist für
-  Einladungen. Sie hat niemand angefordert — sie liegt im Postfach, bis
-  jemand Zeit hat, und darf nicht über Nacht verfallen wie ein Reset-Link.
-  Die Mail nennt glatte Fristen über einem Tag jetzt in Tagen
-  (`identity.mail.validity.days`); `24h` steht unverändert als „24 Stunden".
-- **`IdentityMailSender#sendInvitation`** als `default`-Methode, die scheitert,
-  statt still nichts zu tun. Anwendungen mit eigenem Versandweg kompilieren
-  unverändert weiter und setzen sie um, sobald sie einladen wollen.
+  (which voids the previous invitation) and `findInvitee(token)`, which the
+  view uses to show the name of the invited account.
+- **`zs.identity.invitation-validity`** (default `7d`): a deadline of its own
+  for invitations. Nobody asked for one -- it sits in the inbox until someone
+  has time, and must not expire overnight like a reset link. The mail now
+  states whole deadlines above a day in days
+  (`identity.mail.validity.days`); `24h` still reads as "24 hours".
+- **`IdentityMailSender#sendInvitation`** as a `default` method that fails
+  rather than silently doing nothing. Applications with their own delivery path
+  keep compiling unchanged and implement it once they want to invite.
 
 ### Changed
-- **`IdentityProperties` hat eine Komponente mehr** (`invitationValidity`,
-  an vierter Stelle). Wer den Record von Hand baut — in Tests üblich —,
-  passt den Aufruf an. Ein zweiter Konstruktor wäre der bequemere Weg gewesen,
-  macht die Bindung von `@ConfigurationProperties` aber mehrdeutig
-  („No default constructor found“). Deshalb ein Minor-Sprung auf 0.6.0.
+- **`IdentityProperties` has one more component** (`invitationValidity`, in
+  fourth position). Whoever builds the record by hand -- common in tests --
+  adjusts the call. A second constructor would have been the more convenient
+  route but makes the binding of `@ConfigurationProperties` ambiguous ("No
+  default constructor found"). Hence the minor bump to 0.6.0.
 
-### Neue Meldungsschlüssel
+### New message keys
 `identity.error.accountAlreadyClaimed`, `identity.mail.invitation.subject`,
 `identity.mail.invitation.body`, `identity.mail.invitation.body.html`,
-`identity.mail.validity.days`, `identity.claim.*` (Ansicht). Wer die Texte
-selbst setzt, ergänzt sie.
+`identity.mail.validity.days`, `identity.claim.*` (the view). Whoever sets the
+texts themselves adds them.
 
 ## 0.5.1 - 2026-09-09
 
 ### Fixed
-- **Klickbarer Link in Bestätigungs- und Reset-Mail.** Beide Mails gehen jetzt
-  als `multipart/alternative` hinaus: derselbe Text wie bisher und daneben ein
-  HTML-Teil mit echtem `<a href>`. Outlook bricht in Nur-Text-Nachrichten lange
-  Zeilen um und machte aus dem Link — mit dem 43-stelligen Token immer über 76
-  Zeichen — keinen anklickbaren mehr. Neue Schlüssel
-  `identity.mail.verification.body.html` und `identity.mail.reset.body.html`;
-  wer die Texte selbst setzt, ergänzt sie.
+- **A clickable link in the verification and reset mails.** Both mails now go
+  out as `multipart/alternative`: the same text as before, and next to it an
+  HTML part with a real `<a href>`. In plain-text messages Outlook wraps long
+  lines and turned the link -- always longer than 76 characters with its
+  43-character token -- into one that could no longer be clicked. New keys
+  `identity.mail.verification.body.html` and `identity.mail.reset.body.html`;
+  whoever sets the texts themselves adds them.
 
 ## 0.5.0 - 2026-08-30
 
 ### Added
-- **Bündelabfrage.** `UserAccountService#findAllById(Collection<Long>)` lädt
-  mehrere Konten samt Rollen in einer Abfrage — für Mitgliederlisten statt
-  eines `findById` je Zeile.
-- **Token-Aufräumlauf.** `TokenCleanupScheduler` löscht täglich um 03:15
-  eingelöste und seit mehr als 7 Tagen abgelaufene Token
-  (`AuthTokenRepository#deleteObsolete`). Läuft nur, wenn die Anwendung
-  `@EnableScheduling` setzt; abschaltbar mit
+- **Bulk lookup.** `UserAccountService#findAllById(Collection<Long>)` loads
+  several accounts including their roles in one query -- for member lists,
+  instead of one `findById` per row.
+- **Token cleanup run.** `TokenCleanupScheduler` deletes redeemed tokens and
+  those expired for more than 7 days every day at 03:15
+  (`AuthTokenRepository#deleteObsolete`). It runs only when the application
+  sets `@EnableScheduling`; it can be switched off with
   `zs.identity.token-cleanup.enabled=false`.
 
 ## 0.4.0 - 2026-08-30
 
 ### Added
-- **Konto löschen.** `UserAccountService#deleteAccount(userId)` entfernt ein
-  Konto endgültig samt Rollenzuordnung und Tokens (Fremdschlüssel mit
-  `ON DELETE CASCADE`). Die Anwendung räumt ihre eigenen Daten zur Kennung
-  vorher selbst auf. Gedacht für die Verwaltung, etwa bei doppelt angelegten
-  Konten.
+- **Deleting an account.** `UserAccountService#deleteAccount(userId)` removes
+  an account for good, along with its role assignments and tokens (foreign keys
+  with `ON DELETE CASCADE`). The application clears up its own data for that id
+  beforehand. Intended for administration, for accounts created twice for
+  example.
 
 ## 0.3.0 - 2026-08-29
 
 ### Added
-- **Erzwungener Passwortwechsel.** `UserAccountService#requirePasswordChange(userId)`
-  setzt das Flag `must_change_password` (Migration `V1_3`); jedes Setzen eines
-  neuen Passworts — `changePassword` wie der Reset über „Passwort vergessen" —
-  löscht es. `UserAccountDto` und `IdentityUserDetails` tragen
-  `mustChangePassword()`. In `identity-vaadin` führt `PasswordChangeGuard`
-  (angehängt über einen `VaadinServiceInitListener` per ServiceLoader) jede
-  Route auf die neue `ChangePasswordView` (`IdentityRoutes.CHANGE_PASSWORD` =
-  `password/change`, `@PermitAll`, ohne Layout, mit Abmelden-Knopf), bis das
-  Passwort gewechselt ist. Nach dem Wechsel frischt der Baustein die laufende
-  Sitzung auf.
-- Neue Texte `identity.change.*` in beiden Sprachdateien.
+- **Forced password change.** `UserAccountService#requirePasswordChange(userId)`
+  sets the `must_change_password` flag (migration `V1_3`); setting any new
+  password -- `changePassword` as well as the reset through "forgot password"
+  -- clears it. `UserAccountDto` and `IdentityUserDetails` carry
+  `mustChangePassword()`. In `identity-vaadin`, `PasswordChangeGuard` (attached
+  through a `VaadinServiceInitListener` via the ServiceLoader) sends every
+  route to the new `ChangePasswordView` (`IdentityRoutes.CHANGE_PASSWORD` =
+  `password/change`, `@PermitAll`, without a layout, with a sign-out button)
+  until the password has been changed. After the change the building block
+  refreshes the running session.
+- New texts `identity.change.*` in both message bundles.
 
 ### Changed
-- `UserAccountDto` hat die neue Komponente `mustChangePassword` am Ende; der
-  bisherige Konstruktor bleibt als Überladung (Wert `false`), Anwendungen
-  müssen dafür nichts ändern.
-- `IdentityUserDetails` hat einen öffentlichen Konstruktor mit dem neuen
-  Parameter `mustChangePassword` — für Tests einbindender Anwendungen.
-- Die Ansicht braucht Vaadins `AuthenticationContext`; die Bean kommt aus
-  `vaadin-spring` von selbst.
+- `UserAccountDto` has the new component `mustChangePassword` at the end; the
+  previous constructor remains as an overload (with the value `false`), so
+  applications need to change nothing.
+- `IdentityUserDetails` has a public constructor with the new parameter
+  `mustChangePassword` -- for the tests of embedding applications.
+- The view needs Vaadin's `AuthenticationContext`; the bean comes from
+  `vaadin-spring` by itself.
 
 
 ## 0.2.0 - 2026-08-28
 
 ### Added
-- Alle Texte — Ansichten, Mails, Meldungen zu `IdentityMessageKeys` — kommen
-  aus mitgelieferten Sprachdateien in **Deutsch und Englisch**. Auflösung über
-  den neuen Port `IdentityMessages`; eine eigene Bean ersetzt einzelne oder
-  alle Texte (`IdentityMessages.resourceBundles()` als Rückfall).
-- Einstellung `zs.identity.locale` (Default `de`): Sprache der Mails und
-  Rückfallsprache der Ansichten. Bringt die Anwendung einen `I18NProvider`
-  mit, folgen die Ansichten stattdessen der Sprache der `UI`.
-- Browserlose Tests für `identity-vaadin` mit Karibu; Coverage-Schwelle auf
-  78 % Line / 80 % Branch angehoben, die Ansichten sind nicht mehr
-  ausgenommen.
+- All texts -- views, mails, the messages behind `IdentityMessageKeys` -- come
+  from shipped message bundles in **German and English**. Resolution goes
+  through the new port `IdentityMessages`; a bean of your own replaces
+  individual texts or all of them (`IdentityMessages.resourceBundles()` as the
+  fallback).
+- The setting `zs.identity.locale` (default `de`): the language of the mails
+  and the fallback language of the views. If the application brings an
+  `I18NProvider`, the views follow the language of the `UI` instead.
+- Browserless tests for `identity-vaadin` with Karibu; the coverage threshold
+  raised to 78 % line / 80 % branch, and the views are no longer excluded.
 
 ### Changed
-- **Bruch:** `IdentityProperties` hat die Komponente `locale`, die
-  View-Konstruktoren und `IdentityMailFactory.javaMail(…)` je einen Parameter
-  `IdentityMessages` mehr. Anwendungen, die nur über die Auto-Konfiguration
-  einbinden, merken davon nichts.
-- Seitentitel über `HasDynamicTitle` statt `@PageTitle` — eine Annotation
-  kann nicht übersetzen.
-- Unbekannte Meldungsschlüssel zeigen den allgemeinen Text statt des rohen
-  Schlüssels (`IdentityMessageKeys.UNEXPECTED`).
+- **Breaking:** `IdentityProperties` has the component `locale`, and the view
+  constructors and `IdentityMailFactory.javaMail(...)` each have one more
+  parameter, `IdentityMessages`. Applications that embed through the
+  auto-configuration alone notice nothing.
+- Page titles through `HasDynamicTitle` instead of `@PageTitle` -- an
+  annotation cannot translate.
+- Unknown message keys show the generic text instead of the raw key
+  (`IdentityMessageKeys.UNEXPECTED`).
 
 ## 0.1.0 - 2026-08-28
 
 ### Added
-- Erstes Release: Benutzerkonto, Selbstregistrierung mit E-Mail-Bestätigung,
-  Anmeldung, Passwort-Reset, Rollen und Berechtigungen als
-  `identity-core` (ohne UI) und `identity-vaadin`.
-- Flyway-Migrationen im Versionsraum `V1_x`, Auto-Konfiguration ohne
-  Komponentensuche, Veröffentlichung nach GitHub Packages über die Pipeline.
+- First release: user accounts, self-registration with email verification,
+  sign-in, password reset, roles and permissions, as `identity-core` (without
+  UI) and `identity-vaadin`.
+- Flyway migrations in the version space `V1_x`, auto-configuration without a
+  component scan, publishing to GitHub Packages through the pipeline.

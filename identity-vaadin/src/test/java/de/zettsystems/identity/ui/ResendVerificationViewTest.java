@@ -55,7 +55,7 @@ class ResendVerificationViewTest extends AbstractViewTest {
         assertThat(registrationService.resendRequests).isEmpty();
     }
 
-    /** Wie beim Passwort-Reset: dieselbe Antwort, egal ob es das Konto gibt. */
+    /** As with the password reset: the same answer whether or not the account exists. */
     @Test
     void aValidAddressIsPassedOnAndConfirmedNeutrally() {
         ResendVerificationView view = showResendView();

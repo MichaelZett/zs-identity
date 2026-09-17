@@ -21,12 +21,12 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Stellt Einmal-Token aus und löst sie wieder ein.
+ * Issues one-time tokens and redeems them again.
  *
- * <p>Der Klartext des Tokens verlässt diese Klasse genau einmal — als
- * Rückgabewert von {@link #issue}, damit er in die Mail wandern kann. In der
- * Datenbank liegt nur sein SHA-256-Hash. Wer die Datenbank liest, kann daraus
- * keinen gültigen Link bauen.
+ * <p>The plain text of a token leaves this class exactly once, as the return
+ * value of {@link #issue}, so that it can travel into the mail. Only its
+ * SHA-256 hash is stored in the database. Whoever reads the database cannot
+ * build a valid link from it.
  */
 class AuthTokenIssuer {
 
@@ -44,10 +44,10 @@ class AuthTokenIssuer {
     }
 
     /**
-     * Stellt ein neues Token aus und entwertet alle offenen Token desselben Typs
-     * für diesen Benutzer — so gilt immer nur der zuletzt verschickte Link.
+     * Issues a new token and voids every open token of the same type for this
+     * user, so that only the most recently sent link is ever valid.
      *
-     * @return der Klartext, der in die Mail gehört
+     * @return the plain text that belongs in the mail
      */
     @Transactional
     String issue(UserAccount user, AuthTokenType type) {
@@ -65,21 +65,21 @@ class AuthTokenIssuer {
     }
 
     /**
-     * Wie lange ein frisch ausgestelltes Token dieses Typs gilt.
+     * How long a freshly issued token of this type is valid.
      *
-     * <p>Einladungen bekommen eine eigene, längere Frist: Bestätigung und
-     * Passwort-Reset fordert jemand selbst an und liest sie sofort, eine
-     * Einladung kommt unangekündigt.
+     * <p>Invitations get a longer deadline of their own: verification and
+     * password reset are requested by the person and read immediately, whereas
+     * an invitation arrives unannounced.
      */
     Duration validityOf(AuthTokenType type) {
         return type == AuthTokenType.INVITATION ? properties.invitationValidity() : properties.tokenValidity();
     }
 
     /**
-     * Löst ein Token ein und entwertet es dabei.
+     * Redeems a token and voids it in the process.
      *
-     * @throws IdentityException wenn das Token unbekannt, schon benutzt oder
-     *                           abgelaufen ist
+     * @throws IdentityException if the token is unknown, already used or
+     *                           expired
      */
     @Transactional
     UserAccount redeem(String plainToken, AuthTokenType type) {
@@ -98,10 +98,10 @@ class AuthTokenIssuer {
     }
 
     /**
-     * Schlägt nach, wem ein Token gehört — ohne es einzulösen und unabhängig
-     * davon, ob es noch gültig ist. Damit kann ein Aufrufer nach einem
-     * abgelehnten {@link #redeem} entscheiden, ob das Ziel des Tokens (etwa
-     * die E-Mail-Bestätigung) längst erreicht ist.
+     * Looks up whom a token belongs to, without redeeming it and regardless of
+     * whether it is still valid. This lets a caller decide, after a rejected
+     * {@link #redeem}, whether the purpose of the token (email verification,
+     * say) has long since been reached.
      */
     @Transactional(readOnly = true)
     Optional<UserAccount> peekUser(String plainToken, AuthTokenType type) {
@@ -115,7 +115,7 @@ class AuthTokenIssuer {
             byte[] hashed = digest.digest(plainToken.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hashed);
         } catch (NoSuchAlgorithmException e) {
-            // SHA-256 ist in jeder Java-Plattform Pflicht; hier kommt nie jemand an.
+            // SHA-256 is mandatory on every Java platform; nobody ever gets here.
             throw new IllegalStateException("SHA-256 not available", e);
         }
     }

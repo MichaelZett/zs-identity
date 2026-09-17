@@ -6,11 +6,12 @@ import java.time.Instant;
 import java.time.ZoneId;
 
 /**
- * Uhr, die im Test vorgestellt werden kann.
+ * A clock that can be moved forward in a test.
  *
- * <p>Damit lässt sich prüfen, dass ein Token nach Ablauf nicht mehr gilt, ohne
- * im Test 24 Stunden zu warten. Genau dafür hängt die Uhr als Bean im Kontext
- * und wird nicht per {@code Instant.now()} im Produktivcode aufgerufen.
+ * <p>This makes it possible to check that a token stops being valid once it has
+ * expired, without waiting 24 hours in the test. That is exactly why the clock
+ * hangs in the context as a bean instead of being called through
+ * {@code Instant.now()} in production code.
  */
 public class MutableTestClock extends Clock {
 

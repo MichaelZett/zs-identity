@@ -9,22 +9,22 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
- * Verdrahtet den Identity-Baustein, sobald er im Klassenpfad liegt.
+ * Wires up the identity building block as soon as it is on the classpath.
  *
- * <p>Eine einbindende Anwendung muss dafür nichts tun außer: die Abhängigkeit
- * aufnehmen, eine {@code RoleCatalog}-Bean bereitstellen und bei Bedarf Werte
- * unter {@code zs.identity} setzen. Entities, Repositories und
- * Flyway-Migrationen findet der Baustein selbst — siehe
- * {@link IdentityPackageRegistrar} und {@link IdentityFlywayAutoConfiguration}.
+ * <p>An embedding application has to do nothing for that beyond taking the
+ * dependency, providing a {@code RoleCatalog} bean and, where needed, setting
+ * values under {@code zs.identity}. Entities, repositories and Flyway
+ * migrations are found by the building block itself; see
+ * {@link IdentityPackageRegistrar} and {@link IdentityFlywayAutoConfiguration}.
  *
- * <p><strong>Bewusst ohne {@code @ComponentScan}.</strong> Der wäre hier
- * bequem, hat aber zwei Haken, die genau das kaputt machen, wofür dieser
- * Baustein gebaut ist: gescannte Beans tragen kein
- * {@code @ConditionalOnMissingBean}, sind also von der Anwendung nicht
- * ersetzbar; und ein Scan aus einer Auto-Konfiguration heraus greift in den
- * Paketbaum der Anwendung ein, sobald sich die Pakete überschneiden. Alle Beans
- * stehen deshalb explizit in {@link IdentityBeans} — jede einzeln
- * überschreibbar.
+ * <p><strong>Deliberately without {@code @ComponentScan}.</strong> It would be
+ * convenient here, but it has two catches that break exactly what this
+ * building block is built for: scanned beans carry no
+ * {@code @ConditionalOnMissingBean} and can therefore not be replaced by the
+ * application; and a scan started from an auto-configuration reaches into the
+ * application's package tree as soon as the packages overlap. Every bean is
+ * therefore declared explicitly in {@link IdentityBeans}, each one
+ * individually replaceable.
  */
 @AutoConfiguration
 @ConditionalOnClass(JpaRepository.class)

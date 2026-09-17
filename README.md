@@ -1,18 +1,18 @@
 # zs-identity
 
-Wiederverwendbarer Identity-Baustein für Spring-Boot-Anwendungen:
-Benutzerkonto, Selbstregistrierung mit E-Mail-Bestätigung, Anmeldung,
-Passwort-Reset, Rollen und Berechtigungen.
+A reusable identity building block for Spring Boot applications: user accounts,
+self-registration with email verification, sign-in, password reset, roles and
+permissions.
 
-| Artefakt                          | Inhalt                                                        |
+| Artifact                          | Contents                                                      |
 |-----------------------------------|---------------------------------------------------------------|
-| `de.zettsystems:identity-core`    | Domäne, Services, Spring-Security-Anbindung, Auto-Konfiguration, Flyway-Migrationen. Ohne UI. |
-| `de.zettsystems:identity-vaadin`  | Vaadin-Flow-Views: Login, Registrierung, Bestätigung, Passwort vergessen/zurücksetzen. Optional. |
+| `de.zettsystems:identity-core`    | Domain, services, Spring Security integration, auto-configuration, Flyway migrations. No UI. |
+| `de.zettsystems:identity-vaadin`  | Vaadin Flow views: sign-in, registration, verification, forgot/reset password. Optional. |
 
 Stack: Java 25, Spring Boot 4.1, Spring Data JPA, Spring Security, Vaadin 25
-(nur `identity-vaadin`), PostgreSQL.
+(`identity-vaadin` only), PostgreSQL.
 
-## Einbinden
+## Embedding it
 
 ```groovy
 repositories {
@@ -33,216 +33,217 @@ dependencies {
 }
 ```
 
-`gpr.user`/`gpr.key` (Personal Access Token mit `read:packages`) gehören in
-`~/.gradle/gradle.properties`, nie ins Projekt.
+`gpr.user`/`gpr.key` (a personal access token with `read:packages`) belong in
+`~/.gradle/gradle.properties`, never in the project.
 
-Die Anwendung muss danach genau drei Dinge tun — alles andere erledigt die
-Auto-Konfiguration:
+After that the application has to do exactly three things; the
+auto-configuration takes care of everything else:
 
-1. **Rollen deklarieren**: eine `RoleCatalog`-Bean mit den fachlichen Rollen.
-   Ohne sie gibt es nur `SYSTEM_ADMIN` und `USER`. Der `RoleSynchronizer`
-   spiegelt den Katalog beim Start in die Datenbank.
-2. **Security-Kette** konfigurieren. Für Vaadin:
+1. **Declare roles**: a `RoleCatalog` bean holding the domain roles. Without it
+   there are only `SYSTEM_ADMIN` and `USER`. The `RoleSynchronizer` mirrors the
+   catalog into the database at startup.
+2. **Configure the security filter chain.** For Vaadin:
    ```java
    http.with(VaadinSecurityConfigurer.vaadin(), c -> c.loginView(LoginView.class));
    ```
-   und die öffentlichen Pfade (`IdentityPaths.*` aus dem Kern, in Vaadin-Apps
-   gleichbedeutend `IdentityRoutes.*`) per `permitAll()` freigeben.
-3. **Vaadin-Routen sichtbar machen** (nur mit `identity-vaadin`):
-   `vaadin.allowed-packages` um `de.zettsystems.identity` ergänzen.
-4. **Erzwungener Passwortwechsel** (ab 0.3.0, nur mit `identity-vaadin`):
-   `UserAccountService#requirePasswordChange(userId)` — etwa nach dem Anlegen
-   eines Kontos mit Startpasswort. Der Baustein führt das Konto danach bei
-   jeder Navigation auf `IdentityRoutes.CHANGE_PASSWORD` (`password/change`),
-   bis ein neues Passwort gesetzt ist; die Ansicht ist `@PermitAll`, die
-   Security-Kette der Anwendung muss sie also für Angemeldete nicht eigens
-   freigeben. Die Migration `V1_3` ist niedriger nummeriert als App-Migrationen
-   — `spring.flyway.out-of-order: true` bleibt Pflicht.
-5. **Token-Aufräumlauf** (ab 0.5.0): `TokenCleanupScheduler` läuft täglich
-   um 03:15, sobald die Anwendung `@EnableScheduling` setzt; abschaltbar mit
-   `zs.identity.token-cleanup.enabled=false`. Mitgliederlisten laden ihre
-   Konten mit `UserAccountService#findAllById(ids)` in einer Abfrage.
-6. **Konto löschen** (ab 0.4.0): `UserAccountService#deleteAccount(userId)`
-   entfernt Konto, Rollenzuordnung und Tokens endgültig. Eigene Daten der
-   Anwendung zu dieser Kennung vorher selbst aufräumen — der Baustein kennt
-   sie nicht.
-7. **Einladen** (ab 0.6.0): `InvitationService` führt eine Person über einen
-   Mail-Link zu ihrem Konto, statt ein Startpasswort zu verschicken.
-   `inviteToClaim(userId, email)` für ein bestehendes verwaltetes Konto — die
-   `userId` und damit alles, was die Anwendung daran hängt, bleibt stabil;
-   `inviteNewAccount(email, name)` legt eines an. Mit
-   `self-registration-enabled=false` ist das der einzige Weg herein. Die
-   Ansicht liegt in `identity-vaadin` unter `IdentityRoutes.CLAIM_ACCOUNT`; wer
-   einladen darf, entscheidet die Anwendung — der Baustein prüft es nicht.
-   Wer einen **eigenen `IdentityMailSender`** mitbringt, setzt dafür
-   `sendInvitation(..)` um; bis dahin scheitert der Versand mit einer klaren
-   Meldung, statt still nichts zu tun.
+   and open the public paths (`IdentityPaths.*` from the core, equivalently
+   `IdentityRoutes.*` in Vaadin applications) with `permitAll()`.
+3. **Make the Vaadin routes visible** (only with `identity-vaadin`): add
+   `de.zettsystems.identity` to `vaadin.allowed-packages`.
+4. **Forced password change** (since 0.3.0, only with `identity-vaadin`):
+   `UserAccountService#requirePasswordChange(userId)`, after creating an
+   account with an initial password for example. The building block then sends
+   the account to `IdentityRoutes.CHANGE_PASSWORD` (`password/change`) on every
+   navigation until a new password is set; the view is `@PermitAll`, so the
+   application's filter chain does not have to open it for signed-in users
+   separately. Migration `V1_3` carries a lower number than the application's
+   migrations, so `spring.flyway.out-of-order: true` remains mandatory.
+5. **Token cleanup run** (since 0.5.0): `TokenCleanupScheduler` runs daily at
+   03:15 as soon as the application sets `@EnableScheduling`; it can be turned
+   off with `zs.identity.token-cleanup.enabled=false`. Member lists load their
+   accounts in one query with `UserAccountService#findAllById(ids)`.
+6. **Deleting an account** (since 0.4.0): `UserAccountService#deleteAccount(userId)`
+   removes the account, its role assignments and its tokens for good. Clear up
+   the application's own data for that id beforehand -- the building block
+   knows nothing about it.
+7. **Invitations** (since 0.6.0): `InvitationService` guides a person to their
+   account through a link in a mail instead of sending out an initial password.
+   `inviteToClaim(userId, email)` for an existing managed account, where the
+   `userId` and therefore everything the application attached to it stays
+   stable; `inviteNewAccount(email, name)` creates one. With
+   `self-registration-enabled=false` this is the only way in. The view lives in
+   `identity-vaadin` under `IdentityRoutes.CLAIM_ACCOUNT`; who may invite is
+   decided by the application, and the building block does not check it.
+   Anyone bringing their **own `IdentityMailSender`** implements
+   `sendInvitation(..)` for this; until then delivery fails with a clear
+   message rather than silently doing nothing.
 
-## Konfiguration (`zs.identity.*`)
+## Configuration (`zs.identity.*`)
 
-| Schlüssel                     | Default                  | Bedeutung |
-|-------------------------------|--------------------------|-----------|
-| `self-registration-enabled`   | `true`                   | Selbstregistrierung erlaubt |
-| `email-verification-required` | `true`                   | Konto erst nach bestätigter Adresse nutzbar |
-| `token-validity`              | `24h`                    | Gültigkeit von Bestätigungs-/Reset-Links |
-| `invitation-validity`         | `7d`                     | Gültigkeit von Einladungslinks |
-| `password-min-length`         | `12`                     | Mindestlänge (≥ 8) |
-| `from-address` / `from-name`  | `noreply@localhost` / `Application` | Absender der Mails |
-| `base-url`                    | `http://localhost:8080`  | Basis der Links in Mails |
-| `default-role-code`           | `USER`                   | Rolle neuer Konten |
-| `name-mode`                   | `FULL_NAME`              | `FULL_NAME` (Vor-/Nachname) oder `DISPLAY_NAME` (frei gewählter Name) |
-| `locale`                      | `de`                     | Rückfallsprache für Mails und Views (siehe Sprachen) |
-| `ui.max-width`                | `28rem`                  | Breite, ab der die Formularspalte nicht weiter mitwächst |
-| `ui.class-names`              | —                        | zusätzliche CSS-Klassen an jeder Ansicht (Andockpunkt fürs eigene Theme) |
-| `ui.notification-duration`    | `5s`                     | Standzeit der Hinweise; `0` = bis zum Wegklicken |
+| Key                           | Default                  | Meaning |
+|-------------------------------|--------------------------|---------|
+| `self-registration-enabled`   | `true`                   | self-registration allowed |
+| `email-verification-required` | `true`                   | account usable only once its address is confirmed |
+| `token-validity`              | `24h`                    | validity of verification and reset links |
+| `invitation-validity`         | `7d`                     | validity of invitation links |
+| `password-min-length`         | `12`                     | minimum length (at least 8) |
+| `from-address` / `from-name`  | `noreply@localhost` / `Application` | sender of the mails |
+| `base-url`                    | `http://localhost:8080`  | base of the links in the mails |
+| `default-role-code`           | `USER`                   | role of new accounts |
+| `name-mode`                   | `FULL_NAME`              | `FULL_NAME` (first and last name) or `DISPLAY_NAME` (freely chosen name) |
+| `locale`                      | `de`                     | fallback language for mails and views (see Languages) |
+| `ui.max-width`                | `28rem`                  | width beyond which the form column stops growing |
+| `ui.class-names`              | --                       | additional CSS classes on every view (the hook for your own theme) |
+| `ui.notification-duration`    | `5s`                     | how long notifications stay; `0` = until dismissed |
 
-**Mailversand ist optional** (seit 0.7.0). `spring-boot-starter-mail` hängt nur
-noch `compileOnly` am Baustein — wer Mails verschicken will, nimmt ihn selbst
-auf:
+**Mail delivery is optional** (since 0.7.0). `spring-boot-starter-mail` only
+hangs `compileOnly` off the building block -- whoever wants to send mails takes
+it themselves:
 
 ```groovy
 implementation 'org.springframework.boot:spring-boot-starter-mail'
 ```
 
-Ohne ihn startet die Anwendung trotzdem: Der Baustein fällt auf den
-Log-Versand zurück (`LoggingIdentityMailSender`), und eine Anwendung mit
-eigenem Versandweg (Transaktionsmail-Dienst) stellt einfach eine eigene
-`IdentityMailSender`-Bean bereit. Ist der Starter da und `spring.mail.*`
-konfiguriert, gehen echte Mails raus. Jede Mail geht als
-`multipart/alternative` hinaus — Text und daneben ein schlichter HTML-Teil, in
-dem der Link ein echtes `<a href>` ist. Grund ist Outlook: In Nur-Text-Mails
-bricht es lange Zeilen um und macht aus einem Link über 76 Zeichen keinen
-anklickbaren mehr.
+The application starts without it all the same: the building block falls back
+to delivery through the log (`LoggingIdentityMailSender`), and an application
+with a delivery path of its own (a transactional mail service) simply provides
+its own `IdentityMailSender` bean. If the starter is present and
+`spring.mail.*` is configured, real mails go out. Every mail goes out as
+`multipart/alternative` -- text, and next to it a plain HTML part in which the
+link is a real `<a href>`. The reason is Outlook: in plain-text mails it wraps
+long lines and turns a link longer than 76 characters into one that can no
+longer be clicked.
 
-## Sprachen
+## Languages
 
-Alle Texte — Views, Mails und die Meldungen zu `IdentityMessageKeys` — kommen
-aus mitgelieferten Sprachdateien: **Deutsch** und **Englisch**, unter
+All texts -- views, mails and the messages behind `IdentityMessageKeys` -- come
+from shipped message bundles: **German** and **English**, under
 `de/zettsystems/identity/messages/` (`core*` in `identity-core`, `ui*` in
-`identity-vaadin`). Die Datei ohne Sprachkürzel ist die Rückfallebene und ist
-englisch; eine Sprache ohne eigene Datei bekommt also Englisch, nie die
-Spracheinstellung des Servers.
+`identity-vaadin`). The file without a language suffix is the fallback and is
+English, so a language without a bundle of its own gets English, never the
+language setting of the server.
 
-Welche Sprache eine Ansicht spricht:
+Which language a view speaks:
 
-* Bringt die Anwendung eine Sprachwahl mit (Vaadins `I18NProvider`), folgen
-  die Views der Sprache der `UI` — also dem Browser bzw. der Umschaltung in
-  der Anwendung.
-* Ohne `I18NProvider` gilt `zs.identity.locale`. Grund: Vaadin setzt die
-  UI-Sprache dann auf die Voreinstellung der Server-JVM, und die sagt nichts
-  über die Anwendung aus.
+* If the application brings a language selection (Vaadin's `I18NProvider`), the
+  views follow the language of the `UI`, that is the browser or the switch
+  inside the application.
+* Without an `I18NProvider`, `zs.identity.locale` applies. The reason: Vaadin
+  then sets the UI language to the default of the server JVM, and that says
+  nothing about the application.
 
-**Die Sprache eines Kontos** steht seit 0.7.0 am Konto selbst
-(`auth_user.locale`, Migration V1_4) — nötig, weil eine Mail ohne Browser
-entsteht und dort niemand nach der Spracheinstellung zu fragen ist. Sie
-entscheidet über die Sprache **jeder Mail** dieses Bausteins; hat das Konto
-keine gewählt, gilt weiterhin `zs.identity.locale`.
+**The language of an account** has been stored on the account itself since
+0.7.0 (`auth_user.locale`, migration V1_4). It is needed because a mail is
+created without a browser, and there is nobody there to ask about a language
+setting. It decides the language of **every mail** this building block sends;
+if the account has chosen none, `zs.identity.locale` still applies.
 
-Sie füllt sich von selbst: Die `RegistrationView` übergibt die Sprache, in der
-registriert wurde, die `ClaimAccountView` die der Einlöse-Ansicht. Eine
-Anwendung, die selbst registriert oder einlädt, reicht sie mit durch:
+It fills itself in: the `RegistrationView` passes on the language someone
+registered in, the `ClaimAccountView` the one of the redemption view. An
+application that registers or invites on its own passes it through as well:
 
 ```java
 registrationService.register(email, password, name, UI.getCurrent().getLocale());
 invitationService.inviteNewAccount(email, name, Locale.GERMAN);
 ```
 
-Später ändern — etwa in den Kontoeinstellungen der Anwendung:
+Changing it later, in the account settings of the application for example:
 
 ```java
-userAccountService.changeLocale(userId, Locale.ENGLISH);  // null nimmt die Wahl zurueck
+userAccountService.changeLocale(userId, Locale.ENGLISH);  // null withdraws the choice
 ```
 
-Gelesen wird sie über `UserAccountDto.locale()` (`null` = keine Wahl) oder
-bequemer über `localeOr(fallback)`. Eine **Ansicht** dafür bringt der Baustein
-nicht mit: Wo die Sprachwahl hingehört — Kontoeinstellungen, Kopfzeile,
-Anmeldeformular —, weiß nur die Anwendung.
+It is read through `UserAccountDto.locale()` (`null` = no choice) or more
+conveniently through `localeOr(fallback)`. The building block brings no
+**view** for it: where the language selection belongs -- account settings,
+header, sign-in form -- is known only to the application.
 
-Eigene Texte: eine eigene `IdentityMessages`-Bean verdrängt die Voreinstellung.
-Wer nur einzelne Schlüssel ersetzen will, beantwortet diese selbst und reicht
-den Rest an `IdentityMessages.resourceBundles()` weiter.
+Custom texts: a bean of your own displaces the default `IdentityMessages`.
+Whoever wants to replace individual keys only answers those and passes the rest
+on to `IdentityMessages.resourceBundles()`.
 
 ```java
 @Bean
 IdentityMessages identityMessages() {
     IdentityMessages fallback = IdentityMessages.resourceBundles();
     return (key, locale, args) -> switch (key) {
-        case IdentityMessageKeys.SELF_REGISTRATION_DISABLED -> "Bitte wende dich an die Turnierleitung.";
+        case IdentityMessageKeys.SELF_REGISTRATION_DISABLED -> "Please contact the tournament office.";
         default -> fallback.get(key, locale, args);
     };
 }
 ```
 
-## Rollen, global und je Mandant
+## Roles, global and per tenant
 
-Rollen kommen aus dem `RoleCatalog` der Anwendung und werden einem Konto
-zugeteilt — entweder **global** oder für einen **Geltungsbereich** (seit
-0.7.0):
+Roles come from the application's `RoleCatalog` and are granted to an account,
+either **globally** or for a **scope** (since 0.7.0):
 
 ```java
-userAccountService.grantRole(userId, "USER");                            // gilt ueberall
+userAccountService.grantRole(userId, "USER");                            // applies everywhere
 userAccountService.grantRole(userId, "GROUP_ADMIN", Scope.of("club", "17"));
 ```
 
-Ein `Scope` besteht aus Art und Kennung (`club:17`). **Der Baustein deutet ihn
-nie** — was ein `club` ist, weiß allein die Anwendung; gespeichert und
-verglichen wird er nur. Das hält die Regel „kein Wissen über einbindende
-Anwendungen" aufrecht und funktioniert deshalb für Vereine, Turniere, Spiele
-oder was sonst ein Mandant sein soll.
+A `Scope` consists of a kind and an identifier (`club:17`). **The building
+block never interprets it** -- what a `club` is, only the application knows; it
+is merely stored and compared. That upholds the rule "no knowledge about
+embedding applications" and therefore works for clubs, tournaments, games or
+whatever else a tenant is supposed to be.
 
-Fragen an ein Konto (`UserAccountDto`, oder direkt am `UserAccountService`):
+Questions to ask an account (on `UserAccountDto`, or directly on
+`UserAccountService`):
 
-| Frage | Aufruf |
+| Question | Call |
 |---|---|
-| Welche Rollen gelten überall? | `roleCodes()` |
-| Darf sie das hier? | `hasRole("GROUP_ADMIN", scope)` — globale zählen mit |
-| Was gilt in diesem Bereich? | `rolesIn(scope)` / `userAccountService.rolesOf(userId, scope)` |
-| Alle Vereine dieser Person? | `scopesOf("club")` / `userAccountService.scopesOf(userId, "club")` |
+| Which roles apply everywhere? | `roleCodes()` |
+| May they do this here? | `hasRole("GROUP_ADMIN", scope)` -- global ones count |
+| What applies in this scope? | `rolesIn(scope)` / `userAccountService.rolesOf(userId, scope)` |
+| All clubs of this person? | `scopesOf("club")` / `userAccountService.scopesOf(userId, "club")` |
 
-**In der Anmeldung** liegen bereichsgebundene Rollen qualifiziert an
-(`ROLE_GROUP_ADMIN@club:17`), globale wie bisher (`ROLE_USER`). Dazu gibt es
-einen **aktiven Bereich**: Dessen Rollen gelten zusätzlich unqualifiziert,
-sodass die gewohnten Prüfungen lesbar bleiben.
+**In the authentication**, scoped roles are present in qualified form
+(`ROLE_GROUP_ADMIN@club:17`), global ones as before (`ROLE_USER`). On top of
+that there is an **active scope**: its roles additionally apply unqualified, so
+that the familiar checks stay readable.
 
 ```java
-activeScopeService.switchTo(Scope.of("club", "17"));   // etwa beim Betreten eines Vereins
+activeScopeService.switchTo(Scope.of("club", "17"));   // when entering a club, say
 
-@RolesAllowed("GROUP_ADMIN")                           // heisst jetzt: in Verein 17
-@PreAuthorize("hasAuthority('ROLE_GROUP_ADMIN@club:4')")  // gezielt anderswo, z. B. Deep-Link
+@RolesAllowed("GROUP_ADMIN")                           // now means: in club 17
+@PreAuthorize("hasAuthority('ROLE_GROUP_ADMIN@club:4')")  // deliberately elsewhere, e.g. a deep link
 ```
 
-Beim Anmelden ist **kein** Bereich aktiv — welcher es sein soll, weiß nur die
-Anwendung (Adresszeile, letzte Auswahl, Startseite). „Automatisch den
-einzigen" wäre bequem und würde sich bei der zweiten Mitgliedschaft
-stillschweigend anders verhalten. Ohne aktiven Bereich gelten die globalen
-Rollen; das ist die sichere Vorgabe.
+At sign-in time **no** scope is active -- which one it should be is known only
+to the application (address bar, last selection, start page). "Automatically
+take the only one" would be convenient and would silently behave differently
+once a second membership appears. Without an active scope the global roles
+apply, which is the safe default.
 
-Anwendungen ohne Mandanten merken von alledem nichts: Ohne `Scope` vergeben,
-ist jede Rolle global, und `roleCodes()`, `hasRole(code)` und
-`@RolesAllowed` verhalten sich wie vor 0.7.0.
+Applications without tenants notice none of this: granted without a `Scope`,
+every role is global, and `roleCodes()`, `hasRole(code)` and `@RolesAllowed`
+behave exactly as before 0.7.0.
 
-## Die mitgelieferten Ansichten
+## The shipped views
 
-Anmeldung, Registrierung, Passwort-Reset und die Einlöse-Ansicht sind oft die
-**ersten** Seiten, die ein neues Mitglied sieht — sie gehören aber dem
-Baustein und können das Theme der Anwendung nicht kennen. Sie halten deshalb
-eine Untergrenze ein, die überall trägt (`IdentityFormView`):
+Sign-in, registration, password reset and the redemption view are often the
+**first** pages a new member sees -- yet they belong to the building block and
+cannot know the theme of the application. They therefore keep to a lower bound
+that works everywhere (`IdentityFormView`):
 
-* **Eine Spalte, zentriert, mit Höchstbreite** (`zs.identity.ui.max-width`).
-  Am Telefon füllt sie die Breite, am Rechner wächst sie nicht ins Unlesbare.
-* **Kein Querscrollen bei 375 px.** `border-box`, keine festen Pixelbreiten,
-  jedes Feld und jeder Knopf über die volle Spaltenbreite. Ein Test hält das
-  für alle Ansichten fest (`IdentityViewLayoutTest`).
-* **Keine Farbe von Hand** — Hervorhebung nur über Vaadins Varianten, damit
-  nichts mit dem dunklen Erscheinungsbild einer Anwendung kollidiert.
+* **One column, centred, with a maximum width** (`zs.identity.ui.max-width`).
+  On a phone it fills the width; on a desktop it does not grow into
+  unreadability.
+* **No horizontal scrolling at 375 px.** `border-box`, no fixed pixel widths,
+  every field and every button across the full column width. A test pins this
+  down for all views (`IdentityViewLayoutTest`).
+* **No colour set by hand** -- emphasis only through Vaadin's variants, so that
+  nothing clashes with an application's dark appearance.
 
-**Mitstylen** geht über feste CSS-Klassen statt über Einstellungen: Jede
-Ansicht trägt `identity-view` und eine eigene Kennung
+**Styling along** works through fixed CSS classes rather than through settings:
+every view carries `identity-view` and an identifier of its own
 (`identity-view--login`, `--registration`, `--forgot-password`,
 `--resend-verification`, `--reset-password`, `--change-password`,
-`--claim-account`, `--confirm-email`); die Anmeldung hat zusätzlich innen
-`identity-view__column`. Eigene Klassen kommen über
-`zs.identity.ui.class-names` an jede Ansicht:
+`--claim-account`, `--confirm-email`); sign-in additionally has
+`identity-view__column` inside. Classes of your own reach every view through
+`zs.identity.ui.class-names`:
 
 ```yaml
 zs:
@@ -259,66 +260,86 @@ zs:
 }
 ```
 
-Wem das nicht reicht, der schreibt eine eigene Ansicht — dann aber unter einem
-eigenen Pfad und mit abgeschalteter Paketsuche für `de.zettsystems.identity.ui`:
-Zwei `@Route` auf demselben Pfad lehnt Vaadin ab.
+Whoever needs more than that writes a view of their own -- but then under a
+path of its own and with the package scan for `de.zettsystems.identity.ui`
+switched off: Vaadin rejects two `@Route` annotations on the same path.
 
-## Java-Module (JPMS)
+## Java modules (JPMS)
 
-Beide Artefakte tragen einen **`Automatic-Module-Name`** im Manifest:
+Both artifacts carry an **`Automatic-Module-Name`** in their manifest:
 
-| Artefakt | Modulname |
+| Artifact | Module name |
 |---|---|
 | `identity-core` | `de.zettsystems.identity` |
 | `identity-vaadin` | `de.zettsystems.identity.ui` |
 
-Damit hat eine Anwendung, die selbst JPMS benutzt, einen stabilen Namen für
-`requires` — ohne den Eintrag leitet Java ihn aus dem Dateinamen ab, und der
-ändert sich mit jeder Version.
+This gives an application that uses JPMS itself a stable name for `requires`;
+without the entry, Java derives one from the file name, and that changes with
+every version.
 
-Ein echtes `module-info.java` bringt der Baustein **nicht** mit, und das ist
-Absicht: Spring, Hibernate und Vaadin laufen auf dem Klassenpfad, nicht im
-Modulpfad — ein Moduldeskriptor wäre dort wirkungslos. Er würde außerdem
-`opens` für die Reflection von Spring und Hibernate erzwingen, und die
-Sprachdateien beider Artefakte liegen im selben Ressourcen-Paket
-(`de/zettsystems/identity/messages/`), was JPMS als geteiltes Paket ablehnt.
-Sobald das Spring-Ökosystem im Modulpfad ankommt, ist das der Moment, das
-nachzuholen — vorher kostet es nur.
+The building block does **not** ship a real `module-info.java`, and that is
+deliberate: Spring, Hibernate and Vaadin run on the classpath, not on the
+module path, so a module descriptor would have no effect there. It would also
+force `opens` for the reflection of Spring and Hibernate, and the message
+bundles of both artifacts live in the same resource package
+(`de/zettsystems/identity/messages/`), which JPMS rejects as a split package.
+Once the Spring ecosystem arrives on the module path, that is the moment to
+catch up; before then it only costs.
 
-## Datenbank
+## Database
 
-`identity-core` liefert seine Flyway-Migrationen unter `classpath:db/identity`
-mit und hängt den Ablageort selbst an `spring.flyway.locations`
-(`IdentityFlywayAutoConfiguration`). Versionsraum **V1_x** ist für den
-Baustein reserviert; Anwendungen belegen **V2_x** aufwärts. Weil eine neue
-Baustein-Migration niedriger nummeriert ist als bereits angewendete
-App-Migrationen, braucht die Anwendung `spring.flyway.out-of-order: true`.
+`identity-core` ships its Flyway migrations under `classpath:db/identity` and
+appends the location to `spring.flyway.locations` itself
+(`IdentityFlywayAutoConfiguration`). Version space **V1_x** is reserved for the
+building block; applications use **V2_x** upwards. Because a new migration of
+the building block carries a lower number than migrations the application has
+already applied, the application needs `spring.flyway.out-of-order: true`.
 
-Tabellen: `auth_user`, `auth_role`, `auth_role_authority`, `auth_user_role`
-(mit `scope_type`/`scope_id`, leer = global), `auth_token`.
+Tables: `auth_user`, `auth_role`, `auth_role_authority`, `auth_user_role` (with
+`scope_type`/`scope_id`, empty = global), `auth_token`.
 
-## Namensmodell
+The comments inside the migration scripts are German. They are the one place
+that was left untranslated on purpose: Flyway checksums the whole file, so
+editing a migration that has already been applied would make every existing
+installation fail validation.
 
-`AccountName` trägt immer einen `displayName`; `firstName`/`lastName` sind nur
-bei `name-mode = FULL_NAME` gesetzt. `UserAccountDto.firstName()`/`lastName()`
-liefern dann leere Strings statt `null`. Anwendungen verknüpfen ihre
-Fachobjekte ausschließlich über die Konto-ID (`UserAccountDto.id()`,
-`IdentityUserDetails.userId()` im `SecurityContext`).
+## The name model
 
-## Entwicklung
+`AccountName` always carries a `displayName`; `firstName`/`lastName` are set
+only with `name-mode = FULL_NAME`. `UserAccountDto.firstName()`/`lastName()`
+then return empty strings instead of `null`. Applications link their own
+objects exclusively through the account id (`UserAccountDto.id()`,
+`IdentityUserDetails.userId()` in the `SecurityContext`).
+
+## Development
 
 ```
-./gradlew build                 # kompiliert, testet, SpotBugs, JaCoCo (Testcontainers → Docker nötig)
-./gradlew sonar                 # SonarQube gegen die lokale Instanz (SONAR_TOKEN)
-./gradlew publishToMavenLocal   # lokale Iteration mit einer App (mavenLocal() dort eintragen)
-./gradlew dependencyUpdates     # Versionen prüfen (-Punstable / -Pmajor zeigt RC/Major)
+./gradlew build                 # compiles, tests, SpotBugs, JaCoCo (Testcontainers -> Docker required)
+./gradlew sonar                 # SonarQube against the local instance (SONAR_TOKEN)
+./gradlew publishToMavenLocal   # local iteration with an application (add mavenLocal() there)
+./gradlew dependencyUpdates     # check versions (-Punstable / -Pmajor shows RC/major)
 ```
 
-Release: Abschnitt in `CHANGELOG.md` benennen, Version in
-`gradle.properties` ohne `-SNAPSHOT` setzen und auf
-`main` pushen — die CI publiziert nach GitHub Packages, legt Tag und
-GitHub-Release `v<version>` an und hebt die Version anschließend selbst auf
-die nächste Patch-`-SNAPSHOT`. SNAPSHOTs werden nicht veröffentlicht;
-Anwendungen binden ausschließlich Release-Versionen ein (lokale Iteration
-über `publishToMavenLocal`). Minor-/Major-Sprung: Version vor dem Release
-von Hand setzen.
+Releasing: name the section in `CHANGELOG.md`, set the version in
+`gradle.properties` without `-SNAPSHOT` and push to `main`. CI publishes to
+GitHub Packages, creates the tag and the GitHub release `v<version>`, and then
+raises the version to the next patch `-SNAPSHOT` itself. SNAPSHOTs are not
+published; applications depend on release versions only (local iteration goes
+through `publishToMavenLocal`). For a minor or major jump, set the version by
+hand before the release.
+
+## Contributing, reporting bugs, licence
+
+Questions and bug reports belong in the
+[issues](https://github.com/MichaelZett/zs-identity/issues); there is a
+template each for bug reports and for feature requests. What applies when
+contributing -- how to build, the non-negotiable rules of the building block,
+the version space of the migrations -- is in
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+**Never report a security flaw as a public issue.** The route for that is in
+[SECURITY.md](SECURITY.md): a private report through the security tab of the
+repository.
+
+Licence: [Apache-2.0](LICENSE). The building block may therefore be used in
+commercial applications as well; the patent clause is explicitly included.

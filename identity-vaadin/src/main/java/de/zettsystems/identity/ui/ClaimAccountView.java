@@ -18,12 +18,12 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Nimmt den Link aus der Einladungsmail entgegen: erstes Passwort setzen,
- * Konto übernehmen.
+ * Receives the link from the invitation mail: set the first password, take the
+ * account over.
  *
- * <p>Nah an der {@code ResetPasswordView} — mit einem Unterschied: Sie zeigt
- * den Namen des Kontos an, das hier übernommen wird. Wer eingeladen wurde,
- * hat sich nichts bestellt und soll sehen, worum es geht.
+ * <p>Close to {@code ResetPasswordView}, with one difference: it shows the name
+ * of the account being taken over. Whoever was invited did not ask for any of
+ * this and should see what it is about.
  */
 @Route(value = IdentityRoutes.CLAIM_ACCOUNT, autoLayout = false)
 @AnonymousAllowed
@@ -44,8 +44,8 @@ public class ClaimAccountView extends IdentityFormView implements BeforeEnterObs
         this.passwordMinLength = properties.passwordMinLength();
         password.setLabel(text("identity.claim.password"));
         passwordRepeat.setLabel(text("identity.claim.passwordRepeat"));
-        // Wie in der RegistrationView: Erst mit NEW_PASSWORD bieten die Browser
-        // an, ein Passwort zu erzeugen und zu merken.
+        // As in RegistrationView: only with NEW_PASSWORD do browsers offer to
+        // generate a password and remember it.
         password.setAutocomplete(Autocomplete.NEW_PASSWORD);
         passwordRepeat.setAutocomplete(Autocomplete.NEW_PASSWORD);
     }
@@ -69,8 +69,8 @@ public class ClaimAccountView extends IdentityFormView implements BeforeEnterObs
 
         Optional<UserAccountDto> invitee = invitationService.findInvitee(this.token);
         if (invitee.isEmpty()) {
-            // Unbekanntes Token: Hier hilft kein Formular, und „neuen Link
-            // anfordern" gibt es nicht — eingeladen wird aus der Verwaltung.
+            // An unknown token: no form helps here, and there is no "request a
+            // new link" -- invitations come from an administration screen.
             showDeadEnd("identity.claim.unknown.title", "identity.claim.unknown.message");
             return;
         }
@@ -96,9 +96,9 @@ public class ClaimAccountView extends IdentityFormView implements BeforeEnterObs
         }
 
         try {
-            // Die Sprache dieser Ansicht ist die erste Aussage der
-            // eingeladenen Person dazu — der Dienst nimmt sie nur an, wenn beim
-            // Einladen keine gewählt wurde.
+            // The language of this view is the first thing the invited person
+            // says about it; the service only accepts it when none was chosen
+            // while inviting.
             invitationService.claim(token, password.getValue(), texts().locale());
             showConfirmation();
         } catch (IdentityException e) {

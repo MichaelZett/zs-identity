@@ -34,8 +34,8 @@ class ConfirmEmailViewTest extends AbstractViewTest {
     }
 
     /**
-     * Der Link wird erst auf Knopfdruck eingelöst — Mail-Scanner rufen ihn
-     * vorher per GET ab und würden das Einmal-Token sonst verbrauchen.
+     * The link is redeemed on a button press only: mail scanners fetch it by
+     * GET beforehand and would otherwise consume the one-time token.
      */
     @Test
     void openingTheLinkDoesNotYetRedeemTheToken() {
@@ -104,7 +104,7 @@ class ConfirmEmailViewTest extends AbstractViewTest {
         assertThat(currentPath()).isEqualTo(IdentityRoutes.LOGIN);
     }
 
-    /** Mehrere Werte für {@code token} — der erste gewinnt, statt dass die Seite scheitert. */
+    /** Several values for {@code token}: the first one wins instead of the page failing. */
     @Test
     void aDuplicatedTokenParameterUsesTheFirstValue() {
         ConfirmEmailView view = showConfirmView();

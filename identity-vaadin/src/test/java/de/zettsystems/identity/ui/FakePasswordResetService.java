@@ -6,10 +6,10 @@ import de.zettsystems.identity.application.PasswordResetService;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Siehe {@link FakeRegistrationService}. */
+/** See {@link FakeRegistrationService}. */
 class FakePasswordResetService implements PasswordResetService {
 
-    /** Wenn gesetzt, scheitert der nächste Aufruf damit. */
+    /** When set, the next call fails with it. */
     IdentityException failure;
 
     final List<String> resetRequests = new ArrayList<>();

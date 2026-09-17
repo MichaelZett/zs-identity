@@ -3,44 +3,46 @@ package de.zettsystems.identity.application;
 import de.zettsystems.identity.values.UserAccountDto;
 
 /**
- * Versand der Mails dieses Bausteins.
+ * Delivery of the mails this building block sends.
  *
- * <p>Ein Port, keine feste Implementierung: Die Voreinstellung schreibt über
- * {@code JavaMailSender}, eine Anwendung mit eigenem Versandweg (Transaktionsmail-
- * Dienst, Warteschlange, Testdoppel) stellt einfach eine eigene Bean bereit und
- * verdrängt damit die Voreinstellung.
+ * <p>A port, not a fixed implementation: the default writes through
+ * {@code JavaMailSender}, while an application with a delivery path of its own
+ * (transactional mail service, a queue, a test double) simply provides its own
+ * bean and thereby displaces the default.
  */
 public interface IdentityMailSender {
 
     /**
-     * Bittet um Bestätigung der Adresse.
+     * Asks for confirmation of the address.
      *
-     * @param confirmationUrl vollständige Adresse inklusive Token
+     * @param confirmationUrl complete address including the token
      */
     void sendEmailVerification(UserAccountDto user, String confirmationUrl);
 
     /**
-     * Schickt den Link zum Zurücksetzen des Passworts.
+     * Sends the link for resetting the password.
      *
-     * @param resetUrl vollständige Adresse inklusive Token
+     * @param resetUrl complete address including the token
      */
     void sendPasswordReset(UserAccountDto user, String resetUrl);
 
     /**
-     * Lädt zu einem Konto ein: Adresse bestätigen und erstes Passwort setzen.
+     * Invites someone to an account: confirm the address and set a first
+     * password.
      *
-     * <p>Bewusst eine {@code default}-Methode, die scheitert, statt einer
-     * abstrakten: Ein eigener Sender einer Anwendung (Transaktionsmail-Dienst,
-     * Testdoppel) soll durch diese Ergänzung nicht die Übersetzung verlieren.
-     * Still nichts zu tun wäre schlimmer als der Fehler — der Eingeladene
-     * bekäme nie einen Link, und niemand merkte es.
+     * <p>Deliberately a {@code default} method that fails rather than an
+     * abstract one: an application's own sender (transactional mail service,
+     * test double) must not stop compiling because of this addition. Silently
+     * doing nothing would be worse than the error -- the invited person would
+     * never get a link, and nobody would notice.
      *
-     * @param invitationUrl vollständige Adresse inklusive Token
-     * @throws UnsupportedOperationException solange ein eigener Sender sie nicht überschreibt
+     * @param invitationUrl complete address including the token
+     * @throws UnsupportedOperationException as long as a custom sender does not
+     *                                       override it
      */
     default void sendInvitation(UserAccountDto user, String invitationUrl) {
         throw new UnsupportedOperationException(
-                getClass().getName() + " does not implement sendInvitation(..) — "
+                getClass().getName() + " does not implement sendInvitation(..) - "
                         + "implement it to use InvitationService");
     }
 }

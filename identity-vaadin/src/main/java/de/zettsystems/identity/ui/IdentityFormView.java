@@ -24,54 +24,53 @@ import java.time.Duration;
 import java.util.Set;
 
 /**
- * Gemeinsame Gestalt der mitgelieferten Ansichten — Anmeldung, Registrierung,
- * Passwort-Reset und die Einlöse-Ansicht.
+ * The shared shape of the shipped views: sign-in, registration, password reset
+ * and the invitation redemption view.
  *
- * <p>Diese Seiten sind die <strong>ersten</strong>, die ein neues Mitglied
- * sieht, gehören aber dem Baustein und nicht der Anwendung. Sie können deren
- * Theme nicht kennen. Was sie stattdessen einhalten, ist eine Untergrenze, die
- * überall trägt:
+ * <p>These pages are the <strong>first</strong> ones a new member sees, yet
+ * they belong to the building block and not to the application. They cannot
+ * know its theme. What they keep to instead is a lower bound that works
+ * everywhere:
  *
  * <ol>
- *   <li><strong>Eine Spalte, zentriert, mit Höchstbreite</strong>
- *       ({@code zs.identity.ui.max-width}, voreingestellt {@code 28rem}). Am
- *       Telefon füllt sie die Breite, am Rechner wächst sie nicht ins
- *       Unlesbare.</li>
- *   <li><strong>Kein Querscrollen bei 375 px.</strong> Dafür sorgen
- *       {@code border-box} samt Innenabstand und die Regel, dass jedes
- *       Eingabefeld und jeder Knopf die volle Spaltenbreite bekommt
- *       ({@link #addFullWidth}) — feste Pixelbreiten gibt es hier nicht.</li>
- *   <li><strong>Feste CSS-Klassen statt eigener Farben.</strong> Jede Ansicht
- *       trägt {@value #VIEW_CLASS} und eine eigene Kennung, dazu alles aus
- *       {@code zs.identity.ui.class-names}. Darüber stylt eine Anwendung mit,
- *       ohne dass der Baustein ihr Theme kennt — und ohne dass er ihr eines
- *       aufzwingt.</li>
- *   <li><strong>Keine Farbe von Hand.</strong> Hervorhebung läuft über
- *       Vaadins Varianten, nicht über gesetzte Farbwerte: Eigene Farben
- *       kollidieren mit dem dunklen Erscheinungsbild einer Anwendung, und
- *       Kontrastfragen kann der Baustein nicht für sie entscheiden.</li>
+ *   <li><strong>One column, centred, with a maximum width</strong>
+ *       ({@code zs.identity.ui.max-width}, {@code 28rem} by default). On a
+ *       phone it fills the width; on a desktop it does not grow into
+ *       unreadability.</li>
+ *   <li><strong>No horizontal scrolling at 375 px.</strong> That is ensured by
+ *       {@code border-box} together with the padding, and by the rule that
+ *       every input field and every button gets the full column width
+ *       ({@link #addFullWidth}). There are no fixed pixel widths here.</li>
+ *   <li><strong>Fixed CSS classes instead of colours of our own.</strong> Every
+ *       view carries {@value #VIEW_CLASS} and an identifier of its own, plus
+ *       everything from {@code zs.identity.ui.class-names}. An application
+ *       styles through those without the building block knowing its theme --
+ *       and without the building block forcing one on it.</li>
+ *   <li><strong>No colour set by hand.</strong> Emphasis goes through Vaadin's
+ *       variants rather than through explicit colour values: colours of our own
+ *       clash with an application's dark appearance, and the building block
+ *       cannot decide questions of contrast on its behalf.</li>
  * </ol>
  *
- * <p>Die Ansichten erben deshalb hierher, statt jede für sich Breite,
- * Abstände und Knöpfe zu setzen: Eine Regel, die an neun Stellen steht, ist
- * nach dem nächsten Umbau an sieben davon eine andere.
+ * <p>The views therefore inherit from here instead of each setting width,
+ * spacing and buttons for itself: a rule written down in nine places is a
+ * different rule in seven of them after the next rework.
  */
 public abstract class IdentityFormView extends VerticalLayout implements HasDynamicTitle {
 
-    /** CSS-Klasse an jeder Ansicht des Bausteins — der Andockpunkt für eigenes CSS. */
+    /** CSS class on every view of this building block; the hook for custom CSS. */
     public static final String VIEW_CLASS = "identity-view";
 
     /**
-     * Vaadins Varianten heißen weiterhin {@code LUMO_*}, obwohl das
-     * Basistheme seit Vaadin 25 Aura ist. Sie stehen hier an einer Stelle
-     * gebündelt: Sollte eine künftige Fassung sie fallen lassen, ist das eine
-     * Änderung statt neun.
+     * Vaadin's variants are still called {@code LUMO_*}, even though the base
+     * theme has been Aura since Vaadin 25. They are gathered in one place here:
+     * should a future version drop them, that is one change instead of nine.
      */
     private static final ButtonVariant PRIMARY_VARIANT = ButtonVariant.LUMO_PRIMARY;
     private static final ButtonVariant TERTIARY_VARIANT = ButtonVariant.LUMO_TERTIARY;
     private static final NotificationVariant WARNING_VARIANT = NotificationVariant.LUMO_ERROR;
 
-    /** Die Meldungsschlüssel, die jede Ansicht gleich behandelt. */
+    /** The message keys that every view handles in the same way. */
     private static final Set<String> COMMON_KEYS = Set.of(
             IdentityMessageKeys.TOKEN_INVALID,
             IdentityMessageKeys.TOKEN_EXPIRED,
@@ -84,8 +83,8 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
     private final int passwordMinLength;
 
     /**
-     * @param viewName Kennung dieser Ansicht für die CSS-Klasse, etwa
-     *                 {@code login}; daraus wird {@code identity-view--login}
+     * @param viewName identifier of this view for the CSS class, {@code login}
+     *                 for example, which becomes {@code identity-view--login}
      */
     protected IdentityFormView(IdentityMessages messages, IdentityProperties properties, String viewName) {
         this.texts = new IdentityTexts(messages, properties);
@@ -94,8 +93,8 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
 
         setWidthFull();
         setMaxWidth(ui.maxWidth());
-        // Ohne border-box addiert sich der Innenabstand auf die Breite — genau
-        // das erzeugt am Telefon den waagerechten Balken.
+        // Without border-box the padding adds to the width, and that is exactly
+        // what produces the horizontal bar on a phone.
         setBoxSizing(BoxSizing.BORDER_BOX);
         getStyle().set("margin-inline", "auto");
         addClassName(VIEW_CLASS);
@@ -103,20 +102,20 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
         ui.classNames().forEach(this::addClassName);
     }
 
-    /** Die Texte dieser Ansicht in der Sprache der aufrufenden Person. */
+    /** The texts of this view in the language of the person calling it. */
     protected final IdentityTexts texts() {
         return texts;
     }
 
-    /** Kurzform für {@code texts().get(key, args)} — der häufigste Aufruf überhaupt. */
+    /** Short form of {@code texts().get(key, args)}, the most frequent call of all. */
     protected final String text(String key, Object... args) {
         return texts.get(key, args);
     }
 
     /**
-     * Streckt die Ansicht über die ganze Seite und setzt den Inhalt in die
-     * Mitte. Für die Anmeldung gedacht: Sie ist kurz genug, dass sie sonst
-     * oben klebt.
+     * Stretches the view across the whole page and puts the content in the
+     * middle. Intended for sign-in: it is short enough that it would otherwise
+     * stick to the top.
      */
     protected final void centerOnPage() {
         setSizeFull();
@@ -126,9 +125,9 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
     }
 
     /**
-     * Nimmt Komponenten auf und gibt ihnen die volle Spaltenbreite. Der
-     * gesamte Grund, warum die Ansichten am Telefon nicht querscrollen —
-     * darum gehört jedes Feld und jeder Knopf hier hindurch und nicht durch
+     * Takes components in and gives them the full column width. This is the
+     * entire reason the views do not scroll sideways on a phone, which is why
+     * every field and every button goes through here and not through
      * {@code add(...)}.
      */
     protected final void addFullWidth(Component... components) {
@@ -138,8 +137,8 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
     }
 
     /**
-     * Dieselbe Regel für Komponenten, die woanders landen als direkt in der
-     * Ansicht — etwa in der Spalte aus {@link #centeredColumn()}.
+     * The same rule for components that end up somewhere other than directly in
+     * the view, in the column from {@link #centeredColumn()} for example.
      */
     protected static <T extends Component> T fullWidth(T component) {
         if (component instanceof HasSize sized) {
@@ -149,12 +148,12 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
     }
 
     /**
-     * Eine Spalte in der Höchstbreite der Ansicht, bereits eingehängt.
+     * A column in the maximum width of the view, already added.
      *
-     * <p>Für die Ansichten, die selbst die ganze Seite einnehmen
-     * ({@link #centerOnPage()}): Dort ist die Ansicht so breit wie der
-     * Bildschirm, und ein Knopf über die volle Breite sähe am Rechner
-     * verloren aus. Alles, was hineinkommt, gehört durch {@link #fullWidth}.
+     * <p>For the views that take up the whole page themselves
+     * ({@link #centerOnPage()}): there the view is as wide as the screen, and a
+     * button spanning the full width would look lost on a desktop. Everything
+     * that goes in belongs through {@link #fullWidth}.
      */
     protected final VerticalLayout centeredColumn() {
         VerticalLayout column = new VerticalLayout();
@@ -166,17 +165,17 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
         return column;
     }
 
-    /** Überschrift einer Ansicht. */
+    /** Heading of a view. */
     protected final H2 heading(String key, Object... args) {
         return new H2(text(key, args));
     }
 
-    /** Fließtext einer Ansicht. */
+    /** Body text of a view. */
     protected final Paragraph paragraph(String key, Object... args) {
         return new Paragraph(text(key, args));
     }
 
-    /** Der Knopf, der die Ansicht abschließt — je Ansicht genau einer. */
+    /** The button that completes the view; exactly one per view. */
     protected final Button primaryButton(String key, String id,
                                          ComponentEventListener<ClickEvent<Button>> listener) {
         Button button = new Button(text(key), listener);
@@ -185,7 +184,7 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
         return button;
     }
 
-    /** Ein Nebenweg, der die Ansicht verlässt, ohne etwas zu speichern. */
+    /** A side route that leaves the view without saving anything. */
     protected final Button secondaryButton(String key, String id,
                                            ComponentEventListener<ClickEvent<Button>> listener) {
         Button button = new Button(text(key), listener);
@@ -194,15 +193,15 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
         return button;
     }
 
-    /** Knopf, der auf eine andere Route des Bausteins führt. */
+    /** A button leading to another route of this building block. */
     protected final Button navigationButton(String key, String route) {
         return new Button(text(key), event -> UI.getCurrent().navigate(route));
     }
 
     /**
-     * Hinweis über dem Formular. Oben und mittig, weil das Formular selbst die
-     * Spaltenmitte einnimmt — am unteren Rand stünde die Meldung am Telefon
-     * hinter der Tastatur.
+     * A notification above the form. Top and centred, because the form itself
+     * occupies the middle of the column; at the bottom edge the message would
+     * sit behind the keyboard on a phone.
      */
     protected final void warn(String message) {
         Duration duration = ui.notificationDuration();
@@ -212,11 +211,10 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
     }
 
     /**
-     * Übersetzt die Meldungsschlüssel des Bausteins in einen Text.
+     * Turns the message keys of this building block into a text.
      *
-     * <p>Nur die bekannten: Ein unbekannter Schlüssel — etwa aus einem selbst
-     * gebauten Dienst einer Anwendung — bekommt den allgemeinen Text statt
-     * eines rohen Schlüssels auf dem Bildschirm.
+     * <p>Only the known ones: an unknown key -- from an application's own
+     * service, say -- gets the generic text rather than a raw key on screen.
      */
     protected final String translate(IdentityException e) {
         String key = e.getMessageKey();

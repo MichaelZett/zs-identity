@@ -15,16 +15,17 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Nimmt den Link aus der Bestätigungsmail entgegen und schaltet das Konto frei.
+ * Receives the link from the verification mail and enables the account.
  *
- * <p>Das Token kommt als Abfrageparameter, nicht als Pfadsegment: So bleibt der
- * Pfad in Logs und Verlauf lesbar, und der Link lässt sich ohne
- * Sonderbehandlung zusammenbauen.
+ * <p>The token arrives as a query parameter, not as a path segment: that keeps
+ * the path readable in logs and history, and the link can be assembled without
+ * special handling.
  *
- * <p>Eingelöst wird erst auf Knopfdruck, nicht beim Seitenaufbau: Mail-Scanner
- * und Link-Vorschauen rufen den Link per GET ab, bevor der Mensch klickt — bei
- * automatischer Einlösung verbrauchen sie das Einmal-Token, und der echte Klick
- * läuft in „Link bereits benutzt" (Praxisfall Gruppentest 19.08.2026).
+ * <p>It is redeemed on a button press and not while the page is being built:
+ * mail scanners and link previews fetch the link by GET before the human
+ * clicks. With automatic redemption they would consume the one-time token, and
+ * the real click would run into "link already used" (seen in the group test on
+ * 2026-08-19).
  */
 @Route(value = IdentityRoutes.CONFIRM_EMAIL, autoLayout = false)
 @AnonymousAllowed
@@ -82,7 +83,7 @@ public class ConfirmEmailView extends IdentityFormView implements BeforeEnterObs
         addFullWidth(resendButton(), loginButton());
     }
 
-    /** Der Ausweg aus einem abgelaufenen Link — sonst bleibt das Konto gesperrt. */
+    /** The way out of an expired link; otherwise the account stays blocked. */
     private Button resendButton() {
         Button button = navigationButton("identity.confirm.resend", IdentityRoutes.RESEND_VERIFICATION);
         button.setId("confirm-resend-verification-button");

@@ -102,9 +102,9 @@ class UserAccountServiceImpl implements UserAccountService {
     }
 
     /**
-     * Vergibt die Rolle und frischt die laufende Sitzung auf, falls es die
-     * eigene ist — sonst gälte die neue Rolle erst nach dem nächsten Anmelden
-     * (siehe {@link AuthenticationRefresher}).
+     * Grants the role and refreshes the running session if it is the caller's
+     * own; otherwise the new role would only apply after the next sign-in (see
+     * {@link AuthenticationRefresher}).
      */
     @Override
     @Transactional
@@ -126,9 +126,9 @@ class UserAccountServiceImpl implements UserAccountService {
     }
 
     /**
-     * Nimmt die Rolle zurück und frischt die laufende Sitzung auf. Hier wiegt
-     * es schwerer als beim Vergeben: Wer eine Rolle verliert, soll sie nicht
-     * bis zum nächsten Anmelden weiter ausüben können.
+     * Revokes the role and refreshes the running session. This weighs more than
+     * granting: whoever loses a role must not be able to keep exercising it
+     * until the next sign-in.
      */
     @Override
     @Transactional
@@ -143,10 +143,10 @@ class UserAccountServiceImpl implements UserAccountService {
     }
 
     /**
-     * Überschrieben, obwohl die Schnittstelle es schon beantwortet: Die
-     * {@code default}-Methode dort ruft {@code findById} auf {@code this} auf
-     * und liefe damit am Transaktions-Proxy vorbei — die LAZY gemappten
-     * Zuweisungen fielen in eine LazyInitializationException.
+     * Overridden although the interface already answers it: the {@code default}
+     * method there calls {@code findById} on {@code this} and would thereby
+     * bypass the transaction proxy, so the LAZY assignments would run into a
+     * LazyInitializationException.
      */
     @Override
     @Transactional(readOnly = true)
@@ -180,9 +180,9 @@ class UserAccountServiceImpl implements UserAccountService {
     }
 
     /**
-     * Ändert nur den Datenbestand, nicht die laufende Sitzung: Die Sprache
-     * steht nicht im Prinzipal, und die Oberfläche wechselt sie ohnehin selbst
-     * — der Baustein wüsste gar nicht, welche Ansicht er neu zeichnen müsste.
+     * Changes the stored data only, not the running session: the language is
+     * not part of the principal, and the UI switches it itself anyway -- the
+     * building block would not even know which view to redraw.
      */
     @Override
     @Transactional
@@ -210,8 +210,8 @@ class UserAccountServiceImpl implements UserAccountService {
         requireLongEnough(newRawPassword);
         UserAccount user = requireUser(userId);
         user.changePassword(passwordHasher.hash(newRawPassword));
-        // Die Sitzung trägt das Flag „muss wechseln" — nach dem Wechsel muss
-        // es dort verschwinden, sonst bliebe die Person auf der Ansicht hängen.
+        // The session carries the "must change" flag, and after the change it
+        // has to disappear there too, or the person would be stuck on the view.
         authenticationRefresher.refreshAfterCommit(user.getEmail());
     }
 
@@ -225,9 +225,9 @@ class UserAccountServiceImpl implements UserAccountService {
     }
 
     /**
-     * Tokens hängen per Fremdschlüssel mit {@code ON DELETE CASCADE} am
-     * Konto, die Rollenzuordnung räumt JPA über die Beziehung ab — es bleibt
-     * nichts zurück.
+     * Tokens hang off the account through a foreign key with {@code ON DELETE
+     * CASCADE}, and JPA clears the role assignments through the association, so
+     * nothing is left behind.
      */
     @Override
     @Transactional

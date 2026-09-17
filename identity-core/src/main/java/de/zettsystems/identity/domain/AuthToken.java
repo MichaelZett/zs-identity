@@ -19,11 +19,11 @@ import java.time.Instant;
 import java.util.Objects;
 
 /**
- * Einmal-Token für E-Mail-Bestätigung und Passwort-Reset.
+ * One-time token for email verification and password reset.
  *
- * <p>Gespeichert wird nur der <strong>Hash</strong> des Tokens. Den Klartext
- * bekommt ausschließlich der Empfänger per Mail zu sehen; wer die Datenbank
- * liest, kann daraus kein gültiges Token rekonstruieren.
+ * <p>Only the <strong>hash</strong> of the token is stored. The plain text is
+ * seen by the recipient of the mail and by nobody else; whoever reads the
+ * database cannot reconstruct a valid token from it.
  */
 @Entity
 @Table(name = "auth_token")
@@ -35,10 +35,10 @@ public class AuthToken extends AbstractAuthEntity {
     @SequenceGenerator(name = "auth_token_seq", sequenceName = "auth_token_seq", allocationSize = 20)
     private @Nullable Long id;
 
-    // LAZY: siehe UserAccount#roles — der EAGER-Default erzeugt N+1.
+    // LAZY: see UserAccount#roles -- the EAGER default produces N+1 queries.
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
-    @SuppressWarnings("NullAway.Init") // von Hibernate per Reflection befüllt
+    @SuppressWarnings("NullAway.Init") // populated by Hibernate through reflection
     private UserAccount user;
 
     @Column(name = "token_hash", nullable = false, unique = true, length = 64)
@@ -72,7 +72,7 @@ public class AuthToken extends AbstractAuthEntity {
         return usedAt == null && now.isBefore(expiresAt);
     }
 
-    /** Entwertet das Token. Ein zweiter Aufruf desselben Links läuft danach ins Leere. */
+    /** Voids the token. A second visit to the same link then leads nowhere. */
     public void markUsed(Instant at) {
         this.usedAt = Objects.requireNonNull(at, "at");
     }

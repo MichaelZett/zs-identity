@@ -9,17 +9,17 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.io.Serial;
 
 /**
- * Führt ein Konto, das sein Passwort ändern muss, auf die
- * {@link ChangePasswordView} — bei <em>jeder</em> Navigation, außer auf diese
- * Ansicht selbst.
+ * Sends an account that has to change its password to the
+ * {@link ChangePasswordView}, on <em>every</em> navigation except to that view
+ * itself.
  *
- * <p>Gelesen wird das Flag aus dem {@code SecurityContext}
- * ({@link IdentityUserDetails#mustChangePassword()}), nicht aus der Datenbank:
- * Es hängt an jedem Seitenaufruf. Nach dem Wechsel frischt der Dienst die
- * Sitzung auf, damit das Flag dort verschwindet.
+ * <p>The flag is read from the {@code SecurityContext}
+ * ({@link IdentityUserDetails#mustChangePassword()}) and not from the database,
+ * because it is consulted on every page load. After the change the service
+ * refreshes the session so that the flag disappears there too.
  *
- * <p>Angehängt wird der Wächter je {@code UI} durch den
- * {@link PasswordChangeServiceInitListener}; Tests hängen ihn selbst an.
+ * <p>The guard is attached per {@code UI} by the
+ * {@link PasswordChangeServiceInitListener}; tests attach it themselves.
  */
 public final class PasswordChangeGuard implements BeforeEnterListener {
 
@@ -28,8 +28,8 @@ public final class PasswordChangeGuard implements BeforeEnterListener {
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        // Über den Pfad, nicht über die Klasse: So hängt der Wächter nicht an
-        // der Registrierung der Ansicht (Tests registrieren ein leeres Ziel).
+        // By path rather than by class: that way the guard does not depend on
+        // the view being registered (tests register an empty target).
         if (IdentityRoutes.CHANGE_PASSWORD.equals(event.getLocation().getPath())) {
             return;
         }
@@ -38,7 +38,7 @@ public final class PasswordChangeGuard implements BeforeEnterListener {
         }
     }
 
-    /** Ob das angemeldete Konto sein Passwort ändern muss — {@code false} ohne Anmeldung. */
+    /** Whether the signed-in account has to change its password; {@code false} without a sign-in. */
     public static boolean mustChangePassword() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null

@@ -16,24 +16,24 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Voreingestellter Mailversand über {@code JavaMailSender}.
+ * The default mail delivery through {@code JavaMailSender}.
  *
- * <p>Bewusst schlichte Mails ohne Vorlagentechnik: Der Baustein soll keine
- * Meinung darüber haben, welche Vorlagen-Bibliothek eine Anwendung nutzt. Wer
- * gestaltete Mails will, stellt eine eigene {@link IdentityMailSender}-Bean
- * bereit und verdrängt diese hier.
+ * <p>Deliberately plain mails without a templating engine: the building block
+ * should hold no opinion about which template library an application uses.
+ * Whoever wants designed mails provides an {@link IdentityMailSender} bean of
+ * their own and displaces this one.
  *
- * <p>Jede Mail geht als {@code multipart/alternative} hinaus: derselbe Text
- * wie bisher und daneben ein HTML-Teil, dessen Link ein echtes
- * {@code <a href>} ist. Grund ist Outlook — in Nur-Text-Nachrichten bricht es
- * lange Zeilen um und macht aus einem über 76 Zeichen langen Link keinen
- * anklickbaren mehr. Der Bestätigungslink ist mit dem 43-stelligen Token immer
- * länger als das. Clients ohne HTML sehen weiterhin den Textteil.
+ * <p>Every mail goes out as {@code multipart/alternative}: the same text as
+ * before, and next to it an HTML part whose link is a real {@code <a href>}.
+ * The reason is Outlook -- in plain-text messages it wraps long lines and
+ * turns a link longer than 76 characters into something that can no longer be
+ * clicked. With its 43-character token the verification link is always longer
+ * than that. Clients without HTML still see the text part.
  *
- * <p>Die Texte kommen aus {@link IdentityMessages}. Die Sprache ist die des
- * Kontos, und wenn es keine gewählt hat, {@code zs.identity.locale}: Zum
- * Zeitpunkt des Versands gibt es keinen Browser, dessen Spracheinstellung man
- * fragen könnte — deshalb steht sie seit V1_4 am Konto.
+ * <p>The texts come from {@link IdentityMessages}. The language is that of the
+ * account, or {@code zs.identity.locale} if it has chosen none: at delivery
+ * time there is no browser whose language setting could be asked, which is why
+ * it sits on the account since V1_4.
  */
 class JavaMailIdentityMailSender implements IdentityMailSender {
 
@@ -82,9 +82,8 @@ class JavaMailIdentityMailSender implements IdentityMailSender {
         String subject = messages.get(subjectKey, locale);
         String validity = humanReadableValidity(locale, linkValidity);
         String text = messages.get(bodyKey, locale, user.displayName(), url, validity);
-        // Die Platzhalter werden vor dem Einsetzen maskiert: MessageFormat
-        // kennt kein HTML, und ein Anzeigename darf die Auszeichnung nicht
-        // aufbrechen.
+        // The placeholders are escaped before being inserted: MessageFormat
+        // knows no HTML, and a display name must not break out of the markup.
         String html = messages.get(htmlBodyKey, locale,
                 escapeHtml(user.displayName()), escapeHtml(url), escapeHtml(validity));
 
@@ -92,13 +91,13 @@ class JavaMailIdentityMailSender implements IdentityMailSender {
         try {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
             helper.setFrom("%s <%s>".formatted(properties.fromName(), properties.fromAddress()));
-            // Verwaltete Konten haben keine Adresse — sie durchlaufen aber auch
-            // weder Registrierung noch Passwort-Reset; hier anzukommen wäre ein
-            // Programmierfehler, kein Laufzeitfall.
+            // Managed accounts have no address, but they go through neither
+            // registration nor password reset; arriving here would be a
+            // programming error, not a runtime case.
             helper.setTo(Objects.requireNonNull(user.email(), "email"));
             helper.setSubject(subject);
-            // Beide Fassungen in einem Aufruf: Spring baut daraus
-            // multipart/alternative mit dem Text zuerst.
+            // Both versions in one call: Spring builds multipart/alternative
+            // from them, with the text part first.
             helper.setText(text, html);
         } catch (MessagingException e) {
             LOG.error("Could not build '{}' mail for account {}", subject, user.id(), e);
@@ -108,20 +107,20 @@ class JavaMailIdentityMailSender implements IdentityMailSender {
         try {
             mailSender.send(message);
         } catch (MailException e) {
-            // Nicht weiterwerfen: Sonst rollt eine fehlgeschlagene Zustellung die
-            // Registrierung zurück, obwohl das Konto korrekt angelegt wurde. Die
-            // Oberfläche bietet ein erneutes Zusenden an.
+            // Do not rethrow: otherwise a failed delivery rolls back the
+            // registration although the account was created correctly. The UI
+            // offers to send it again.
             LOG.error("Could not send '{}' mail to account {}", subject, user.id(), e);
         }
     }
 
     /**
-     * Die Frist in der größten Einheit, die aufgeht: Eine Einladung über sieben
-     * Tage als „168 Stunden" zu schreiben, wäre richtig und unlesbar.
+     * The deadline in the largest unit that comes out even: writing a
+     * seven-day invitation as "168 hours" would be correct and unreadable.
      *
-     * <p>Erst <strong>oberhalb</strong> eines Tages, und nur bei glatten Tagen:
-     * Die bisherige Frist von 24 Stunden soll in den bestehenden Mails weiter
-     * als „24 Stunden" stehen, und „25 Stunden" ist ehrlicher als „ein Tag".
+     * <p>Only <strong>above</strong> a day, and only for whole days: the
+     * existing deadline of 24 hours should keep reading "24 hours" in the
+     * existing mails, and "25 hours" is more honest than "one day".
      */
     private String humanReadableValidity(Locale locale, Duration validity) {
         long hours = validity.toHours();
@@ -135,9 +134,9 @@ class JavaMailIdentityMailSender implements IdentityMailSender {
     }
 
     /**
-     * Maskiert die fünf Zeichen, die im Textinhalt und in einem doppelt
-     * gequoteten Attribut Bedeutung tragen. Eine Bibliothek dafür würde dem
-     * Baustein eine Abhängigkeit aufzwingen, die er sonst nicht braucht.
+     * Escapes the five characters that carry meaning in text content and
+     * inside a double-quoted attribute. A library for this would force a
+     * dependency on the building block that it otherwise does not need.
      */
     private static String escapeHtml(String value) {
         return value.replace("&", "&amp;")

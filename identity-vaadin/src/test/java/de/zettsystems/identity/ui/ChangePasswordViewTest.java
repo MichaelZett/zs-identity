@@ -27,8 +27,8 @@ import static com.github.mvysny.kaributesting.v10.LocatorJ._setValue;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Passwort ändern und der erzwungene Wechsel: Wer das Flag trägt, landet bei
- * jeder Navigation hier, bis das Passwort neu ist.
+ * Changing the password and the forced change: whoever carries the flag ends up
+ * here on every navigation until the password is new.
  */
 class ChangePasswordViewTest extends AbstractViewTest {
 
@@ -112,8 +112,8 @@ class ChangePasswordViewTest extends AbstractViewTest {
         assertThat(_get(view, H2.class).getText()).isEqualTo("Passwort geändert");
         assertThat(_find(view, PasswordField.class)).isEmpty();
 
-        // Im Betrieb frischt der Dienst die Sitzung auf; hier stellt der Test
-        // das nach — sonst führte der Wächter „Weiter" gleich wieder hierher.
+        // In production the service refreshes the session; here the test does
+        // that itself, or the guard would send "continue" straight back here.
         signIn(false);
         UI.getCurrent().navigate("somewhere");
         _click(_get(view, Button.class, spec -> spec.withId("change-password-proceed-button")));
@@ -133,9 +133,10 @@ class ChangePasswordViewTest extends AbstractViewTest {
     }
 
     /**
-     * Der Wächter hängt bereits an der UI: Karibu lädt die
-     * {@code VaadinServiceInitListener} aus {@code META-INF/services} wie der
-     * echte Server — genau diese Registrierung wird hier mitgeprüft.
+     * The guard is already attached to the UI: Karibu loads the
+     * {@code VaadinServiceInitListener} from {@code META-INF/services} just as
+     * the real server does, and that registration is checked here along the
+     * way.
      */
     @Test
     void theGuardForwardsAFlaggedAccountToThisView() {

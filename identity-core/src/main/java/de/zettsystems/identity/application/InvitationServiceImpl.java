@@ -66,10 +66,10 @@ class InvitationServiceImpl implements InvitationService {
             throw new IdentityException(IdentityMessageKeys.ACCOUNT_NOT_FOUND,
                     "Account %d has no email address — invite it first".formatted(userId));
         }
-        // Ein gesetztes Passwort heißt: Die Einladung ist eingelöst, das Konto
-        // gehört jemandem. Eine zweite Einladung wäre dann ein Weg, fremde
-        // Konten zu übernehmen — wer sein Passwort vergessen hat, nimmt
-        // „Passwort vergessen".
+        // A password that is set means the invitation has been redeemed and
+        // the account belongs to someone. A second invitation would then be a
+        // way to take over other people's accounts; whoever forgot their
+        // password uses "forgot password".
         if (user.getPasswordHash() != null) {
             throw new IdentityException(IdentityMessageKeys.ACCOUNT_ALREADY_CLAIMED,
                     "Account %d is already claimed".formatted(userId));
@@ -77,8 +77,8 @@ class InvitationServiceImpl implements InvitationService {
         sendInvitation(user);
     }
 
-    // Beide Eingaenge tragen @Transactional und rufen denselben privaten Kern
-    // — Begruendung wie in RegistrationServiceImpl.
+    // Both entry points carry @Transactional and call the same private core.
+    // The reasoning is the same as in RegistrationServiceImpl.
     @Override
     @Transactional
     public UserAccountDto inviteNewAccount(String email, AccountName name) {
@@ -95,9 +95,9 @@ class InvitationServiceImpl implements InvitationService {
         String normalized = UserAccount.normalizeEmail(email);
         requireFreeAddress(normalized);
 
-        // Über das verwaltete Konto: Es ist genau der Zustand, den eine offene
-        // Einladung beschreibt — Adresse ja, Passwort nein, kein Anmeldeweg.
-        // Beide Einladungswege enden damit im selben Zustand.
+        // Through the managed account: it is exactly the state an open
+        // invitation describes -- address yes, password no, no way to sign in.
+        // Both invitation routes therefore end in the same state.
         UserAccount user = UserAccount.managed(name, clock.instant());
         user.assignEmail(normalized);
         user.changeLocale(locale);
@@ -133,7 +133,7 @@ class InvitationServiceImpl implements InvitationService {
 
         UserAccount user = tokenIssuer.redeem(token, AuthTokenType.INVITATION);
         user.claimWithPassword(passwordHasher.hash(rawPassword));
-        // Nur, wenn beim Einladen keine gewählt wurde — siehe InvitationService#claim.
+        // Only when none was chosen while inviting; see InvitationService#claim.
         if (user.getLocale() == null) {
             user.changeLocale(locale);
         }
@@ -141,11 +141,11 @@ class InvitationServiceImpl implements InvitationService {
     }
 
     /**
-     * Die Reihenfolge ist wichtig: {@code issue} entwertet offene Token mit
-     * einer {@code @Modifying(clearAutomatically = true)}-Abfrage und löst
-     * damit den Persistence Context auf. Ein danach gebautes {@code Dto} liefe
-     * beim Lesen der LAZY gemappten Rollen in eine
-     * {@code LazyInitializationException} — also entsteht es vorher.
+     * The order matters: {@code issue} voids open tokens with a
+     * {@code @Modifying(clearAutomatically = true)} query and thereby clears
+     * the persistence context. A {@code Dto} built afterwards would run into a
+     * {@code LazyInitializationException} when reading the LAZY roles, so it is
+     * created beforehand.
      */
     private UserAccountDto sendInvitation(UserAccount user) {
         UserAccountDto recipient = UserAccountMapper.toDto(user);
@@ -163,10 +163,10 @@ class InvitationServiceImpl implements InvitationService {
     }
 
     /**
-     * Anders als beim Passwort-Reset ist ein Fehler hier richtig: Eingeladen
-     * wird aus einer Verwaltung heraus, nicht aus einem offenen Formular — es
-     * gibt niemanden, vor dem die Auskunft zu verbergen wäre, und der
-     * Einladende soll erfahren, dass die Adresse schon ein Konto hat.
+     * Unlike with a password reset, an error is right here: invitations are
+     * issued from an administration screen, not from a form open to everyone.
+     * There is nobody to hide the information from, and whoever invites should
+     * learn that the address already has an account.
      */
     private void requireFreeAddress(String normalizedEmail) {
         if (userRepository.existsByEmail(normalizedEmail)) {

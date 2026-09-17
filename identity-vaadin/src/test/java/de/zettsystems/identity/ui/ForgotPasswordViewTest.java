@@ -59,8 +59,8 @@ class ForgotPasswordViewTest extends AbstractViewTest {
     }
 
     /**
-     * Die Bestätigung ist dieselbe, egal ob es das Konto gibt — sonst ließe
-     * sich über dieses Formular durchprobieren, wer registriert ist.
+     * The confirmation is the same whether or not the account exists; otherwise
+     * this form could be used to work out who is registered.
      */
     @Test
     void aValidAddressIsPassedOnAndConfirmedNeutrally() {

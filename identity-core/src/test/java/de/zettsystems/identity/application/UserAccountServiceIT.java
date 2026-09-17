@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Locale;
@@ -18,7 +19,7 @@ import java.util.Locale;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Der Weg, auf dem eine Verwaltung Konten anlegt und Rechte vergibt. */
+/** The route along which an administrator creates accounts and grants rights. */
 class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
 
     @Autowired
@@ -29,6 +30,8 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
     private AuthTokenRepository tokenRepository;
     @Autowired
     private UserDetailsService userDetailsService;
+    @Autowired
+    private TransactionTemplate transactions;
 
     @BeforeEach
     void clearAccounts() {
@@ -47,7 +50,7 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(userDetailsService.loadUserByUsername("verwaltet@example.com").isEnabled()).isTrue();
     }
 
-    /** Der Weg, den eine Anwendung ihren Kontoeinstellungen unterlegt. */
+    /** The route an application puts behind its account settings. */
     @Test
     void theLanguageOfAnAccountCanBeSetAndTakenBack() {
         UserAccountDto created = userAccountService.createAccount(
@@ -56,11 +59,11 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(userAccountService.changeLocale(created.id(), Locale.ENGLISH).locale())
                 .isEqualTo(Locale.ENGLISH);
         assertThat(userAccountService.findById(created.id()).orElseThrow().locale())
-                .as("die Wahl muss den Aufruf überleben, nicht nur im Rückgabewert stehen")
+                .as("the choice has to survive the call, not merely appear in the return value")
                 .isEqualTo(Locale.ENGLISH);
 
         assertThat(userAccountService.changeLocale(created.id(), null).locale())
-                .as("ohne Wahl gilt wieder zs.identity.locale")
+                .as("without a choice zs.identity.locale applies again")
                 .isNull();
     }
 
@@ -83,7 +86,7 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(userAccountService.findAllById(List.of())).isEmpty();
     }
 
-    /** Ein gelöschtes Konto ist weg — samt Rolle; ein zweites Löschen meldet „nicht gefunden". */
+    /** A deleted account is gone, role included; a second delete reports "not found". */
     @Test
     void anAccountCanBeDeletedForGood() {
         UserAccountDto created = userAccountService.createAccount(
@@ -99,7 +102,7 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
                 .isInstanceOf(IdentityException.class);
     }
 
-    /** Startpasswort aus einer Verwaltung: Das Flag steht, bis das Passwort neu ist. */
+    /** An initial password from an administrator: the flag stays until the password is new. */
     @Test
     void aRequiredPasswordChangeIsClearedByChangingThePassword() {
         UserAccountDto created = userAccountService.createAccount(
@@ -137,8 +140,8 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(created.enabled()).isTrue();
         assertThat(created.displayName()).isEqualTo("Paul Platzhalter");
         assertThat(created.roleCodes()).containsExactly("USER");
-        // Ohne E-Mail-Adresse gibt es keinen Anmeldenamen — das Konto ist
-        // über keinen Anmeldeweg erreichbar.
+        // Without an email address there is no sign-in name, so the account
+        // cannot be reached through any sign-in path.
         assertThat(userAccountService.findAll())
                 .filteredOn(UserAccountDto::managed)
                 .hasSize(1);
@@ -151,7 +154,7 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
 
         assertThat(created.displayName()).isEqualTo("Nova");
         assertThat(created.name().hasFullName()).isFalse();
-        assertThat(created.firstName()).as("leer statt null, damit Klarnamen-Apps ohne Fallunterscheidung bleiben")
+        assertThat(created.firstName()).as("empty instead of null, so real-name apps need no case distinction")
                 .isEmpty();
         assertThat(created.lastName()).isEmpty();
 
@@ -186,6 +189,29 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
                 .containsExactly("USER");
     }
 
+    /**
+     * The case an embedding application produces: it loads the account and then
+     * grants -- inside the same transaction -- a role it already has. The
+     * existing assignment is loaded by then and its role is a LAZY proxy;
+     * whoever fails to recognise it creates a second assignment and runs into
+     * ux_auth_user_role at commit time.
+     */
+    @Test
+    void grantingAgainAfterTheAccountWasLoadedChangesNothing() {
+        Long id = userAccountService.createAccount(
+                "nochmal@example.com", "ein-langes-passwort", "Noch", "Mal", true).id();
+        userAccountService.grantRole(id, "GROUP_ADMIN");
+
+        transactions.executeWithoutResult(status -> {
+            userAccountService.findById(id).orElseThrow();
+            userAccountService.grantRole(id, "GROUP_ADMIN");
+        });
+
+        assertThat(userAccountService.findById(id).orElseThrow().roleAssignments())
+                .as("no second assignment of the same role")
+                .hasSize(2);
+    }
+
     @Test
     void grantingRolesShowsUpInTheSecurityAuthorities() {
         Long id = userAccountService.createAccount(
@@ -196,7 +222,7 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
 
         assertThat(details.getAuthorities())
                 .extracting(Object::toString)
-                .as("die Rolle als ROLE_, die daran hängende Berechtigung im Klartext")
+                .as("the role as ROLE_, the permission attached to it verbatim")
                 .contains("ROLE_MEMBER", "season:read");
     }
 
@@ -273,7 +299,7 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
 
         assertThat(userAccountService.findById(id)).isPresent();
         assertThat(userAccountService.findByEmail("ZWEITE@example.com"))
-                .as("die Suche muss unabhängig von der Schreibweise treffen")
+                .as("the lookup has to match regardless of case")
                 .isPresent();
         assertThat(userAccountService.findAll())
                 .extracting(UserAccountDto::lastName)

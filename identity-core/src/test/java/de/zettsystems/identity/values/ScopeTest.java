@@ -15,11 +15,11 @@ class ScopeTest {
         assertThat(Scope.parse("club:17")).isEqualTo(Scope.of("club", "17"));
     }
 
-    /** Eine Kennung darf selbst Doppelpunkte enthalten — getrennt wird am ersten. */
+    /** An identifier may contain colons itself; the split happens at the first one. */
     @Test
     void parsingSplitsAtTheFirstSeparatorOnly() {
         assertThatThrownBy(() -> Scope.parse("club:a:b"))
-                .as("ein Doppelpunkt in der Kennung ist verboten, nicht still erlaubt")
+                .as("a colon in the identifier is forbidden, not silently allowed")
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -31,9 +31,9 @@ class ScopeTest {
     }
 
     /**
-     * Der sicherheitsrelevante Teil: Aus Rolle und Bereich wird
-     * {@code ROLE_ADMIN@club:17}. Dürfte eine Kennung diese Zeichen tragen,
-     * ließe sich damit eine Berechtigung erfinden, die niemand vergeben hat.
+     * The security-relevant part: role and scope are combined into
+     * {@code ROLE_ADMIN@club:17}. If an identifier were allowed to carry these
+     * characters, one could invent a permission nobody granted.
      */
     @ParameterizedTest
     @ValueSource(strings = {"4@club", "a:b", "mit leerzeichen", " ", ""})
@@ -60,7 +60,7 @@ class ScopeTest {
         assertThat(ScopedRole.of("ADMIN", Scope.of("club", "17")).authorityName())
                 .isEqualTo("ROLE_ADMIN@club:17");
         assertThat(ScopedRole.of("ADMIN", Scope.of("club", "17")).qualify("season:read"))
-                .as("auch feingranulare Berechtigungen gelten nur in ihrem Bereich")
+                .as("fine-grained permissions apply only in their scope too")
                 .isEqualTo("season:read@club:17");
     }
 }

@@ -1,37 +1,38 @@
-// Wiederverwendbarer Auth-Baustein: Benutzerkonto, Registrierung, Anmeldung,
-// Passwort-Reset, Rollen und Rechte. Bewusst OHNE Vaadin-Abhaengigkeit, damit er
-// auch in einer reinen REST-Anwendung nutzbar bleibt — die Views liegen in
-// :identity-vaadin.
+// Reusable authentication building block: user account, registration, sign-in,
+// password reset, roles and permissions. Deliberately WITHOUT a Vaadin
+// dependency, so that it stays usable in a pure REST application as well; the
+// views live in :identity-vaadin.
 dependencies {
     api 'org.springframework.boot:spring-boot-starter-security'
     api 'org.springframework.boot:spring-boot-starter-data-jpa'
 
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
 
-    // compileOnly, nicht implementation: Der Baustein fuehrt Flyway nicht selbst
-    // aus — das ist Sache der einbindenden Anwendung. Er braucht den Typ nur, um
-    // seinen Migrations-Ablageort per FlywayConfigurationCustomizer beizusteuern.
-    // Bringt die Anwendung kein Flyway mit, greift @ConditionalOnClass und der
-    // Customizer entfaellt ersatzlos.
+    // compileOnly rather than implementation: the building block does not run
+    // Flyway itself -- that is the embedding application's business. It needs
+    // the type only to contribute its migration location through a
+    // FlywayConfigurationCustomizer. If the application brings no Flyway,
+    // @ConditionalOnClass applies and the customizer simply falls away.
     compileOnly 'org.springframework.boot:spring-boot-flyway'
 
-    // Ebenfalls compileOnly: Der AuthenticationRefresher schreibt den
-    // aufgefrischten SecurityContext in die HTTP-Sitzung zurueck und braucht
-    // dafuer die Servlet-Typen. Jede Web-Anwendung bringt sie mit; laeuft der
-    // Baustein einmal ohne Servlet-Umgebung, wird der Zweig nie betreten.
+    // compileOnly as well: the AuthenticationRefresher writes the refreshed
+    // SecurityContext back into the HTTP session and needs the servlet types
+    // for that. Every web application brings them; if the building block ever
+    // runs without a servlet environment, that branch is never entered.
     compileOnly 'jakarta.servlet:jakarta.servlet-api'
 
-    // Ebenfalls compileOnly (seit 0.7.0): Wer Mails verschicken will, nimmt
-    // spring-boot-starter-mail selbst auf. Eine REST-Anwendung ohne Mailversand
-    // oder eine mit eigenem IdentityMailSender (Transaktionsmail-Dienst) soll
-    // sich nicht jakarta.mail aufzwingen lassen. Fehlt die Bibliothek, greift
-    // @ConditionalOnClass und der Baustein faellt auf den Log-Versand zurueck.
+    // compileOnly as well (since 0.7.0): whoever wants to send mails takes
+    // spring-boot-starter-mail themselves. A REST application without mail
+    // delivery, or one with its own IdentityMailSender (a transactional mail
+    // service), should not have jakarta.mail forced upon it. If the library is
+    // missing, @ConditionalOnClass applies and the building block falls back to
+    // delivery through the log.
     compileOnly 'org.springframework.boot:spring-boot-starter-mail'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-mail'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
-    // Fuer MockHttpServletRequest/-Response: Der Baustein kennt die Servlet-Typen
-    // im Hauptcode nur compileOnly, der AuthenticationRefresher-Test braucht sie.
+    // For MockHttpServletRequest/-Response: the main code knows the servlet
+    // types only compileOnly, and the AuthenticationRefresher test needs them.
     testImplementation 'jakarta.servlet:jakarta.servlet-api'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.testcontainers:testcontainers-junit-jupiter'

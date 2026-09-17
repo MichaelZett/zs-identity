@@ -9,16 +9,16 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Übersetzt die interne Entity in die nach außen sichtbare Sicht.
+ * Translates the internal entity into the view visible from the outside.
  *
- * <p>Muss innerhalb einer Transaktion aufgerufen werden: Die Zuweisungen und
- * die Rollen daran sind LAZY gemappt, außerhalb der Sitzung gäbe es eine
+ * <p>Has to be called inside a transaction: the assignments and the roles on
+ * them are mapped LAZY, so outside the session there would be a
  * LazyInitializationException.
  */
 final class UserAccountMapper {
 
     private UserAccountMapper() {
-        // Hilfsklasse
+        // Utility class
     }
 
     static UserAccountDto toDto(UserAccount user) {

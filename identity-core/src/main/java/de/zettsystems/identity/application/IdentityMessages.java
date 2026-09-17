@@ -3,39 +3,40 @@ package de.zettsystems.identity.application;
 import java.util.Locale;
 
 /**
- * Löst die Texte des Bausteins auf — Mailtexte, Oberflächentexte und die
- * Meldungen zu {@link de.zettsystems.identity.values.IdentityMessageKeys}.
+ * Resolves the texts of the building block: mail texts, UI texts and the
+ * messages behind {@link de.zettsystems.identity.values.IdentityMessageKeys}.
  *
- * <p>Ein Port wie {@link IdentityMailSender}: Die Voreinstellung liest die
- * mitgelieferten Sprachdateien (Deutsch und Englisch). Eine Anwendung, die
- * eigene Texte setzen oder ihren vorhandenen {@code MessageSource} bzw.
- * Vaadins {@code I18NProvider} verwenden will, stellt eine eigene Bean bereit
- * und verdrängt damit die Voreinstellung — einzelne Schlüssel überschreiben
- * und den Rest an die mitgelieferte Auflösung weiterreichen inklusive.
+ * <p>A port like {@link IdentityMailSender}. The default reads the shipped
+ * message bundles (German and English). An application that wants its own
+ * texts, or wants to use its existing {@code MessageSource} or Vaadin's
+ * {@code I18NProvider}, provides a bean of its own and thereby displaces the
+ * default -- including overriding single keys and passing the rest on to the
+ * shipped resolution.
  */
 public interface IdentityMessages {
 
     /**
-     * Die mitgelieferte Auflösung über die Sprachdateien des Bausteins.
+     * The shipped resolution through the message bundles of this building
+     * block.
      *
-     * <p>Für Anwendungen, die nur einzelne Schlüssel ersetzen wollen: eigene
-     * Bean, die bekannte Schlüssel selbst beantwortet und alles Übrige hierhin
-     * weiterreicht.
+     * <p>For applications that want to replace single keys only: a bean of
+     * their own that answers the keys it knows and passes everything else on
+     * to this one.
      *
-     * @return eine neue, gemeinsam nutzbare Instanz
+     * @return a new, shareable instance
      */
     static IdentityMessages resourceBundles() {
         return new ResourceBundleIdentityMessages();
     }
 
     /**
-     * Liefert den Text zu einem Schlüssel.
+     * Returns the text for a key.
      *
-     * @param key    Schlüssel aus den mitgelieferten Sprachdateien oder aus
+     * @param key    key from the shipped message bundles or from
      *               {@link de.zettsystems.identity.values.IdentityMessageKeys}
-     * @param locale gewünschte Sprache; ohne passende Datei greift Englisch
-     * @param args   Platzhalterwerte im Format von {@link java.text.MessageFormat}
-     * @return der Text, oder der Schlüssel selbst, wenn es dazu keinen gibt
+     * @param locale desired language; without a matching bundle English applies
+     * @param args   placeholder values in the format of {@link java.text.MessageFormat}
+     * @return the text, or the key itself when there is none
      */
     String get(String key, Locale locale, Object... args);
 }

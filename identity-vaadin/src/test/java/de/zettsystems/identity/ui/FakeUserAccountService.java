@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-/** Zeichnet Passwortwechsel auf; alles andere ist für die Ansichtstests ohne Belang. */
+/** Records password changes; nothing else matters for the view tests. */
 class FakeUserAccountService implements UserAccountService {
 
     private static final UserAccountDto ACCOUNT = new UserAccountDto(1L, "anna@example.com",
@@ -45,7 +45,7 @@ class FakeUserAccountService implements UserAccountService {
 
     @Override
     public void deleteAccount(Long userId) {
-        // Die Ansichten löschen nichts.
+        // The views delete nothing.
     }
 
     @Override

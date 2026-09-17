@@ -24,15 +24,15 @@ class UserAccountTest {
 
     @Test
     void normalizingUsesRootLocale() {
-        // Auf einem System mit türkischem Locale würde toLowerCase() aus "I" ein
-        // punktloses "ı" machen — die Adresse wäre dann eine andere.
+        // On a system with a Turkish locale, toLowerCase() would turn "I" into a
+        // dotless "i", and the address would then be a different one.
         assertThat(UserAccount.normalizeEmail("INFO@EXAMPLE.COM")).isEqualTo("info@example.com");
     }
 
     /**
-     * {@link java.util.Locale#ROOT} ist die Abwesenheit einer Sprache. Ohne
-     * diese Regel stünde dafür ein leeres Sprachkennzeichen in der Datenbank —
-     * ununterscheidbar von einer echten Wahl.
+     * {@link java.util.Locale#ROOT} is the absence of a language. Without this
+     * rule an empty language tag would sit in the database for it,
+     * indistinguishable from a real choice.
      */
     @Test
     void theRootLocaleCountsAsNoChoiceAtAll() {
@@ -75,7 +75,7 @@ class UserAccountTest {
 
         assertThat(user.isEnabled()).isTrue();
         assertThat(user.isEmailVerified())
-                .as("ohne Bestätigung wissen wir nicht, ob die Adresse dem Konto gehört")
+                .as("without confirmation we do not know whether the address belongs to the account")
                 .isFalse();
     }
 
@@ -122,7 +122,7 @@ class UserAccountTest {
         assertThat(user.getRoles()).containsExactly(member);
     }
 
-    /** Dieselbe Rolle in zwei Vereinen ist zweierlei — und beides gleichzeitig möglich. */
+    /** The same role in two clubs is two things, and both are possible at once. */
     @Test
     void aRoleCanBeHeldInSeveralScopes() {
         UserAccount user = newAccount("a@b.c");
@@ -136,7 +136,7 @@ class UserAccountTest {
         assertThat(user.rolesIn(club17)).containsExactly(admin);
         assertThat(user.rolesIn(club4)).containsExactly(admin);
         assertThat(user.getRoles())
-                .as("in keinem Verein Admin zu sein, heißt nicht überall Admin zu sein")
+                .as("being admin of no club does not mean being admin everywhere")
                 .isEmpty();
         assertThat(user.scopesOf("club")).containsExactlyInAnyOrder(club17, club4);
         assertThat(user.scopesOf("game")).isEmpty();
@@ -172,9 +172,8 @@ class UserAccountTest {
     }
 
     /**
-     * {@code replaceRoles} setzt die globalen Rollen — über die Mandanten
-     * einer Person sagt der Aufruf nichts, also darf er sie auch nicht
-     * stillschweigend leeren.
+     * {@code replaceRoles} sets the global roles. The call says nothing about a
+     * person's tenants, so it must not silently empty them either.
      */
     @Test
     void replacingTheGlobalRolesKeepsTheScopedOnes() {
@@ -198,7 +197,7 @@ class UserAccountTest {
         Role intruder = new Role("X", "x");
 
         assertThatThrownBy(() -> handedOut.add(intruder))
-                .as("sonst umgeht ein Aufrufer die Domänenmethoden")
+                .as("otherwise a caller bypasses the domain methods")
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
@@ -224,8 +223,8 @@ class UserAccountTest {
 
     @Test
     void twoUnsavedAccountsAreNeverEqual() {
-        // Beide haben id == null. Wären sie gleich, würden sie sich in einem Set
-        // gegenseitig verdrängen.
+        // Both have id == null. If they were equal, they would displace each
+        // other inside a set.
         assertThat(newAccount("a@b.c")).isNotEqualTo(newAccount("a@b.c"));
     }
 

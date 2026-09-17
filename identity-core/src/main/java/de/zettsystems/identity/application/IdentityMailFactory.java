@@ -1,21 +1,22 @@
 package de.zettsystems.identity.application;
 
 /**
- * Baut die Mail-Implementierungen, die ohne Mail-Bibliothek auskommen. Nur da,
- * damit die Auto-Konfiguration nicht auf paket-private Klassen zugreifen muss —
- * {@link LoggingIdentityMailSender} bleibt so im Paket eingeschlossen.
+ * Builds the mail implementations that work without a mail library. It exists
+ * only so that the auto-configuration does not have to reach for
+ * package-private classes: {@link LoggingIdentityMailSender} stays enclosed in
+ * the package this way.
  *
- * <p><strong>Kein Mail-Typ in dieser Klasse.</strong> Seit 0.7.0 ist
- * {@code spring-boot-starter-mail} eine optionale Abhaengigkeit; wer sie nicht
- * mitbringt, bekommt den Rückfall hier. Läge daneben eine Methode mit
- * {@code JavaMailSender} in der Signatur, hinge das Laden dieser Klasse an
- * einer Bibliothek, die es dann gar nicht gibt. Die Mail-Variante steht
- * deshalb in {@link JavaMailFactory}.
+ * <p><strong>No mail type in this class.</strong> As of 0.7.0
+ * {@code spring-boot-starter-mail} is an optional dependency; whoever does not
+ * bring it gets the fallback here. If a method with {@code JavaMailSender} in
+ * its signature sat next to it, loading this class would depend on a library
+ * that then does not exist. The mail variant therefore lives in
+ * {@link JavaMailFactory}.
  */
 public final class IdentityMailFactory {
 
     private IdentityMailFactory() {
-        // Fabrikmethoden
+        // Factory methods
     }
 
     public static IdentityMailSender logOnly() {

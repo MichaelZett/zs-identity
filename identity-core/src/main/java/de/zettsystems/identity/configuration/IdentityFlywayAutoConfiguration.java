@@ -9,19 +9,19 @@ import org.springframework.context.annotation.Bean;
 import java.util.Arrays;
 
 /**
- * Hängt den Migrations-Ablageort des Bausteins an die Flyway-Konfiguration der
- * Anwendung an.
+ * Appends the building block's migration location to the application's Flyway
+ * configuration.
  *
- * <p>Ohne das müsste jede einbindende Anwendung
- * {@code classpath:db/identity} von Hand in {@code spring.flyway.locations}
- * eintragen — und wer das vergisst, bekommt beim Start ein
- * "Schema validation: missing table [auth_role]", dessen Ursache man erst
- * suchen muss. Der Baustein bringt seine Tabellen jetzt selbst mit.
+ * <p>Without this, every embedding application would have to add
+ * {@code classpath:db/identity} to {@code spring.flyway.locations} by hand,
+ * and whoever forgets gets a startup failure reading "Schema validation:
+ * missing table [auth_role]" whose cause has to be hunted down. The building
+ * block now brings its own tables along.
  *
- * <p>Greift nur, wenn die Anwendung Flyway überhaupt einsetzt. Der Baustein
- * selbst hat keine Flyway-Abhängigkeit (siehe {@code compileOnly} im
- * Build-Skript); wer ein anderes Migrationswerkzeug nutzt, übernimmt das SQL
- * aus {@code db/identity} eben dorthin.
+ * <p>This only applies when the application uses Flyway at all. The building
+ * block itself has no Flyway dependency (see {@code compileOnly} in the build
+ * script); whoever uses a different migration tool copies the SQL from
+ * {@code db/identity} over there instead.
  */
 @AutoConfiguration(before = FlywayAutoConfiguration.class)
 @ConditionalOnClass(FlywayConfigurationCustomizer.class)
@@ -30,8 +30,8 @@ public class IdentityFlywayAutoConfiguration {
     static final String IDENTITY_LOCATION = "classpath:db/identity";
 
     /**
-     * Ergänzt die Ablageorte, statt sie zu ersetzen — die Migrationen der
-     * Anwendung müssen weiterhin gefunden werden.
+     * Adds to the locations instead of replacing them: the application's own
+     * migrations still have to be found.
      */
     @Bean
     FlywayConfigurationCustomizer identityMigrationsCustomizer() {
@@ -40,7 +40,7 @@ public class IdentityFlywayAutoConfiguration {
                     .map(Object::toString)
                     .toArray(String[]::new);
             if (Arrays.asList(existing).contains(IDENTITY_LOCATION)) {
-                // Die Anwendung hat den Ablageort bereits selbst eingetragen.
+                // The application has already added the location itself.
                 return;
             }
             String[] combined = Arrays.copyOf(existing, existing.length + 1);

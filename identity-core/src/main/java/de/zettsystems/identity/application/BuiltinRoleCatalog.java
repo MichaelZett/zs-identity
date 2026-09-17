@@ -5,9 +5,9 @@ import de.zettsystems.identity.values.RoleDefinition;
 import java.util.Set;
 
 /**
- * Die zwei Rollen, die jede Anwendung braucht: eine für die Systemverwaltung,
- * eine als Voreinstellung für neue Konten. Alles Fachliche kommt aus den
- * {@link RoleCatalog}-Beans der Anwendung.
+ * The two roles every application needs: one for system administration, one as
+ * the default for new accounts. Everything domain-specific comes from the
+ * application's {@link RoleCatalog} beans.
  */
 class BuiltinRoleCatalog implements RoleCatalog {
 

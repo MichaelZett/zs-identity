@@ -25,24 +25,24 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Ein Benutzerkonto. Die E-Mail-Adresse ist zugleich der Anmeldename und wird
- * immer klein geschrieben gespeichert, damit sich niemand mit derselben Adresse
- * in anderer Schreibweise ein zweites Konto anlegt.
+ * A user account. The email address doubles as the sign-in name and is always
+ * stored in lower case, so that nobody creates a second account with the same
+ * address in a different spelling.
  *
- * <p>Der Name liegt in zwei Gestalten vor (siehe {@link AccountName}): Der
- * Anzeigename ist immer gesetzt; Vor- und Nachname nur bei Anwendungen, die
- * Klarnamen führen.
+ * <p>The name exists in two shapes (see {@link AccountName}): the display name
+ * is always set, first and last name only in applications that keep real
+ * names.
  *
- * <p>Die <strong>Sprache</strong> ist optional: {@code null} heißt „keine
- * eigene Wahl" — dann gilt {@code zs.identity.locale}. Gebraucht wird sie vor
- * allem für Mails, die ohne Browser entstehen und deshalb keine Sitzung fragen
- * können.
+ * <p>The <strong>language</strong> is optional: {@code null} means "no choice
+ * of its own", and then {@code zs.identity.locale} applies. It is needed above
+ * all for mails, which are created without a browser and therefore cannot ask
+ * a session.
  *
- * <p>Daneben gibt es <strong>verwaltete Konten</strong> ({@link #managed}):
- * Eine Anwendung legt sie für Personen an, die sich (noch) nicht selbst
- * registrieren — ohne E-Mail und ohne Passwort. Anmelden können sie sich
- * nicht: Der Anmeldeweg sucht per E-Mail-Adresse, und ohne Passwort-Hash gibt
- * der {@code IdentityUserDetailsService} sie zusätzlich nie heraus.
+ * <p>There are also <strong>managed accounts</strong> ({@link #managed}): an
+ * application creates them for people who do not (yet) register themselves,
+ * without an email address and without a password. They cannot sign in: the
+ * sign-in path looks up by email address, and without a password hash the
+ * {@code IdentityUserDetailsService} never hands them out either.
  */
 @Entity
 @Table(name = "auth_user")
@@ -54,7 +54,7 @@ public class UserAccount extends AbstractAuthEntity {
     @SequenceGenerator(name = "auth_user_seq", sequenceName = "auth_user_seq", allocationSize = 20)
     private @Nullable Long id;
 
-    // Nullable: verwaltete Konten haben weder Adresse noch Passwort.
+    // Nullable: managed accounts have neither an address nor a password.
     @Column(unique = true, length = 320)
     private @Nullable String email;
 
@@ -65,8 +65,8 @@ public class UserAccount extends AbstractAuthEntity {
     @SuppressWarnings("NullAway.Init")
     private String displayName;
 
-    // Seit V1_2 nullable: Anwendungen mit frei gewähltem Anzeigenamen führen
-    // keine Klarnamen.
+    // Nullable since V1_2: applications with freely chosen display names keep
+    // no real names.
     @Column(name = "first_name", length = 128)
     private @Nullable String firstName;
 
@@ -86,26 +86,26 @@ public class UserAccount extends AbstractAuthEntity {
     @Column(name = "last_login_at")
     private @Nullable Instant lastLoginAt;
 
-    // Seit V1_4. Nullbar heißt "keine eigene Wahl" — nicht "Englisch".
+    // Since V1_4. Nullable means "no choice of its own", not "English".
     @Column(length = 35)
     @Convert(converter = LocaleAttributeConverter.class)
     private @Nullable Locale locale;
 
     /**
-     * Das Konto muss sein Passwort ändern, bevor es die Anwendung benutzt —
-     * etwa nach einem Startpasswort aus einer Verwaltung. Gelöscht wird das
-     * Flag an derselben Stelle, an der das Passwort neu gesetzt wird
-     * ({@link #changePassword}), damit es nach einem Wechsel nie stehen
-     * bleiben kann — auch nicht auf dem Weg über „Passwort vergessen".
+     * The account has to change its password before using the application, for
+     * example after an initial password handed out by an administrator. The
+     * flag is cleared in the same place where the password is set
+     * ({@link #changePassword}), so it can never survive a change -- not even
+     * along the "forgot password" route.
      */
     @Column(name = "must_change_password", nullable = false)
     private boolean mustChangePassword;
 
-    // LAZY ist Pflicht: Der EAGER-Default von JPA lädt bei jeder Benutzerliste
-    // die Rollen einzeln nach (N+1).
+    // LAZY is mandatory: the EAGER default of JPA fetches the roles one by one
+    // for every list of users (N+1).
     //
-    // orphanRemoval: Eine Zuweisung ohne Konto ist nichts — sie verschwindet
-    // mit dem Entzug der Rolle, nicht erst mit einem eigenen Löschaufruf.
+    // orphanRemoval: an assignment without an account is nothing. It goes away
+    // when the role is revoked, not only on an explicit delete call.
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<RoleAssignment> roleAssignments = new LinkedHashSet<>();
 
@@ -114,15 +114,15 @@ public class UserAccount extends AbstractAuthEntity {
     }
 
     /**
-     * Legt ein Konto an. Der Konstruktor nimmt nur Pflichtangaben; ob das Konto
-     * sofort nutzbar ist, entscheidet die Registrierung über
+     * Creates an account. The constructor takes mandatory data only; whether
+     * the account is usable right away is decided by the registration through
      * {@link #activateAfterEmailVerification()}.
      */
     public UserAccount(String email, String passwordHash, AccountName name, Instant createdAt) {
         this.email = normalizeEmail(email);
         this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash");
-        // Bewusst nicht ueber applyName(): Sonar (java:S2637) sieht die
-        // Initialisierung des @NullMarked-Felds sonst nicht im Konstruktor.
+        // Deliberately not through applyName(): otherwise Sonar (java:S2637)
+        // does not see the @NullMarked field initialised in the constructor.
         Objects.requireNonNull(name, "name");
         this.displayName = name.displayName();
         this.firstName = name.firstName();
@@ -133,9 +133,9 @@ public class UserAccount extends AbstractAuthEntity {
     }
 
     /**
-     * Legt ein verwaltetes Konto an: ohne E-Mail, ohne Passwort, sofort
-     * aktiv — aktiv heißt hier nur „gehört dazu", nicht „kann sich anmelden";
-     * ohne Adresse und Hash gibt es keinen Anmeldeweg.
+     * Creates a managed account: no email, no password, active straight away.
+     * Active here only means "belongs to us", not "can sign in"; without an
+     * address and a hash there is no sign-in path.
      */
     public static UserAccount managed(AccountName name, Instant createdAt) {
         UserAccount account = new UserAccount();
@@ -147,56 +147,56 @@ public class UserAccount extends AbstractAuthEntity {
     }
 
     /**
-     * Legt die Sprache des Kontos fest, in der es angesprochen werden möchte.
-     * {@code null} nimmt die Wahl zurück; danach gilt wieder die Sprache der
-     * Anwendung.
+     * Sets the language the account wants to be addressed in. {@code null}
+     * withdraws the choice; the language of the application applies again
+     * afterwards.
      *
-     * <p>{@link Locale#ROOT} ist keine Sprache, sondern die Abwesenheit einer
-     * — es wird deshalb wie {@code null} behandelt, statt später als leeres
-     * Sprachkennzeichen in der Datenbank zu stehen.
+     * <p>{@link Locale#ROOT} is not a language but the absence of one, so it is
+     * treated like {@code null} rather than ending up as an empty language tag
+     * in the database.
      */
     public void changeLocale(@Nullable Locale newLocale) {
         this.locale = newLocale == null || "und".equals(newLocale.toLanguageTag()) ? null : newLocale;
     }
 
-    /** Verwaltet = von einer Anwendung angelegt, ohne eigene Anmeldedaten. */
+    /** Managed = created by an application, without credentials of its own. */
     public boolean isManaged() {
         return email == null;
     }
 
     public static String normalizeEmail(String email) {
-        // Locale.ROOT: Ohne das würde auf einem System mit türkischem Locale
-        // aus "I" ein punktloses "ı" und die Adresse wäre eine andere.
+        // Locale.ROOT: without it, on a system with a Turkish locale an "I"
+        // would turn into a dotless "i" and the address would be a different one.
         return Objects.requireNonNull(email, "email").trim().toLowerCase(Locale.ROOT);
     }
 
-    /** Der Name in beiden Gestalten als unveränderlicher Wert. */
+    /** The name in both shapes, as an immutable value. */
     public AccountName getName() {
         return new AccountName(displayName, firstName, lastName);
     }
 
     /**
-     * Die <strong>globalen</strong> Rollen — die, die überall gelten.
+     * The <strong>global</strong> roles, the ones that apply everywhere.
      *
-     * <p>Vor V1_5 gab es nur solche; für Anwendungen ohne Geltungsbereiche ist
-     * das also unverändert die ganze Antwort. Wer auch die bereichsgebundenen
-     * braucht, nimmt {@link #getRoleAssignments()}.
+     * <p>Before V1_5 those were the only ones, so for applications without
+     * scopes this is still the whole answer. Anyone who needs the scoped ones
+     * as well takes {@link #getRoleAssignments()}.
      */
     public Set<Role> getRoles() {
         return rolesIn(null);
     }
 
-    /** Alle Zuweisungen, global wie bereichsgebunden. */
+    /** Every assignment, global as well as scoped. */
     public Set<RoleAssignment> getRoleAssignments() {
         return Collections.unmodifiableSet(roleAssignments);
     }
 
     /**
-     * Die Rollen in genau diesem Bereich; {@code null} fragt nach den globalen.
+     * The roles in exactly this scope; {@code null} asks for the global ones.
      *
-     * <p>Unveränderlich wie {@link #getRoleAssignments()} — und aus demselben
-     * Grund: Eine stille Kopie, die Änderungen schluckt, wäre schlimmer als
-     * eine Ausnahme. Wer etwas ändern will, nimmt {@link #grant} und
+     * <p>Unmodifiable like {@link #getRoleAssignments()}, and for the same
+     * reason: a silent copy that swallows changes would be worse than an
+     * exception. Whoever wants to change something uses {@link #grant} and
      * {@link #revoke}.
      */
     public Set<Role> rolesIn(@Nullable Scope scope) {
@@ -207,7 +207,7 @@ public class UserAccount extends AbstractAuthEntity {
         return Collections.unmodifiableSet(roles);
     }
 
-    /** Die Bereiche dieser Art, in denen das Konto überhaupt eine Rolle hat. */
+    /** The scopes of this kind in which the account holds any role at all. */
     public Set<Scope> scopesOf(String type) {
         Objects.requireNonNull(type, "type");
         Set<Scope> scopes = roleAssignments.stream()
@@ -217,13 +217,13 @@ public class UserAccount extends AbstractAuthEntity {
         return Collections.unmodifiableSet(scopes);
     }
 
-    /** Schaltet das Konto nach bestätigter E-Mail-Adresse frei. */
+    /** Enables the account once its email address is confirmed. */
     public void activateAfterEmailVerification() {
         this.emailVerified = true;
         this.enabled = true;
     }
 
-    /** Schaltet das Konto ohne E-Mail-Bestätigung frei (Verifikation abgeschaltet). */
+    /** Enables the account without email verification (verification turned off). */
     public void activateWithoutVerification() {
         this.enabled = true;
     }
@@ -233,14 +233,14 @@ public class UserAccount extends AbstractAuthEntity {
     }
 
     /**
-     * Trägt die Adresse an einem verwalteten Konto nach — der erste Schritt,
-     * wenn die echte Person es beansprucht. Das Konto bleibt bis zum Einlösen
-     * der Einladung ohne Passwort und damit ohne Anmeldeweg; genau diesen
-     * Zwischenzustand beschreibt V1_1 („E-Mail gesetzt, Passwort noch nicht").
+     * Adds the address to a managed account, the first step when the real
+     * person claims it. Until the invitation is redeemed the account stays
+     * without a password and therefore without a sign-in path; V1_1 describes
+     * exactly this intermediate state ("email set, password not yet").
      *
-     * @throws IllegalStateException wenn schon eine Adresse dranhängt — sie zu
-     *                               überschreiben hieße, ein fremdes Konto zu
-     *                               übernehmen
+     * @throws IllegalStateException if an address is already attached --
+     *                               overwriting it would mean taking over
+     *                               somebody else's account
      */
     public void assignEmail(String newEmail) {
         if (this.email != null) {
@@ -250,9 +250,9 @@ public class UserAccount extends AbstractAuthEntity {
     }
 
     /**
-     * Löst die Einladung ein: erstes Passwort, Adresse gilt als bestätigt,
-     * Konto ist nutzbar. Der Link ging an genau diese Adresse — eine zweite
-     * Bestätigungsmail wäre nur ein Umweg.
+     * Redeems the invitation: first password, address counts as confirmed,
+     * account is usable. The link went to exactly this address, so a second
+     * verification mail would only be a detour.
      */
     public void claimWithPassword(String newPasswordHash) {
         changePassword(newPasswordHash);
@@ -264,7 +264,7 @@ public class UserAccount extends AbstractAuthEntity {
         this.mustChangePassword = false;
     }
 
-    /** Verlangt einen Passwortwechsel bei der nächsten Anmeldung. */
+    /** Requires a password change at the next sign-in. */
     public void requirePasswordChange() {
         this.mustChangePassword = true;
     }
@@ -277,14 +277,14 @@ public class UserAccount extends AbstractAuthEntity {
         this.lastLoginAt = Objects.requireNonNull(at, "at");
     }
 
-    /** Vergibt die Rolle global — sie gilt dann überall. */
+    /** Grants the role globally, so that it applies everywhere. */
     public void grant(Role role) {
         grant(role, null);
     }
 
     /**
-     * Vergibt die Rolle für einen Bereich ({@code null} = global). Zweimal
-     * dieselbe Zuweisung gibt es nicht; der Aufruf ist dann wirkungslos.
+     * Grants the role for a scope ({@code null} = global). The same assignment
+     * never exists twice; a repeated call simply has no effect.
      */
     public void grant(Role role, @Nullable Scope scope) {
         Objects.requireNonNull(role, "role");
@@ -298,8 +298,8 @@ public class UserAccount extends AbstractAuthEntity {
     }
 
     /**
-     * Nimmt die Rolle in genau diesem Bereich zurück. Eine globale Rolle
-     * bleibt dabei unangetastet — sie ist eine andere Zuweisung.
+     * Revokes the role in exactly this scope. A global role stays untouched,
+     * because it is a different assignment.
      */
     public void revoke(Role role, @Nullable Scope scope) {
         Objects.requireNonNull(role, "role");
@@ -313,9 +313,8 @@ public class UserAccount extends AbstractAuthEntity {
     }
 
     /**
-     * Setzt die <strong>globalen</strong> Rollen neu. Bereichsgebundene
-     * Zuweisungen bleiben stehen: Sie gehören zu einem Mandanten, über den
-     * dieser Aufruf nichts aussagt.
+     * Replaces the <strong>global</strong> roles. Scoped assignments stay:
+     * they belong to a tenant that this call says nothing about.
      */
     public void replaceRoles(Set<Role> newRoles) {
         Objects.requireNonNull(newRoles, "newRoles");

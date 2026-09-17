@@ -9,27 +9,28 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Sicht auf ein Benutzerkonto für alles außerhalb dieses Bausteins.
+ * The view of a user account for everything outside this building block.
  *
- * <p>Die JPA-Entity verlässt das Modul bewusst nicht: Anwendungen sollen über
- * die {@code id} verknüpfen, nicht über eine Objektreferenz. Das hält den
- * Baustein austauschbar und vermeidet abgelöste Entities in fremden
- * Transaktionen.
+ * <p>The JPA entity deliberately never leaves the module: applications are
+ * meant to link through the {@code id}, not through an object reference. That
+ * keeps the building block replaceable and avoids detached entities inside
+ * someone else's transaction.
  *
- * @param email {@code null} bei verwalteten Konten — Personen, die eine
- *              Anwendung ohne Selbstregistrierung führt ({@link #managed()})
- * @param name  Anzeigename, bei Klarnamen-Anwendungen auch Vor- und Nachname
- * @param roleAssignments alle Rollen des Kontos, je mit dem Bereich, in dem
- *                        sie gelten ({@code null} = global). Für Anwendungen
- *                        ohne Geltungsbereiche ist {@link #roleCodes()} die
- *                        einfachere Sicht darauf.
- * @param mustChangePassword das Konto muss sein Passwort ändern, bevor es die
- *                           Anwendung benutzt (Startpasswort, Rücksetzung
- *                           von Hand)
- * @param locale Sprache, in der das Konto angesprochen werden möchte;
- *               {@code null} heißt „keine eigene Wahl" — dann gilt
- *               {@code zs.identity.locale}. Für den häufigen Fall „irgendeine
- *               Sprache, egal welche" gibt es {@link #localeOr(Locale)}.
+ * @param email {@code null} for managed accounts, that is people an
+ *              application keeps without self-registration ({@link #managed()})
+ * @param name  display name, plus first and last name in applications that use
+ *              real names
+ * @param roleAssignments every role of the account, each with the scope it
+ *                        applies in ({@code null} = global). For applications
+ *                        without scopes, {@link #roleCodes()} is the simpler
+ *                        view of the same thing.
+ * @param mustChangePassword the account has to change its password before
+ *                           using the application (initial password, manual
+ *                           reset)
+ * @param locale language the account wants to be addressed in; {@code null}
+ *               means "no choice of its own", and then {@code zs.identity.locale}
+ *               applies. For the common case "some language, whichever" there
+ *               is {@link #localeOr(Locale)}.
  */
 public record UserAccountDto(Long id,
                              @Nullable String email,
@@ -50,9 +51,9 @@ public record UserAccountDto(Long id,
     }
 
     /**
-     * Die Gestalt vor 0.3.0 — ohne {@code mustChangePassword}. Bleibt, damit
-     * Anwendungen, die das Record von Hand bauen (in Tests üblich), nicht
-     * brechen.
+     * The shape before 0.3.0, without {@code mustChangePassword}. It stays so
+     * that applications building the record by hand (common in tests) do not
+     * break.
      */
     public UserAccountDto(Long id, @Nullable String email, AccountName name, boolean enabled,
                           boolean emailVerified, Instant createdAt, Set<String> roleCodes) {
@@ -60,9 +61,9 @@ public record UserAccountDto(Long id,
     }
 
     /**
-     * Die Gestalt mit einfachen Rollencodes — alle Rollen gelten dann global.
-     * Bleibt aus demselben Grund; Anwendungen ohne Geltungsbereiche bauen das
-     * Record weiterhin so.
+     * The shape with plain role codes; all roles are then global. It stays for
+     * the same reason: applications without scopes still build the record this
+     * way.
      */
     public UserAccountDto(Long id, @Nullable String email, AccountName name, boolean enabled,
                           boolean emailVerified, Instant createdAt, Set<String> roleCodes,
@@ -72,61 +73,61 @@ public record UserAccountDto(Long id,
                 mustChangePassword, null);
     }
 
-    /** Der öffentlich sichtbare Name — in beiden Namensgestalten gesetzt. */
+    /** The publicly visible name, set in both name shapes. */
     public String displayName() {
         return name.displayName();
     }
 
     /**
-     * Vorname; leer, wenn die Anwendung nur Anzeigenamen führt. Nicht
-     * {@code null}, damit Klarnamen-Anwendungen ohne Fallunterscheidung
-     * arbeiten können.
+     * First name; empty when the application only keeps display names. Not
+     * {@code null}, so that applications using real names can work without a
+     * case distinction.
      */
     public String firstName() {
         String firstName = name.firstName();
         return firstName != null ? firstName : "";
     }
 
-    /** Nachname; leer, wenn die Anwendung nur Anzeigenamen führt. */
+    /** Last name; empty when the application only keeps display names. */
     public String lastName() {
         String lastName = name.lastName();
         return lastName != null ? lastName : "";
     }
 
-    /** Verwaltet = von der Anwendung angelegt, ohne eigene Anmeldedaten. */
+    /** Managed = created by the application, without credentials of its own. */
     public boolean managed() {
         return email == null;
     }
 
     /**
-     * Die Sprache des Kontos, und wenn es keine gewählt hat, die übergebene.
-     * Spart die Fallunterscheidung überall dort, wo ohnehin eine Sprache
-     * gebraucht wird — etwa beim Mailversand.
+     * The language of the account, or the given one if it has not chosen any.
+     * This saves the case distinction everywhere a language is needed anyway,
+     * such as when sending mail.
      */
     public Locale localeOr(Locale fallback) {
         return locale != null ? locale : Objects.requireNonNull(fallback, "fallback");
     }
 
     /**
-     * Die Codes der <strong>globalen</strong> Rollen — derer, die überall
-     * gelten.
+     * The codes of the <strong>global</strong> roles, the ones that apply
+     * everywhere.
      *
-     * <p>Vor 0.7.0 gab es nur solche; für Anwendungen ohne Geltungsbereiche
-     * ist das also unverändert die ganze Antwort. Wer mandantenfähig ist,
-     * fragt mit {@link #rolesIn(Scope)} nach.
+     * <p>Before 0.7.0 those were the only ones, so for applications without
+     * scopes this is still the whole answer. Multi-tenant applications ask
+     * through {@link #rolesIn(Scope)}.
      */
     public Set<String> roleCodes() {
         return codesIn(null);
     }
 
-    /** Ob das Konto diese Rolle <strong>global</strong> hat. */
+    /** Whether the account holds this role <strong>globally</strong>. */
     public boolean hasRole(String roleCode) {
         return roleCodes().contains(roleCode);
     }
 
     /**
-     * Ob das Konto diese Rolle in diesem Bereich hat. Eine globale Rolle zählt
-     * mit: Sie gilt überall, also auch hier.
+     * Whether the account holds this role in this scope. A global role counts:
+     * it applies everywhere, hence here as well.
      */
     public boolean hasRole(String roleCode, Scope scope) {
         Objects.requireNonNull(scope, "scope");
@@ -135,7 +136,7 @@ public record UserAccountDto(Long id,
                         && (assignment.isGlobal() || scope.equals(assignment.scope())));
     }
 
-    /** Die Rollencodes, die in diesem Bereich gelten — die globalen eingeschlossen. */
+    /** The role codes that apply in this scope, global ones included. */
     public Set<String> rolesIn(Scope scope) {
         Objects.requireNonNull(scope, "scope");
         return roleAssignments.stream()
@@ -145,9 +146,9 @@ public record UserAccountDto(Long id,
     }
 
     /**
-     * Die Bereiche dieser Art, in denen das Konto eine Rolle hat — „alle
-     * Vereine dieser Person". Globale Rollen tauchen hier nicht auf: Sie
-     * gehören zu keinem Bereich.
+     * The scopes of this kind in which the account holds a role: "all clubs of
+     * this person". Global roles do not show up here, as they belong to no
+     * scope.
      */
     public Set<Scope> scopesOf(String type) {
         Objects.requireNonNull(type, "type");

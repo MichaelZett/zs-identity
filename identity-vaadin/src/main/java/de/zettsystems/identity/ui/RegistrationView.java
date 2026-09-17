@@ -14,7 +14,7 @@ import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.NameMode;
 
-/** Selbstregistrierung. */
+/** Self-registration. */
 @Route(value = IdentityRoutes.REGISTER, autoLayout = false)
 @AnonymousAllowed
 public class RegistrationView extends IdentityFormView {
@@ -50,11 +50,10 @@ public class RegistrationView extends IdentityFormView {
         password.setLabel(text("identity.common.password"));
         passwordRepeat.setLabel(text("identity.registration.passwordRepeat"));
 
-        // Ohne diese Kennzeichnung bieten Chrome & Co. weder das Ausfüllen
-        // noch die Passwort-Generierung an: „new-password" ist das Signal
-        // „hier wird ein Konto angelegt — schlag ein starkes Passwort vor",
-        // und die E-Mail-Adresse ist die Kennung, unter der der
-        // Passwortmanager das Paar ablegt.
+        // Without these hints, Chrome and friends offer neither autofill nor
+        // password generation: "new-password" is the signal "an account is
+        // being created here, suggest a strong password", and the email address
+        // is the identifier the password manager files the pair under.
         firstName.setAutocomplete(Autocomplete.GIVEN_NAME);
         lastName.setAutocomplete(Autocomplete.FAMILY_NAME);
         displayName.setAutocomplete(Autocomplete.NICKNAME);
@@ -74,8 +73,8 @@ public class RegistrationView extends IdentityFormView {
         Button submit = primaryButton("identity.registration.submit", "registration-submit-button",
                 event -> submit());
 
-        // Welche Namensfelder erscheinen, entscheidet die Anwendung über
-        // zs.identity.name-mode: Klarname (Vereine) oder Spielername (Spiele).
+        // Which name fields appear is decided by the application through
+        // zs.identity.name-mode: real name (clubs) or player name (games).
         if (fullNameMode()) {
             addFullWidth(firstName, lastName);
         } else {
@@ -108,9 +107,9 @@ public class RegistrationView extends IdentityFormView {
         }
 
         try {
-            // Die Sprache dieser Ansicht wird die Sprache des Kontos: Sie ist
-            // die einzige Aussage der Person dazu, und beim späteren
-            // Mailversand gibt es keinen Browser mehr, den man fragen könnte.
+            // The language of this view becomes the language of the account:
+            // it is the only thing the person says about it, and when mail is
+            // sent later there is no browser left to ask.
             registrationService.register(email.getValue(), password.getValue(), enteredName(),
                     texts().locale());
             showConfirmation();
@@ -130,9 +129,9 @@ public class RegistrationView extends IdentityFormView {
     }
 
     /**
-     * Ersetzt das Formular durch eine Bestätigung. Bewusst kein Weiterleiten
-     * zur Anmeldung: Das Konto ist bis zur Bestätigung der Adresse gesperrt,
-     * ein Anmeldeversuch würde also nur scheitern.
+     * Replaces the form with a confirmation. Deliberately no redirect to
+     * sign-in: the account is blocked until the address is confirmed, so an
+     * attempt to sign in would only fail.
      */
     private void showConfirmation() {
         removeAll();

@@ -11,8 +11,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Belegt, dass der Rollenkatalog der Anwendung tatsächlich in die Datenbank
- * wandert — das ist der Mechanismus, der diesen Baustein wiederverwendbar macht.
+ * Shows that the role catalog of the application really does travel into the
+ * database, which is the mechanism that makes this building block reusable.
  */
 class RoleSynchronizerIT extends AbstractIdentityIntegrationTest {
 
@@ -38,8 +38,8 @@ class RoleSynchronizerIT extends AbstractIdentityIntegrationTest {
     void synchronisingAgainChangesNothing() {
         long before = roleRepository.count();
 
-        // Zweiter Lauf mit denselben Katalogen — der Synchronizer muss idempotent
-        // sein, sonst würde jeder Neustart Rollen vervielfachen.
+        // A second run with the same catalogs: the synchronizer has to be
+        // idempotent, or every restart would multiply the roles.
         new RoleSynchronizer(List.of(new BuiltinRoleCatalog()), roleRepository).run(null);
 
         assertThat(roleRepository.count()).isEqualTo(before);

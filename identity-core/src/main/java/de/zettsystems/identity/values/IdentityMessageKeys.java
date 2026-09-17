@@ -1,11 +1,11 @@
 package de.zettsystems.identity.values;
 
 /**
- * i18n-Schlüssel der Meldungen, die dieser Baustein erzeugen kann.
+ * The i18n keys of every message this building block can produce.
  *
- * <p>Der Baustein löst sie nicht selbst auf — welche Sprachdateien es gibt,
- * weiß nur die einbindende Anwendung. Sie muss für jeden Schlüssel hier einen
- * Text pflegen.
+ * <p>The building block does not resolve them itself: only the embedding
+ * application knows which message bundles exist. It has to provide a text for
+ * every key listed here.
  */
 public final class IdentityMessageKeys {
 
@@ -16,12 +16,12 @@ public final class IdentityMessageKeys {
     public static final String TOKEN_EXPIRED = "identity.error.tokenExpired";
     public static final String DEFAULT_ROLE_MISSING = "identity.error.defaultRoleMissing";
     public static final String ACCOUNT_NOT_FOUND = "identity.error.accountNotFound";
-    /** Das Konto hat schon eine Adresse — es gehört bereits jemandem. */
+    /** The account already has an address, so it already belongs to someone. */
     public static final String ACCOUNT_ALREADY_CLAIMED = "identity.error.accountAlreadyClaimed";
-    /** Rückfall der Oberfläche für alles, was sie nicht einzeln behandelt. */
+    /** The UI's fallback for everything it does not handle individually. */
     public static final String UNEXPECTED = "identity.error.unexpected";
 
     private IdentityMessageKeys() {
-        // Konstanten-Klasse
+        // Constants class
     }
 }

@@ -41,7 +41,7 @@ class ClaimAccountViewTest extends AbstractViewTest {
         _click(_get(view, Button.class, spec -> spec.withId("claim-submit-button")));
     }
 
-    /** Wer eingeladen wurde, hat nichts bestellt — der Name sagt ihm, worum es geht. */
+    /** Whoever was invited did not ask for it; the name tells them what this is about. */
     @Test
     void theFormNamesTheAccountItBelongsTo() {
         ClaimAccountView view = enteredWithToken("token-123");
@@ -74,7 +74,7 @@ class ClaimAccountViewTest extends AbstractViewTest {
         assertThat(currentPath()).isEqualTo(IdentityRoutes.LOGIN);
     }
 
-    /** „Neuen Link anfordern" gibt es hier nicht — eingeladen wird aus der Verwaltung. */
+    /** There is no "request a new link" here: invitations come from administration. */
     @Test
     void anUnknownTokenSaysWhomToAsk() {
         invitationService.invitee = null;
@@ -108,7 +108,7 @@ class ClaimAccountViewTest extends AbstractViewTest {
         assertThat(invitationService.usedTokens).containsExactly("token-123");
         assertThat(invitationService.newPasswords).containsExactly("sicheres-passwort");
         assertThat(invitationService.claimedLocales)
-                .as("die Sprache der Einlöse-Ansicht ist die erste Aussage des Eingeladenen dazu")
+                .as("the language of the redemption view is the first thing the invitee says about it")
                 .containsExactly(Locale.GERMAN);
         assertThat(_get(view, H2.class).getText()).isEqualTo("Zugang eingerichtet");
 
@@ -162,7 +162,7 @@ class ClaimAccountViewTest extends AbstractViewTest {
         assertThat(notificationTexts()).containsExactly("Das hat nicht geklappt. Bitte versuche es später erneut.");
     }
 
-    /** Ein erneuter Aufruf ohne Token darf das Formular des vorigen nicht stehen lassen. */
+    /** A second visit without a token must not leave the previous form standing. */
     @Test
     void enteringAgainWithoutTokenClearsTheForm() {
         ClaimAccountView view = enteredWithToken("token-123");

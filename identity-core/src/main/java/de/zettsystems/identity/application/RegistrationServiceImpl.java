@@ -58,10 +58,10 @@ class RegistrationServiceImpl implements RegistrationService {
         return properties.emailVerificationRequired();
     }
 
-    // Beide Eingaenge tragen @Transactional und rufen denselben privaten Kern:
-    // Ein Aufruf auf "this" liefe am Proxy vorbei, die Transaktion muss also
-    // an jedem oeffentlichen Eingang beginnen — sonst faellt das Abbilden der
-    // LAZY gemappten Rollen auf das Dto in eine LazyInitializationException.
+    // Both entry points carry @Transactional and call the same private core: a
+    // call on "this" would bypass the proxy, so the transaction has to start at
+    // every public entry point. Otherwise mapping the LAZY roles onto the DTO
+    // runs into a LazyInitializationException.
     @Override
     @Transactional
     public UserAccountDto register(String email, String rawPassword, AccountName name) {
@@ -100,8 +100,8 @@ class RegistrationServiceImpl implements RegistrationService {
             userRepository.save(user);
             sendVerification(user);
         } else {
-            // Ohne Bestätigungspflicht ist das Konto sofort nutzbar — sinnvoll
-            // nur dort, wo gar kein Mailversand eingerichtet ist.
+            // Without a confirmation requirement the account is usable right
+            // away, which makes sense only where no mail delivery is set up.
             user.activateWithoutVerification();
             userRepository.save(user);
         }
@@ -111,12 +111,12 @@ class RegistrationServiceImpl implements RegistrationService {
     @Override
     @Transactional
     public UserAccountDto confirmEmail(String token) {
-        // Mail-Scanner und Link-Vorschauen lösen den Einmal-Link oft vor dem
-        // Menschen ein. Gehört das Token zu einem bereits bestätigten Konto,
-        // ist fachlich alles erreicht — dann ist Erfolg die richtige Antwort,
-        // nicht „Link abgelaufen" (Praxisfall Gruppentest 19.08.2026). Die
-        // Prüfung läuft VOR dem Einlösen: ein abgelehntes redeem() markierte
-        // die Transaktion sonst als rollback-only.
+        // Mail scanners and link previews often redeem the one-time link
+        // before the human does. If the token belongs to an account that is
+        // already confirmed, everything it was for has been achieved, so
+        // success is the right answer rather than "link expired" (seen in the
+        // group test on 2026-08-19). The check runs BEFORE redeeming: a
+        // rejected redeem() would otherwise mark the transaction rollback-only.
         Optional<UserAccountDto> alreadyVerified = tokenIssuer.peekUser(token, AuthTokenType.EMAIL_VERIFICATION)
                 .filter(UserAccount::isEmailVerified)
                 .map(UserAccountMapper::toDto);
@@ -134,8 +134,8 @@ class RegistrationServiceImpl implements RegistrationService {
     public void resendVerification(String email) {
         Optional<UserAccount> found = userRepository.findByEmail(UserAccount.normalizeEmail(email));
         if (found.isEmpty() || found.get().isEmailVerified()) {
-            // Bewusst still: Eine Rückmeldung würde verraten, ob es zu dieser
-            // Adresse ein Konto gibt.
+            // Deliberately silent: any feedback would reveal whether an
+            // account exists for this address.
             LOG.debug("Verification resend requested for unknown or already verified address");
             return;
         }

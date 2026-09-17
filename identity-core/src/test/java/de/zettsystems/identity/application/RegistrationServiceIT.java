@@ -54,7 +54,7 @@ class RegistrationServiceIT extends AbstractIdentityIntegrationTest {
                 "Anna.Beispiel@Example.COM", "ein-langes-passwort", "Anna", "Beispiel");
 
         assertThat(created.email())
-                .as("Adressen werden kleingeschrieben gespeichert, damit dieselbe Adresse "
+                .as("addresses are stored in lower case, so that the same address "
                         + "in anderer Schreibweise kein zweites Konto ergibt")
                 .isEqualTo("anna.beispiel@example.com");
         assertThat(created.enabled()).isFalse();
@@ -77,8 +77,8 @@ class RegistrationServiceIT extends AbstractIdentityIntegrationTest {
 
     @Test
     void aSecondUseOfTheSameTokenReportsSuccessOnceTheAccountIsVerified() {
-        // Mail-Scanner lösen den Link oft vor dem Menschen ein — der zweite
-        // Aufruf darf dann nicht als Fehler enden, bestätigt ist bestätigt.
+        // Mail scanners often redeem the link before the human does, so the
+        // second visit must not end in an error; confirmed is confirmed.
         registrationService.register("carl@example.com", "ein-langes-passwort", "Carl", "Beispiel");
         String token = mails.tokenFromLastMailTo("carl@example.com");
         registrationService.confirmEmail(token);
@@ -159,14 +159,14 @@ class RegistrationServiceIT extends AbstractIdentityIntegrationTest {
 
         assertThat(secondToken).isNotEqualTo(firstToken);
         assertThatThrownBy(() -> registrationService.confirmEmail(firstToken))
-                .as("der zuvor verschickte Link muss ungültig geworden sein")
+                .as("the link sent before has to have become invalid")
                 .isInstanceOf(IdentityException.class);
         assertThat(registrationService.confirmEmail(secondToken).enabled()).isTrue();
     }
 
     /**
-     * Die Sprache der Registrierung ist die einzige Aussage der Person dazu —
-     * beim späteren Mailversand gibt es keinen Browser mehr zu fragen.
+     * The language of the registration is the only thing the person says about
+     * it; when mail is sent later there is no browser left to ask.
      */
     @Test
     void registrationRemembersTheLanguageItHappenedIn() {
@@ -184,7 +184,7 @@ class RegistrationServiceIT extends AbstractIdentityIntegrationTest {
                 AccountName.of("Jan", "Beispiel"), null);
 
         assertThat(created.locale())
-                .as("null heißt \"keine eigene Wahl\", nicht \"Englisch\"")
+                .as("null means \"no choice of its own\", not \"English\"")
                 .isNull();
         assertThat(created.localeOr(Locale.GERMAN)).isEqualTo(Locale.GERMAN);
     }
@@ -196,7 +196,7 @@ class RegistrationServiceIT extends AbstractIdentityIntegrationTest {
         registrationService.resendVerification("gibt-es-nicht@example.com");
 
         assertThat(mails.sentMails())
-                .as("eine Rückmeldung würde verraten, wer bei uns ein Konto hat")
+                .as("any feedback would reveal who has an account with us")
                 .isEmpty();
     }
 }

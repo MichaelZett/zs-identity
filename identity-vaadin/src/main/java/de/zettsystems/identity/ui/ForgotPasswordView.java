@@ -10,7 +10,7 @@ import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.PasswordResetService;
 import de.zettsystems.identity.values.IdentityProperties;
 
-/** Formular für "Passwort vergessen". */
+/** The "forgot password" form. */
 @Route(value = IdentityRoutes.FORGOT_PASSWORD, autoLayout = false)
 @AnonymousAllowed
 public class ForgotPasswordView extends IdentityFormView {
@@ -28,8 +28,8 @@ public class ForgotPasswordView extends IdentityFormView {
 
         email.setLabel(text("identity.common.email"));
         email.setRequiredIndicatorVisible(true);
-        // Die Kennung, unter der der Passwortmanager das Zugangsdatenpaar
-        // ablegt — damit er sie hier anbietet, statt sie tippen zu lassen.
+        // The identifier a password manager files the credentials under, so
+        // that it offers the address here instead of making it be typed.
         email.setAutocomplete(Autocomplete.USERNAME);
         email.setId("forgot-email-field");
 
@@ -59,9 +59,9 @@ public class ForgotPasswordView extends IdentityFormView {
     }
 
     /**
-     * Zeigt dieselbe Bestätigung, egal ob es zu der Adresse ein Konto gibt.
-     * Eine ehrlichere Meldung wäre hier ein Sicherheitsproblem: Über dieses
-     * Formular ließe sich sonst durchprobieren, wer bei uns registriert ist.
+     * Shows the same confirmation whether or not an account exists for the
+     * address. A more honest message would be a security problem here: this
+     * form could otherwise be used to work out who is registered with us.
      */
     private void showConfirmation() {
         removeAll();

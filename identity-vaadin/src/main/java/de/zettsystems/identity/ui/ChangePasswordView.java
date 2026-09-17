@@ -17,14 +17,14 @@ import jakarta.annotation.security.PermitAll;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Passwort ändern — für angemeldete Konten, und die einzige Ansicht, die ein
- * Konto mit {@code mustChangePassword} erreicht (siehe
- * {@link PasswordChangeGuard}).
+ * Changing the password, for signed-in accounts, and the only view an account
+ * with {@code mustChangePassword} can reach (see {@link PasswordChangeGuard}).
  *
- * <p>Eigene Zugriffsannotation und {@code autoLayout = false}: Vaadin prüft
- * das Layout getrennt, und eine Passwort-ändern-Seite mit Navigationsmenü
- * wäre falsch — dorthin soll man gerade nicht. Der Weg hinaus bleibt offen:
- * Wer nicht wechseln will, meldet sich hier ab, sonst säße er fest.
+ * <p>An access annotation of its own and {@code autoLayout = false}: Vaadin
+ * checks the layout separately, and a change-password page with a navigation
+ * menu would be wrong, since going there is exactly what must not happen. The
+ * way out stays open: whoever does not want to change signs out here, as they
+ * would otherwise be stuck.
  */
 @Route(value = IdentityRoutes.CHANGE_PASSWORD, autoLayout = false)
 @PermitAll
@@ -46,7 +46,7 @@ public class ChangePasswordView extends IdentityFormView implements BeforeEnterO
         this.passwordMinLength = properties.passwordMinLength();
         password.setLabel(text("identity.change.password"));
         passwordRepeat.setLabel(text("identity.change.passwordRepeat"));
-        // Signal an den Passwortmanager: Hier entsteht ein neues Passwort.
+        // A hint to the password manager that a new password is created here.
         password.setAutocomplete(Autocomplete.NEW_PASSWORD);
         passwordRepeat.setAutocomplete(Autocomplete.NEW_PASSWORD);
     }
@@ -61,8 +61,8 @@ public class ChangePasswordView extends IdentityFormView implements BeforeEnterO
         removeAll();
         IdentityUserDetails user = currentUser();
         if (user == null) {
-            // Ohne Anmeldung gibt es nichts zu ändern; die Zugriffsregel hält
-            // das ohnehin fern, dies ist die zweite Verteidigungslinie.
+            // Without a sign-in there is nothing to change; the access rule
+            // keeps that away anyway, and this is the second line of defence.
             event.forwardTo(IdentityRoutes.LOGIN);
             return;
         }
@@ -101,10 +101,10 @@ public class ChangePasswordView extends IdentityFormView implements BeforeEnterO
     }
 
     /**
-     * Nach dem Wechsel führt der Knopf auf die Startseite der Anwendung — der
-     * Baustein kennt sie nicht, darum die Wurzel. Die Sitzung ist zu diesem
-     * Zeitpunkt bereits aufgefrischt ({@code AuthenticationRefresher}), der
-     * {@link PasswordChangeGuard} lässt also durch.
+     * After the change the button leads to the start page of the application.
+     * The building block does not know it, hence the root. By that time the
+     * session has already been refreshed ({@code AuthenticationRefresher}), so
+     * the {@link PasswordChangeGuard} lets it pass.
      */
     private void showConfirmation() {
         removeAll();

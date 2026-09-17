@@ -14,13 +14,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Belegt, dass der Baustein wirklich konfigurierbar ist und nicht heimlich auf
- * eine Anwendung zugeschnitten: Mit
- * {@code zs.identity.self-registration-enabled=false} lehnt er jede
- * Selbstregistrierung ab, und die Oberfläche kann den Verweis darauf ausblenden.
+ * Shows that the building block really is configurable and not quietly tailored
+ * to one application: with
+ * {@code zs.identity.self-registration-enabled=false} it rejects every
+ * self-registration, and the UI can hide the link to it.
  *
- * <p>Eigener Kontext mit abweichender Eigenschaft, deshalb nicht von
- * {@code AbstractIdentityIntegrationTest} abgeleitet.
+ * <p>A context of its own with a different property, which is why this does not
+ * derive from {@code AbstractIdentityIntegrationTest}.
  */
 @SpringBootTest(classes = IdentityTestApplication.class,
         properties = "zs.identity.self-registration-enabled=false")
@@ -68,7 +68,7 @@ class SelfRegistrationDisabledIT {
                 "von-hand@example.com", "ein-langes-passwort", "Von", "Hand", true);
 
         assertThat(created.enabled())
-                .as("der Weg über die Verwaltung darf durch die Abschaltung nicht blockiert sein")
+                .as("switching it off must not block the route through administration")
                 .isTrue();
     }
 }

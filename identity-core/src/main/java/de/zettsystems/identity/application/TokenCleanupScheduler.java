@@ -10,16 +10,16 @@ import java.time.Clock;
 import java.time.Duration;
 
 /**
- * Räumt täglich abgelaufene und eingelöste Token ab.
+ * Clears out expired and redeemed tokens once a day.
  *
- * <p>Ohne diesen Lauf wüchse {@code auth_token} mit jeder Registrierung und
- * jedem Reset — nichts davon wird je wieder gebraucht. Abgelaufene Token
- * bleiben noch {@value #GRACE_DAYS} Tage liegen, damit ein alter Link als
- * „abgelaufen" statt als „unbekannt" gemeldet werden kann.
+ * <p>Without this run, {@code auth_token} would grow with every registration
+ * and every reset, none of which is ever needed again. Expired tokens are kept
+ * for another {@value #GRACE_DAYS} days, so that an old link can be reported
+ * as "expired" rather than as "unknown".
  *
- * <p>Läuft nur, wenn die Anwendung {@code @EnableScheduling} setzt — der
- * Baustein schaltet es nicht selbst ein — und lässt sich mit
- * {@code zs.identity.token-cleanup.enabled=false} abschalten.
+ * <p>It runs only when the application sets {@code @EnableScheduling} -- the
+ * building block does not turn that on itself -- and can be switched off with
+ * {@code zs.identity.token-cleanup.enabled=false}.
  */
 public class TokenCleanupScheduler {
 
@@ -35,13 +35,13 @@ public class TokenCleanupScheduler {
         this.clock = clock;
     }
 
-    /** Nachts um 03:15 — nach dem Backup-Fenster üblicher Betriebsumgebungen. */
+    /** At 03:15 at night, after the backup window of typical environments. */
     @Scheduled(cron = "0 15 3 * * *")
     @Transactional
     public int cleanUp() {
         int removed = tokens.deleteObsolete(clock.instant().minus(Duration.ofDays(GRACE_DAYS)));
         if (removed > 0) {
-            LOG.info("{} abgelaufene oder eingelöste Token entfernt.", removed);
+            LOG.info("Removed {} expired or redeemed tokens.", removed);
         }
         return removed;
     }
