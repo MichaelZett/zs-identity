@@ -5,10 +5,10 @@ Nennenswerte Änderungen an zs-identity. Format nach
 [SemVer](https://semver.org/lang/de/). Beim Release wird `## Unreleased` in
 `## <version> - <Datum>` umbenannt.
 
-## Unreleased
+## 0.7.0 - 2026-09-17
 
-> Wird **0.7.0**: Sprache am Konto, Oberflächen-Regeln und Rollen mit
-> Geltungsbereich sind zusammen entstanden, ohne ein Release dazwischen.
+> Sprache am Konto, Oberflächen-Regeln und Rollen mit Geltungsbereich sind
+> zusammen entstanden, ohne ein Release dazwischen.
 
 ### Added
 - **Rollen mit Geltungsbereich** (Migration **V1_5**). Eine Rolle kann jetzt
