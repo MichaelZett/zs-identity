@@ -4,10 +4,12 @@ import de.zettsystems.identity.application.IdentityException;
 import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.UserAccountDto;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -28,6 +30,7 @@ class FakeRegistrationService implements RegistrationService {
 
     final List<String> registeredEmails = new ArrayList<>();
     final List<AccountName> registeredNames = new ArrayList<>();
+    final List<@Nullable Locale> registeredLocales = new ArrayList<>();
     final List<String> confirmedTokens = new ArrayList<>();
     final List<String> resendRequests = new ArrayList<>();
 
@@ -43,9 +46,16 @@ class FakeRegistrationService implements RegistrationService {
 
     @Override
     public UserAccountDto register(String email, String rawPassword, AccountName name) {
+        return register(email, rawPassword, name, null);
+    }
+
+    @Override
+    public UserAccountDto register(String email, String rawPassword, AccountName name,
+                                   @Nullable Locale locale) {
         throwIfConfigured();
         registeredEmails.add(email);
         registeredNames.add(name);
+        registeredLocales.add(locale);
         return ACCOUNT;
     }
 

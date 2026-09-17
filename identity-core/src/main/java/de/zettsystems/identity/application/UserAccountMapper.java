@@ -1,7 +1,7 @@
 package de.zettsystems.identity.application;
 
-import de.zettsystems.identity.domain.Role;
 import de.zettsystems.identity.domain.UserAccount;
+import de.zettsystems.identity.values.ScopedRole;
 import de.zettsystems.identity.values.UserAccountDto;
 
 import java.util.Objects;
@@ -11,8 +11,9 @@ import java.util.stream.Collectors;
 /**
  * Übersetzt die interne Entity in die nach außen sichtbare Sicht.
  *
- * <p>Muss innerhalb einer Transaktion aufgerufen werden: {@code roles} ist LAZY
- * gemappt, außerhalb der Sitzung gäbe es eine LazyInitializationException.
+ * <p>Muss innerhalb einer Transaktion aufgerufen werden: Die Zuweisungen und
+ * die Rollen daran sind LAZY gemappt, außerhalb der Sitzung gäbe es eine
+ * LazyInitializationException.
  */
 final class UserAccountMapper {
 
@@ -21,8 +22,8 @@ final class UserAccountMapper {
     }
 
     static UserAccountDto toDto(UserAccount user) {
-        Set<String> roleCodes = user.getRoles().stream()
-                .map(Role::getCode)
+        Set<ScopedRole> roleAssignments = user.getRoleAssignments().stream()
+                .map(assignment -> new ScopedRole(assignment.getRole().getCode(), assignment.getScope()))
                 .collect(Collectors.toUnmodifiableSet());
         return new UserAccountDto(
                 Objects.requireNonNull(user.getId(), "user.id"),
@@ -31,7 +32,8 @@ final class UserAccountMapper {
                 user.isEnabled(),
                 user.isEmailVerified(),
                 user.getCreatedAt(),
-                roleCodes,
-                user.isMustChangePassword());
+                roleAssignments,
+                user.isMustChangePassword(),
+                user.getLocale());
     }
 }

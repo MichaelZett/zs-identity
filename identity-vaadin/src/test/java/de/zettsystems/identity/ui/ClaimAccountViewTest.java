@@ -9,6 +9,7 @@ import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
 import org.junit.jupiter.api.Test;
 
+import java.util.Locale;
 import java.util.Map;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ._click;
@@ -106,6 +107,9 @@ class ClaimAccountViewTest extends AbstractViewTest {
 
         assertThat(invitationService.usedTokens).containsExactly("token-123");
         assertThat(invitationService.newPasswords).containsExactly("sicheres-passwort");
+        assertThat(invitationService.claimedLocales)
+                .as("die Sprache der Einlöse-Ansicht ist die erste Aussage des Eingeladenen dazu")
+                .containsExactly(Locale.GERMAN);
         assertThat(_get(view, H2.class).getText()).isEqualTo("Zugang eingerichtet");
 
         _click(_get(view, Button.class));

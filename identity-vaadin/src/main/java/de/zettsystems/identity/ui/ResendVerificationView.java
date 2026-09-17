@@ -1,13 +1,9 @@
 package de.zettsystems.identity.ui;
 
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.Autocomplete;
 import com.vaadin.flow.component.textfield.EmailField;
-import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import de.zettsystems.identity.application.IdentityMessages;
@@ -28,52 +24,41 @@ import de.zettsystems.identity.values.IdentityProperties;
  */
 @Route(value = IdentityRoutes.RESEND_VERIFICATION, autoLayout = false)
 @AnonymousAllowed
-public class ResendVerificationView extends VerticalLayout implements HasDynamicTitle {
+public class ResendVerificationView extends IdentityFormView {
 
     private final RegistrationService registrationService;
-    private final IdentityTexts texts;
     private final EmailField email = new EmailField();
 
     public ResendVerificationView(RegistrationService registrationService, IdentityProperties properties,
                                   IdentityMessages messages) {
+        super(messages, properties, "resend-verification");
         this.registrationService = registrationService;
-        this.texts = new IdentityTexts(messages, properties);
 
-        setMaxWidth("28rem");
-        getStyle().set("margin", "0 auto");
+        add(heading("identity.resend.title"));
+        add(paragraph("identity.resend.intro"));
 
-        add(new H2(texts.get("identity.resend.title")));
-        add(new Paragraph(texts.get("identity.resend.intro")));
-
-        email.setLabel(texts.get("identity.common.email"));
+        email.setLabel(text("identity.common.email"));
         email.setRequiredIndicatorVisible(true);
-        email.setWidthFull();
+        email.setAutocomplete(Autocomplete.USERNAME);
         email.setId("resend-email-field");
 
-        Button submit = new Button(texts.get("identity.resend.submit"), event -> submit());
-        submit.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        submit.setWidthFull();
-        submit.setId("resend-submit-button");
+        Button submit = primaryButton("identity.resend.submit", "resend-submit-button", event -> submit());
 
-        add(email, submit, backToLoginButton());
+        addFullWidth(email, submit, backToLoginButton());
     }
 
     @Override
     public String getPageTitle() {
-        return texts.get("identity.resend.pageTitle");
+        return text("identity.resend.pageTitle");
     }
 
-    /** Navigations-Button zur Anmeldung — volle Breite, weil das Formular schmal ist. */
     private Button backToLoginButton() {
-        Button button = new Button(texts.get("identity.common.backToLogin"),
-                event -> UI.getCurrent().navigate(IdentityRoutes.LOGIN));
-        button.setWidthFull();
-        return button;
+        return navigationButton("identity.common.backToLogin", IdentityRoutes.LOGIN);
     }
 
     private void submit() {
         if (email.isEmpty() || email.isInvalid()) {
-            email.setErrorMessage(texts.get("identity.common.invalidEmail"));
+            email.setErrorMessage(text("identity.common.invalidEmail"));
             email.setInvalid(true);
             return;
         }
@@ -84,9 +69,9 @@ public class ResendVerificationView extends VerticalLayout implements HasDynamic
 
     private void showConfirmation() {
         removeAll();
-        add(new H2(texts.get("identity.common.mailSent.title")));
-        add(new Paragraph(texts.get("identity.resend.sent", email.getValue())
-                + " " + texts.get("identity.common.spamHint")));
-        add(backToLoginButton());
+        add(heading("identity.common.mailSent.title"));
+        add(new Paragraph(text("identity.resend.sent", email.getValue())
+                + " " + text("identity.common.spamHint")));
+        addFullWidth(backToLoginButton());
     }
 }

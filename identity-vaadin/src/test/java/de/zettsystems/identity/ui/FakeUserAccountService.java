@@ -8,6 +8,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -38,8 +39,8 @@ class FakeUserAccountService implements UserAccountService {
     }
 
     @Override
-    public java.util.List<UserAccountDto> findAllById(java.util.Collection<Long> ids) {
-        return java.util.List.of(ACCOUNT);
+    public List<UserAccountDto> findAllById(Collection<Long> ids) {
+        return List.of(ACCOUNT);
     }
 
     @Override

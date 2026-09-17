@@ -1,8 +1,9 @@
 package de.zettsystems.identity.application;
 
-import de.zettsystems.identity.domain.Role;
+import de.zettsystems.identity.domain.RoleAssignment;
 import de.zettsystems.identity.domain.UserAccount;
 import de.zettsystems.identity.domain.UserAccountRepository;
+import de.zettsystems.identity.values.ScopedRole;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,6 +20,12 @@ import java.util.Set;
  * <p>Jede Rolle liefert zwei Arten von Authorities: {@code ROLE_<code>} für
  * {@code hasRole(...)} und {@code @RolesAllowed}, dazu die feingranularen
  * Berechtigungen im Klartext für {@code hasAuthority(...)}.
+ *
+ * <p>Eine Zuweisung mit Geltungsbereich trägt beide Arten qualifiziert
+ * ({@code ROLE_ADMIN@club:17}). Ein <strong>aktiver</strong> Bereich wird hier
+ * noch nicht gesetzt: Welcher das beim Anmelden sein soll, weiß nur die
+ * Anwendung — sie setzt ihn über {@code ActiveScopeService}. Bis dahin gelten
+ * die globalen Rollen, und das ist die sichere Vorgabe.
  */
 class IdentityUserDetailsService implements UserDetailsService {
 
@@ -52,10 +59,11 @@ class IdentityUserDetailsService implements UserDetailsService {
 
     private static Set<GrantedAuthority> toAuthorities(UserAccount user) {
         Set<GrantedAuthority> authorities = new LinkedHashSet<>();
-        for (Role role : user.getRoles()) {
-            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getCode()));
-            for (String authority : role.getAuthorities()) {
-                authorities.add(new SimpleGrantedAuthority(authority));
+        for (RoleAssignment assignment : user.getRoleAssignments()) {
+            ScopedRole scopedRole = new ScopedRole(assignment.getRole().getCode(), assignment.getScope());
+            authorities.add(new SimpleGrantedAuthority(scopedRole.authorityName()));
+            for (String authority : assignment.getRole().getAuthorities()) {
+                authorities.add(new SimpleGrantedAuthority(scopedRole.qualify(authority)));
             }
         }
         return authorities;

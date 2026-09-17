@@ -6,6 +6,8 @@ import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
 import org.springframework.boot.flyway.autoconfigure.FlywayConfigurationCustomizer;
 import org.springframework.context.annotation.Bean;
 
+import java.util.Arrays;
+
 /**
  * Hängt den Migrations-Ablageort des Bausteins an die Flyway-Konfiguration der
  * Anwendung an.
@@ -34,14 +36,14 @@ public class IdentityFlywayAutoConfiguration {
     @Bean
     FlywayConfigurationCustomizer identityMigrationsCustomizer() {
         return configuration -> {
-            String[] existing = java.util.Arrays.stream(configuration.getLocations())
+            String[] existing = Arrays.stream(configuration.getLocations())
                     .map(Object::toString)
                     .toArray(String[]::new);
-            if (java.util.Arrays.asList(existing).contains(IDENTITY_LOCATION)) {
+            if (Arrays.asList(existing).contains(IDENTITY_LOCATION)) {
                 // Die Anwendung hat den Ablageort bereits selbst eingetragen.
                 return;
             }
-            String[] combined = java.util.Arrays.copyOf(existing, existing.length + 1);
+            String[] combined = Arrays.copyOf(existing, existing.length + 1);
             combined[existing.length] = IDENTITY_LOCATION;
             configuration.locations(combined);
         };

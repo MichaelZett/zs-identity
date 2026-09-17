@@ -8,11 +8,12 @@ import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.UserAccountDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -46,6 +47,31 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(userDetailsService.loadUserByUsername("verwaltet@example.com").isEnabled()).isTrue();
     }
 
+    /** Der Weg, den eine Anwendung ihren Kontoeinstellungen unterlegt. */
+    @Test
+    void theLanguageOfAnAccountCanBeSetAndTakenBack() {
+        UserAccountDto created = userAccountService.createAccount(
+                "sprache@example.com", "ein-langes-passwort", "Sarah", "Sprache", true);
+
+        assertThat(userAccountService.changeLocale(created.id(), Locale.ENGLISH).locale())
+                .isEqualTo(Locale.ENGLISH);
+        assertThat(userAccountService.findById(created.id()).orElseThrow().locale())
+                .as("die Wahl muss den Aufruf überleben, nicht nur im Rückgabewert stehen")
+                .isEqualTo(Locale.ENGLISH);
+
+        assertThat(userAccountService.changeLocale(created.id(), null).locale())
+                .as("ohne Wahl gilt wieder zs.identity.locale")
+                .isNull();
+    }
+
+    @Test
+    void changingTheLanguageOfAnUnknownAccountFails() {
+        assertThatThrownBy(() -> userAccountService.changeLocale(-1L, Locale.ENGLISH))
+                .isInstanceOf(IdentityException.class)
+                .extracting(e -> ((IdentityException) e).getMessageKey())
+                .isEqualTo(IdentityMessageKeys.ACCOUNT_NOT_FOUND);
+    }
+
     @Test
     void severalAccountsAreLoadedInOneGo() {
         UserAccountDto a = userAccountService.createAccount("a@example.com", "ein-langes-passwort", "A", "Aa", true);
@@ -66,9 +92,10 @@ class UserAccountServiceIT extends AbstractIdentityIntegrationTest {
 
         userAccountService.deleteAccount(created.id());
 
-        assertThat(userAccountService.findById(created.id())).isEmpty();
+        Long deletedId = created.id();
+        assertThat(userAccountService.findById(deletedId)).isEmpty();
         assertThat(userAccountService.findByEmail("doppelt@example.com")).isEmpty();
-        assertThatThrownBy(() -> userAccountService.deleteAccount(created.id()))
+        assertThatThrownBy(() -> userAccountService.deleteAccount(deletedId))
                 .isInstanceOf(IdentityException.class);
     }
 

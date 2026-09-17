@@ -29,16 +29,20 @@ class IdentityPropertiesTest {
     @Test
     void aPasswordMinimumBelowEightIsRefused() {
         Duration tokenValidity = Duration.ofHours(1);
-        assertThatThrownBy(() -> new IdentityProperties(true, true, tokenValidity, Duration.ofDays(7), 6,
-                "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME, Locale.GERMAN))
+        Duration invitationValidity = Duration.ofDays(7);
+        UiSettings ui = UiSettings.defaults();
+        assertThatThrownBy(() -> new IdentityProperties(true, true, tokenValidity, invitationValidity, 6,
+                "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME, Locale.GERMAN, ui))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("password-min-length");
     }
 
     @Test
     void aNonPositiveTokenValidityIsRefused() {
-        assertThatThrownBy(() -> new IdentityProperties(true, true, Duration.ZERO, Duration.ofDays(7), 12,
-                "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME, Locale.GERMAN))
+        Duration invitationValidity = Duration.ofDays(7);
+        UiSettings ui = UiSettings.defaults();
+        assertThatThrownBy(() -> new IdentityProperties(true, true, Duration.ZERO, invitationValidity, 12,
+                "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME, Locale.GERMAN, ui))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("token-validity");
     }
@@ -46,8 +50,9 @@ class IdentityPropertiesTest {
     @Test
     void aNonPositiveInvitationValidityIsRefused() {
         Duration tokenValidity = Duration.ofHours(1);
+        UiSettings ui = UiSettings.defaults();
         assertThatThrownBy(() -> new IdentityProperties(true, true, tokenValidity, Duration.ZERO, 12,
-                "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME, Locale.GERMAN))
+                "a@b.c", "Test", "http://example.com", "USER", NameMode.FULL_NAME, Locale.GERMAN, ui))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("invitation-validity");
     }
@@ -67,6 +72,7 @@ class IdentityPropertiesTest {
 
     private static IdentityProperties propertiesWithBaseUrl(String baseUrl) {
         return new IdentityProperties(true, true, Duration.ofHours(24), Duration.ofDays(7), 12,
-                "noreply@example.com", "Test", baseUrl, "USER", NameMode.FULL_NAME, Locale.GERMAN);
+                "noreply@example.com", "Test", baseUrl, "USER", NameMode.FULL_NAME, Locale.GERMAN,
+                UiSettings.defaults());
     }
 }

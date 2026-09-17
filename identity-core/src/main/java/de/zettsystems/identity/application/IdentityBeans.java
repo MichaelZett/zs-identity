@@ -95,6 +95,17 @@ public class IdentityBeans {
         return new AuthenticationRefresher(userDetailsService);
     }
 
+    /**
+     * Der Wechsel des aktiven Geltungsbereichs. Ohne Mandanten in der
+     * Anwendung ungenutzt — die Bean kostet nichts und erspart der ersten
+     * mandantenfähigen Anwendung die Frage, woher sie ihn bekommt.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    ActiveScopeService activeScopeService() {
+        return new ActiveScopeService();
+    }
+
     @Bean
     @ConditionalOnMissingBean
     RegistrationService registrationService(UserAccountRepository userRepository,

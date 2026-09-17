@@ -7,13 +7,18 @@ import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
+import de.zettsystems.identity.values.Scope;
 import de.zettsystems.identity.values.UserAccountDto;
+import org.jspecify.annotations.Nullable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 class UserAccountServiceImpl implements UserAccountService {
 
@@ -104,8 +109,18 @@ class UserAccountServiceImpl implements UserAccountService {
     @Override
     @Transactional
     public UserAccountDto grantRole(Long userId, String roleCode) {
+        return grant(userId, roleCode, null);
+    }
+
+    @Override
+    @Transactional
+    public UserAccountDto grantRole(Long userId, String roleCode, Scope scope) {
+        return grant(userId, roleCode, Objects.requireNonNull(scope, "scope"));
+    }
+
+    private UserAccountDto grant(Long userId, String roleCode, @Nullable Scope scope) {
         UserAccount user = requireUser(userId);
-        user.grant(requireRole(roleCode));
+        user.grant(requireRole(roleCode), scope);
         authenticationRefresher.refreshAfterCommit(user.getEmail());
         return UserAccountMapper.toDto(user);
     }
@@ -118,8 +133,40 @@ class UserAccountServiceImpl implements UserAccountService {
     @Override
     @Transactional
     public UserAccountDto revokeRole(Long userId, String roleCode) {
+        return revoke(userId, roleCode, null);
+    }
+
+    @Override
+    @Transactional
+    public UserAccountDto revokeRole(Long userId, String roleCode, Scope scope) {
+        return revoke(userId, roleCode, Objects.requireNonNull(scope, "scope"));
+    }
+
+    /**
+     * Überschrieben, obwohl die Schnittstelle es schon beantwortet: Die
+     * {@code default}-Methode dort ruft {@code findById} auf {@code this} auf
+     * und liefe damit am Transaktions-Proxy vorbei — die LAZY gemappten
+     * Zuweisungen fielen in eine LazyInitializationException.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> rolesOf(Long userId, Scope scope) {
+        return userRepository.findById(userId)
+                .map(user -> UserAccountMapper.toDto(user).rolesIn(scope))
+                .orElseGet(Set::of);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<Scope> scopesOf(Long userId, String scopeType) {
+        return userRepository.findById(userId)
+                .map(user -> UserAccountMapper.toDto(user).scopesOf(scopeType))
+                .orElseGet(Set::of);
+    }
+
+    private UserAccountDto revoke(Long userId, String roleCode, @Nullable Scope scope) {
         UserAccount user = requireUser(userId);
-        user.revoke(requireRole(roleCode));
+        user.revoke(requireRole(roleCode), scope);
         authenticationRefresher.refreshAfterCommit(user.getEmail());
         return UserAccountMapper.toDto(user);
     }
@@ -129,6 +176,19 @@ class UserAccountServiceImpl implements UserAccountService {
     public UserAccountDto rename(Long userId, AccountName newName) {
         UserAccount user = requireUser(userId);
         user.rename(newName);
+        return UserAccountMapper.toDto(user);
+    }
+
+    /**
+     * Ändert nur den Datenbestand, nicht die laufende Sitzung: Die Sprache
+     * steht nicht im Prinzipal, und die Oberfläche wechselt sie ohnehin selbst
+     * — der Baustein wüsste gar nicht, welche Ansicht er neu zeichnen müsste.
+     */
+    @Override
+    @Transactional
+    public UserAccountDto changeLocale(Long userId, @Nullable Locale locale) {
+        UserAccount user = requireUser(userId);
+        user.changeLocale(locale);
         return UserAccountMapper.toDto(user);
     }
 

@@ -91,10 +91,24 @@ Auto-Konfiguration:
 | `base-url`                    | `http://localhost:8080`  | Basis der Links in Mails |
 | `default-role-code`           | `USER`                   | Rolle neuer Konten |
 | `name-mode`                   | `FULL_NAME`              | `FULL_NAME` (Vor-/Nachname) oder `DISPLAY_NAME` (frei gewählter Name) |
-| `locale`                      | `de`                     | Sprache der Mails und Rückfallsprache der Views (siehe Sprachen) |
+| `locale`                      | `de`                     | Rückfallsprache für Mails und Views (siehe Sprachen) |
+| `ui.max-width`                | `28rem`                  | Breite, ab der die Formularspalte nicht weiter mitwächst |
+| `ui.class-names`              | —                        | zusätzliche CSS-Klassen an jeder Ansicht (Andockpunkt fürs eigene Theme) |
+| `ui.notification-duration`    | `5s`                     | Standzeit der Hinweise; `0` = bis zum Wegklicken |
 
-Mailversand: ist `spring.mail.*` konfiguriert, gehen echte Mails raus; sonst
-landen die Links im Log (`LoggingIdentityMailSender`). Jede Mail geht als
+**Mailversand ist optional** (seit 0.7.0). `spring-boot-starter-mail` hängt nur
+noch `compileOnly` am Baustein — wer Mails verschicken will, nimmt ihn selbst
+auf:
+
+```groovy
+implementation 'org.springframework.boot:spring-boot-starter-mail'
+```
+
+Ohne ihn startet die Anwendung trotzdem: Der Baustein fällt auf den
+Log-Versand zurück (`LoggingIdentityMailSender`), und eine Anwendung mit
+eigenem Versandweg (Transaktionsmail-Dienst) stellt einfach eine eigene
+`IdentityMailSender`-Bean bereit. Ist der Starter da und `spring.mail.*`
+konfiguriert, gehen echte Mails raus. Jede Mail geht als
 `multipart/alternative` hinaus — Text und daneben ein schlichter HTML-Teil, in
 dem der Link ein echtes `<a href>` ist. Grund ist Outlook: In Nur-Text-Mails
 bricht es lange Zeilen um und macht aus einem Link über 76 Zeichen keinen
@@ -118,8 +132,31 @@ Welche Sprache eine Ansicht spricht:
   UI-Sprache dann auf die Voreinstellung der Server-JVM, und die sagt nichts
   über die Anwendung aus.
 
-Mails gehen immer in `zs.identity.locale` — beim Versand gibt es keinen
-Browser, und am Konto ist (noch) keine Sprache hinterlegt.
+**Die Sprache eines Kontos** steht seit 0.7.0 am Konto selbst
+(`auth_user.locale`, Migration V1_4) — nötig, weil eine Mail ohne Browser
+entsteht und dort niemand nach der Spracheinstellung zu fragen ist. Sie
+entscheidet über die Sprache **jeder Mail** dieses Bausteins; hat das Konto
+keine gewählt, gilt weiterhin `zs.identity.locale`.
+
+Sie füllt sich von selbst: Die `RegistrationView` übergibt die Sprache, in der
+registriert wurde, die `ClaimAccountView` die der Einlöse-Ansicht. Eine
+Anwendung, die selbst registriert oder einlädt, reicht sie mit durch:
+
+```java
+registrationService.register(email, password, name, UI.getCurrent().getLocale());
+invitationService.inviteNewAccount(email, name, Locale.GERMAN);
+```
+
+Später ändern — etwa in den Kontoeinstellungen der Anwendung:
+
+```java
+userAccountService.changeLocale(userId, Locale.ENGLISH);  // null nimmt die Wahl zurueck
+```
+
+Gelesen wird sie über `UserAccountDto.locale()` (`null` = keine Wahl) oder
+bequemer über `localeOr(fallback)`. Eine **Ansicht** dafür bringt der Baustein
+nicht mit: Wo die Sprachwahl hingehört — Kontoeinstellungen, Kopfzeile,
+Anmeldeformular —, weiß nur die Anwendung.
 
 Eigene Texte: eine eigene `IdentityMessages`-Bean verdrängt die Voreinstellung.
 Wer nur einzelne Schlüssel ersetzen will, beantwortet diese selbst und reicht
@@ -136,6 +173,118 @@ IdentityMessages identityMessages() {
 }
 ```
 
+## Rollen, global und je Mandant
+
+Rollen kommen aus dem `RoleCatalog` der Anwendung und werden einem Konto
+zugeteilt — entweder **global** oder für einen **Geltungsbereich** (seit
+0.7.0):
+
+```java
+userAccountService.grantRole(userId, "USER");                            // gilt ueberall
+userAccountService.grantRole(userId, "GROUP_ADMIN", Scope.of("club", "17"));
+```
+
+Ein `Scope` besteht aus Art und Kennung (`club:17`). **Der Baustein deutet ihn
+nie** — was ein `club` ist, weiß allein die Anwendung; gespeichert und
+verglichen wird er nur. Das hält die Regel „kein Wissen über einbindende
+Anwendungen" aufrecht und funktioniert deshalb für Vereine, Turniere, Spiele
+oder was sonst ein Mandant sein soll.
+
+Fragen an ein Konto (`UserAccountDto`, oder direkt am `UserAccountService`):
+
+| Frage | Aufruf |
+|---|---|
+| Welche Rollen gelten überall? | `roleCodes()` |
+| Darf sie das hier? | `hasRole("GROUP_ADMIN", scope)` — globale zählen mit |
+| Was gilt in diesem Bereich? | `rolesIn(scope)` / `userAccountService.rolesOf(userId, scope)` |
+| Alle Vereine dieser Person? | `scopesOf("club")` / `userAccountService.scopesOf(userId, "club")` |
+
+**In der Anmeldung** liegen bereichsgebundene Rollen qualifiziert an
+(`ROLE_GROUP_ADMIN@club:17`), globale wie bisher (`ROLE_USER`). Dazu gibt es
+einen **aktiven Bereich**: Dessen Rollen gelten zusätzlich unqualifiziert,
+sodass die gewohnten Prüfungen lesbar bleiben.
+
+```java
+activeScopeService.switchTo(Scope.of("club", "17"));   // etwa beim Betreten eines Vereins
+
+@RolesAllowed("GROUP_ADMIN")                           // heisst jetzt: in Verein 17
+@PreAuthorize("hasAuthority('ROLE_GROUP_ADMIN@club:4')")  // gezielt anderswo, z. B. Deep-Link
+```
+
+Beim Anmelden ist **kein** Bereich aktiv — welcher es sein soll, weiß nur die
+Anwendung (Adresszeile, letzte Auswahl, Startseite). „Automatisch den
+einzigen" wäre bequem und würde sich bei der zweiten Mitgliedschaft
+stillschweigend anders verhalten. Ohne aktiven Bereich gelten die globalen
+Rollen; das ist die sichere Vorgabe.
+
+Anwendungen ohne Mandanten merken von alledem nichts: Ohne `Scope` vergeben,
+ist jede Rolle global, und `roleCodes()`, `hasRole(code)` und
+`@RolesAllowed` verhalten sich wie vor 0.7.0.
+
+## Die mitgelieferten Ansichten
+
+Anmeldung, Registrierung, Passwort-Reset und die Einlöse-Ansicht sind oft die
+**ersten** Seiten, die ein neues Mitglied sieht — sie gehören aber dem
+Baustein und können das Theme der Anwendung nicht kennen. Sie halten deshalb
+eine Untergrenze ein, die überall trägt (`IdentityFormView`):
+
+* **Eine Spalte, zentriert, mit Höchstbreite** (`zs.identity.ui.max-width`).
+  Am Telefon füllt sie die Breite, am Rechner wächst sie nicht ins Unlesbare.
+* **Kein Querscrollen bei 375 px.** `border-box`, keine festen Pixelbreiten,
+  jedes Feld und jeder Knopf über die volle Spaltenbreite. Ein Test hält das
+  für alle Ansichten fest (`IdentityViewLayoutTest`).
+* **Keine Farbe von Hand** — Hervorhebung nur über Vaadins Varianten, damit
+  nichts mit dem dunklen Erscheinungsbild einer Anwendung kollidiert.
+
+**Mitstylen** geht über feste CSS-Klassen statt über Einstellungen: Jede
+Ansicht trägt `identity-view` und eine eigene Kennung
+(`identity-view--login`, `--registration`, `--forgot-password`,
+`--resend-verification`, `--reset-password`, `--change-password`,
+`--claim-account`, `--confirm-email`); die Anmeldung hat zusätzlich innen
+`identity-view__column`. Eigene Klassen kommen über
+`zs.identity.ui.class-names` an jede Ansicht:
+
+```yaml
+zs:
+  identity:
+    ui:
+      max-width: 32rem
+      class-names: [ my-app-card ]
+```
+
+```css
+.identity-view.my-app-card {
+    border-radius: var(--my-app-radius);
+    box-shadow: var(--my-app-shadow);
+}
+```
+
+Wem das nicht reicht, der schreibt eine eigene Ansicht — dann aber unter einem
+eigenen Pfad und mit abgeschalteter Paketsuche für `de.zettsystems.identity.ui`:
+Zwei `@Route` auf demselben Pfad lehnt Vaadin ab.
+
+## Java-Module (JPMS)
+
+Beide Artefakte tragen einen **`Automatic-Module-Name`** im Manifest:
+
+| Artefakt | Modulname |
+|---|---|
+| `identity-core` | `de.zettsystems.identity` |
+| `identity-vaadin` | `de.zettsystems.identity.ui` |
+
+Damit hat eine Anwendung, die selbst JPMS benutzt, einen stabilen Namen für
+`requires` — ohne den Eintrag leitet Java ihn aus dem Dateinamen ab, und der
+ändert sich mit jeder Version.
+
+Ein echtes `module-info.java` bringt der Baustein **nicht** mit, und das ist
+Absicht: Spring, Hibernate und Vaadin laufen auf dem Klassenpfad, nicht im
+Modulpfad — ein Moduldeskriptor wäre dort wirkungslos. Er würde außerdem
+`opens` für die Reflection von Spring und Hibernate erzwingen, und die
+Sprachdateien beider Artefakte liegen im selben Ressourcen-Paket
+(`de/zettsystems/identity/messages/`), was JPMS als geteiltes Paket ablehnt.
+Sobald das Spring-Ökosystem im Modulpfad ankommt, ist das der Moment, das
+nachzuholen — vorher kostet es nur.
+
 ## Datenbank
 
 `identity-core` liefert seine Flyway-Migrationen unter `classpath:db/identity`
@@ -145,8 +294,8 @@ Baustein reserviert; Anwendungen belegen **V2_x** aufwärts. Weil eine neue
 Baustein-Migration niedriger nummeriert ist als bereits angewendete
 App-Migrationen, braucht die Anwendung `spring.flyway.out-of-order: true`.
 
-Tabellen: `auth_user`, `auth_role`, `auth_role_authority`, `auth_user_role`,
-`auth_token`.
+Tabellen: `auth_user`, `auth_role`, `auth_role_authority`, `auth_user_role`
+(mit `scope_type`/`scope_id`, leer = global), `auth_token`.
 
 ## Namensmodell
 

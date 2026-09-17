@@ -5,6 +5,7 @@ import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.testsupport.AbstractIdentityIntegrationTest;
 import de.zettsystems.identity.testsupport.MutableTestClock;
 import de.zettsystems.identity.testsupport.RecordingMailSender;
+import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.UserAccountDto;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -160,6 +162,31 @@ class RegistrationServiceIT extends AbstractIdentityIntegrationTest {
                 .as("der zuvor verschickte Link muss ungültig geworden sein")
                 .isInstanceOf(IdentityException.class);
         assertThat(registrationService.confirmEmail(secondToken).enabled()).isTrue();
+    }
+
+    /**
+     * Die Sprache der Registrierung ist die einzige Aussage der Person dazu —
+     * beim späteren Mailversand gibt es keinen Browser mehr zu fragen.
+     */
+    @Test
+    void registrationRemembersTheLanguageItHappenedIn() {
+        UserAccountDto created = registrationService.register("ines@example.com", "ein-langes-passwort",
+                AccountName.of("Ines", "Beispiel"), Locale.ENGLISH);
+
+        assertThat(created.locale()).isEqualTo(Locale.ENGLISH);
+        assertThat(userRepository.findByEmail("ines@example.com").orElseThrow().getLocale())
+                .isEqualTo(Locale.ENGLISH);
+    }
+
+    @Test
+    void withoutALanguageTheAccountKeepsNoneAndFallsBackToTheApplication() {
+        UserAccountDto created = registrationService.register("jan@example.com", "ein-langes-passwort",
+                AccountName.of("Jan", "Beispiel"), null);
+
+        assertThat(created.locale())
+                .as("null heißt \"keine eigene Wahl\", nicht \"Englisch\"")
+                .isNull();
+        assertThat(created.localeOr(Locale.GERMAN)).isEqualTo(Locale.GERMAN);
     }
 
     @Test

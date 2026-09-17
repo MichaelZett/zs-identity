@@ -1,15 +1,16 @@
 package de.zettsystems.identity.domain;
 
 import de.zettsystems.identity.values.AccountName;
+import de.zettsystems.identity.values.Scope;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -21,6 +22,7 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Ein Benutzerkonto. Die E-Mail-Adresse ist zugleich der Anmeldename und wird
@@ -30,6 +32,11 @@ import java.util.Set;
  * <p>Der Name liegt in zwei Gestalten vor (siehe {@link AccountName}): Der
  * Anzeigename ist immer gesetzt; Vor- und Nachname nur bei Anwendungen, die
  * Klarnamen führen.
+ *
+ * <p>Die <strong>Sprache</strong> ist optional: {@code null} heißt „keine
+ * eigene Wahl" — dann gilt {@code zs.identity.locale}. Gebraucht wird sie vor
+ * allem für Mails, die ohne Browser entstehen und deshalb keine Sitzung fragen
+ * können.
  *
  * <p>Daneben gibt es <strong>verwaltete Konten</strong> ({@link #managed}):
  * Eine Anwendung legt sie für Personen an, die sich (noch) nicht selbst
@@ -79,6 +86,11 @@ public class UserAccount extends AbstractAuthEntity {
     @Column(name = "last_login_at")
     private @Nullable Instant lastLoginAt;
 
+    // Seit V1_4. Nullbar heißt "keine eigene Wahl" — nicht "Englisch".
+    @Column(length = 35)
+    @Convert(converter = LocaleAttributeConverter.class)
+    private @Nullable Locale locale;
+
     /**
      * Das Konto muss sein Passwort ändern, bevor es die Anwendung benutzt —
      * etwa nach einem Startpasswort aus einer Verwaltung. Gelöscht wird das
@@ -91,11 +103,11 @@ public class UserAccount extends AbstractAuthEntity {
 
     // LAZY ist Pflicht: Der EAGER-Default von JPA lädt bei jeder Benutzerliste
     // die Rollen einzeln nach (N+1).
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "auth_user_role",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles = new LinkedHashSet<>();
+    //
+    // orphanRemoval: Eine Zuweisung ohne Konto ist nichts — sie verschwindet
+    // mit dem Entzug der Rolle, nicht erst mit einem eigenen Löschaufruf.
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<RoleAssignment> roleAssignments = new LinkedHashSet<>();
 
     protected UserAccount() {
         // for JPA
@@ -134,6 +146,19 @@ public class UserAccount extends AbstractAuthEntity {
         return account;
     }
 
+    /**
+     * Legt die Sprache des Kontos fest, in der es angesprochen werden möchte.
+     * {@code null} nimmt die Wahl zurück; danach gilt wieder die Sprache der
+     * Anwendung.
+     *
+     * <p>{@link Locale#ROOT} ist keine Sprache, sondern die Abwesenheit einer
+     * — es wird deshalb wie {@code null} behandelt, statt später als leeres
+     * Sprachkennzeichen in der Datenbank zu stehen.
+     */
+    public void changeLocale(@Nullable Locale newLocale) {
+        this.locale = newLocale == null || "und".equals(newLocale.toLanguageTag()) ? null : newLocale;
+    }
+
     /** Verwaltet = von einer Anwendung angelegt, ohne eigene Anmeldedaten. */
     public boolean isManaged() {
         return email == null;
@@ -150,8 +175,46 @@ public class UserAccount extends AbstractAuthEntity {
         return new AccountName(displayName, firstName, lastName);
     }
 
+    /**
+     * Die <strong>globalen</strong> Rollen — die, die überall gelten.
+     *
+     * <p>Vor V1_5 gab es nur solche; für Anwendungen ohne Geltungsbereiche ist
+     * das also unverändert die ganze Antwort. Wer auch die bereichsgebundenen
+     * braucht, nimmt {@link #getRoleAssignments()}.
+     */
     public Set<Role> getRoles() {
+        return rolesIn(null);
+    }
+
+    /** Alle Zuweisungen, global wie bereichsgebunden. */
+    public Set<RoleAssignment> getRoleAssignments() {
+        return Collections.unmodifiableSet(roleAssignments);
+    }
+
+    /**
+     * Die Rollen in genau diesem Bereich; {@code null} fragt nach den globalen.
+     *
+     * <p>Unveränderlich wie {@link #getRoleAssignments()} — und aus demselben
+     * Grund: Eine stille Kopie, die Änderungen schluckt, wäre schlimmer als
+     * eine Ausnahme. Wer etwas ändern will, nimmt {@link #grant} und
+     * {@link #revoke}.
+     */
+    public Set<Role> rolesIn(@Nullable Scope scope) {
+        Set<Role> roles = roleAssignments.stream()
+                .filter(assignment -> assignment.appliesTo(scope))
+                .map(RoleAssignment::getRole)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         return Collections.unmodifiableSet(roles);
+    }
+
+    /** Die Bereiche dieser Art, in denen das Konto überhaupt eine Rolle hat. */
+    public Set<Scope> scopesOf(String type) {
+        Objects.requireNonNull(type, "type");
+        Set<Scope> scopes = roleAssignments.stream()
+                .map(RoleAssignment::getScope)
+                .filter(scope -> scope != null && scope.type().equals(type))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return Collections.unmodifiableSet(scopes);
     }
 
     /** Schaltet das Konto nach bestätigter E-Mail-Adresse frei. */
@@ -214,18 +277,50 @@ public class UserAccount extends AbstractAuthEntity {
         this.lastLoginAt = Objects.requireNonNull(at, "at");
     }
 
+    /** Vergibt die Rolle global — sie gilt dann überall. */
     public void grant(Role role) {
-        this.roles.add(Objects.requireNonNull(role, "role"));
+        grant(role, null);
+    }
+
+    /**
+     * Vergibt die Rolle für einen Bereich ({@code null} = global). Zweimal
+     * dieselbe Zuweisung gibt es nicht; der Aufruf ist dann wirkungslos.
+     */
+    public void grant(Role role, @Nullable Scope scope) {
+        Objects.requireNonNull(role, "role");
+        if (!hasRole(role, scope)) {
+            this.roleAssignments.add(new RoleAssignment(this, role, scope));
+        }
     }
 
     public void revoke(Role role) {
-        this.roles.remove(Objects.requireNonNull(role, "role"));
+        revoke(role, null);
     }
 
+    /**
+     * Nimmt die Rolle in genau diesem Bereich zurück. Eine globale Rolle
+     * bleibt dabei unangetastet — sie ist eine andere Zuweisung.
+     */
+    public void revoke(Role role, @Nullable Scope scope) {
+        Objects.requireNonNull(role, "role");
+        this.roleAssignments.removeIf(
+                assignment -> assignment.getRole().equals(role) && assignment.appliesTo(scope));
+    }
+
+    public boolean hasRole(Role role, @Nullable Scope scope) {
+        return roleAssignments.stream()
+                .anyMatch(assignment -> assignment.getRole().equals(role) && assignment.appliesTo(scope));
+    }
+
+    /**
+     * Setzt die <strong>globalen</strong> Rollen neu. Bereichsgebundene
+     * Zuweisungen bleiben stehen: Sie gehören zu einem Mandanten, über den
+     * dieser Aufruf nichts aussagt.
+     */
     public void replaceRoles(Set<Role> newRoles) {
         Objects.requireNonNull(newRoles, "newRoles");
-        this.roles.clear();
-        this.roles.addAll(newRoles);
+        this.roleAssignments.removeIf(RoleAssignment::isGlobal);
+        newRoles.forEach(role -> grant(role, null));
     }
 
     private void applyName(AccountName name) {

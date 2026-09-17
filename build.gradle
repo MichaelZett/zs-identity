@@ -1,3 +1,6 @@
+import com.github.spotbugs.snom.Confidence
+import com.github.spotbugs.snom.Effort
+import com.github.spotbugs.snom.SpotBugsTask
 import net.ltgt.gradle.errorprone.CheckSeverity
 
 plugins {
@@ -7,6 +10,80 @@ plugins {
     id 'com.github.spotbugs' version "${spotbugsGradleVersion}" apply false
     id 'io.github.ben-manes.versions' version "${benmanesVersion}" apply false
     id 'org.sonarqube' version "${sonarVersion}"
+    id 'org.openrewrite.rewrite' version "${rewriteGradleVersion}"
+}
+
+// OpenRewrite laeuft nur auf Zuruf (./gradlew rewriteDryRun bzw. rewriteRun),
+// nie als Teil von `build`: Ein Werkzeug, das Quellen umschreibt, gehoert
+// nicht in einen Lauf, dessen Ergebnis man nicht ansieht.
+//
+// Die Rezepte kommen aus dem Nachbarprojekt zettsystems-recipes (Maven
+// Central). Aktiv sind nur die REINEN Refactorings (ZettSystemsRecipes) —
+// UseToListTrue und UseFloorMod aendern Verhalten und werden bewusst einzeln
+// aufgerufen, wenn man den Diff wirklich lesen will.
+//
+// Aufruf:  ./gradlew rewriteDryRun --no-parallel --no-configuration-cache
+// Das Plugin vertraegt weder org.gradle.parallel (es loest fremde
+// Konfigurationen ohne exklusive Sperre auf) noch den Configuration-Cache
+// (es greift zur Ausfuehrungszeit auf Project zu). Beides steht in
+// gradle.properties an, gilt aber fuer `build` — deshalb die Flags nur hier,
+// statt die Einstellungen des ganzen Projekts fuer ein Werkzeug aufzugeben,
+// das selten laeuft.
+//
+// Plugin bewusst auf 7.39.0: 7.40.0/7.41.0 verweisen auf ein rewrite-bom
+// 8.91.0, das (Stand 2026-09-17) nicht in Maven Central liegt — der Build
+// scheitert dann schon beim Aufloesen.
+dependencies {
+    rewrite platform("org.openrewrite.recipe:rewrite-recipe-bom:${rewriteRecipeBomVersion}")
+    rewrite "de.zettsystems:zettsystems-recipes:${zettsystemsRecipesVersion}"
+    rewrite 'org.openrewrite.recipe:rewrite-static-analysis'
+    rewrite 'org.openrewrite.recipe:rewrite-migrate-java'
+    rewrite 'org.openrewrite.recipe:rewrite-testing-frameworks'
+    rewrite 'org.openrewrite.recipe:rewrite-logging-frameworks'
+    rewrite 'org.openrewrite.recipe:rewrite-spring'
+}
+
+rewrite {
+    // Kuratiert, nicht "alles, was es gibt": Jedes Rezept hier wurde am
+    // Bestand trocken laufen gelassen und sein Diff gelesen.
+    activeRecipe('de.zettsystems.ZettSystemsRecipes')
+    activeRecipe('org.openrewrite.staticanalysis.CodeCleanup')
+    activeRecipe('org.openrewrite.java.RemoveUnusedImports')
+    //
+    // Geprueft und BEWUSST draussen (2026-09-17):
+    //  - org.openrewrite.java.logging.slf4j.Slf4jBestPractices hebt
+    //    LOG.debug(.., e) auf LOG.error an und macht aus lesbaren Aufrufen die
+    //    Fluent-API. Die Level hier sind begruendete Entscheidungen (siehe die
+    //    Kommentare an den Fangbloecken), keine Nachlaessigkeit.
+    //  - org.openrewrite.java.testing.{junit5,assertj}.* wollen
+    //    `useJUnitPlatform()` in JEDES Teilprojekt-Skript schreiben; es steht
+    //    laengst im subprojects-Block der Wurzel. Die eine echte Verbesserung
+    //    daraus (Optional-Assertions) ist uebernommen.
+    //  - org.openrewrite.java.migrate.UpgradeToJava21 und ...UpgradeToJava25
+    //    aendern am Java-Code NICHTS (er ist laengst auf dem Stand) und
+    //    hinterlassen im Build-Skript nur Marker-Kommentare: Die Toolchain
+    //    steht hier als Property (`JavaLanguageVersion.of("${javaVersion}")`),
+    //    die das Rezept nicht aufloesen kann. `javaVersion=25` in
+    //    gradle.properties ist die Wahrheit, nicht das Rezept.
+    //  - org.openrewrite.java.migrate.lang.UseTextBlocks macht aus umbrochenen
+    //    Meldungen Textbloecke mit Zeilenfortsetzung (\ am Zeilenende). Bei
+    //    mehrzeiligem Text (SQL) ein Gewinn, bei einem umbrochenen Satz das
+    //    Gegenteil — 7 Stellen geprueft, alle waeren schlechter lesbar.
+    //  - org.openrewrite.java.migrate.lang.var.UseVarForObject wuerde an 54
+    //    Stellen `var` einsetzen. Das Projekt schreibt Typen aus (8 `var` im
+    //    ganzen Bestand); das ist Stil, kein Versaeumnis.
+    //  - Spring: Ein `SpringBoot4BestPractices` gibt es nicht — rewrite-spring
+    //    hat nur zwoelf gezielte boot4-Rezepte. Geprueft und ohne Befund:
+    //    SpringBootProperties_4_0/_4_1, MigrateAutoconfigurePackages,
+    //    ReplaceMockBeanAndSpyBean, SpringSecurityBestPractices und
+    //    boot3.SpringBoot3BestPractices. MigrateToModularStarters hatte einen
+    //    Befund (spring-security-test -> spring-boot-starter-security-test);
+    //    er ist angewandt, das Rezept selbst ist eine Einmal-Migration und
+    //    bleibt deshalb draussen.
+    // Die Build-Skripte laufen mit: `exclusion(..)` greift fuer sie nicht.
+    // OpenRewrite kuerzt darin qualifizierte Klassennamen (etwa
+    // com.github.spotbugs.snom.Effort -> Effort) und ergaenzt den Import
+    // NICHT — deshalb stehen die Importe oben im Skript von Hand.
 }
 
 // ErrorProne-Checks, die als Sicherheitsnetz auf ERROR stehen.
@@ -67,6 +144,21 @@ subprojects {
         }
         withSourcesJar()
         withJavadocJar()
+    }
+
+    // Automatic-Module-Name statt module-info.java: Der Baustein laeuft mit
+    // Spring, Hibernate und Vaadin auf dem Klassenpfad, nicht im Modulpfad —
+    // ein echter Moduldeskriptor waere dort wirkungslos und hier eine Fessel
+    // (Reflection braucht `opens`, die Sprachdateien beider Artefakte liegen im
+    // selben Ressourcen-Paket). Der Manifest-Eintrag kostet dagegen nichts und
+    // gibt einer Anwendung, die selbst JPMS benutzt, einen STABILEN Modulnamen:
+    // ohne ihn leitet Java ihn aus dem Dateinamen ab, und der aendert sich mit
+    // jedem Versionssprung.
+    tasks.named('jar') {
+        manifest {
+            attributes('Automatic-Module-Name': "de.zettsystems.identity"
+                    + (project.name == 'identity-vaadin' ? '.ui' : ''))
+        }
     }
 
     jacoco {
@@ -144,12 +236,12 @@ subprojects {
     spotbugs {
         // Echte Enum-Werte statt der Zeichenketten 'max'/'low': Gradle 9 warnt
         // vor der stillen Umwandlung, Gradle 10 lehnt sie ab.
-        effort = com.github.spotbugs.snom.Effort.valueOf('MAX')
-        reportLevel = com.github.spotbugs.snom.Confidence.valueOf('LOW')
+        effort = Effort.valueOf('MAX')
+        reportLevel = Confidence.valueOf('LOW')
         excludeFilter = rootProject.file('config/spotbugs/exclude.xml')
     }
 
-    tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
+    tasks.withType(SpotBugsTask).configureEach {
         reports {
             html {
                 required = true

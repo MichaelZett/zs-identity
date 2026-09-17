@@ -30,10 +30,10 @@ import java.util.Objects;
  * anklickbaren mehr. Der Bestätigungslink ist mit dem 43-stelligen Token immer
  * länger als das. Clients ohne HTML sehen weiterhin den Textteil.
  *
- * <p>Die Texte kommen aus {@link IdentityMessages}, die Sprache aus
- * {@code zs.identity.locale}: Zum Zeitpunkt des Versands gibt es keinen Browser,
- * dessen Spracheinstellung man fragen könnte, und am Konto ist keine Sprache
- * hinterlegt (siehe {@code BACKLOG.md}).
+ * <p>Die Texte kommen aus {@link IdentityMessages}. Die Sprache ist die des
+ * Kontos, und wenn es keine gewählt hat, {@code zs.identity.locale}: Zum
+ * Zeitpunkt des Versands gibt es keinen Browser, dessen Spracheinstellung man
+ * fragen könnte — deshalb steht sie seit V1_4 am Konto.
  */
 class JavaMailIdentityMailSender implements IdentityMailSender {
 
@@ -78,7 +78,7 @@ class JavaMailIdentityMailSender implements IdentityMailSender {
 
     private void send(UserAccountDto user, String subjectKey, String bodyKey, String htmlBodyKey, String url,
                       Duration linkValidity) {
-        Locale locale = properties.locale();
+        Locale locale = user.localeOr(properties.locale());
         String subject = messages.get(subjectKey, locale);
         String validity = humanReadableValidity(locale, linkValidity);
         String text = messages.get(bodyKey, locale, user.displayName(), url, validity);

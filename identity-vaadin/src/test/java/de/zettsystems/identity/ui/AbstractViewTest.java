@@ -91,9 +91,7 @@ abstract class AbstractViewTest {
     }
 
     protected static IdentityProperties properties(IdentityProperties base, Locale locale) {
-        return new IdentityProperties(base.selfRegistrationEnabled(), base.emailVerificationRequired(),
-                base.tokenValidity(), base.invitationValidity(), base.passwordMinLength(), base.fromAddress(),
-                base.fromName(), base.baseUrl(), base.defaultRoleCode(), base.nameMode(), locale);
+        return base.withLocale(locale);
     }
 
     /**

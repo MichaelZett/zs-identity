@@ -11,11 +11,14 @@ import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityPaths;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.UserAccountDto;
-import java.time.Clock;
-import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.util.Locale;
+import java.util.Optional;
 
 class RegistrationServiceImpl implements RegistrationService {
 
@@ -55,9 +58,25 @@ class RegistrationServiceImpl implements RegistrationService {
         return properties.emailVerificationRequired();
     }
 
+    // Beide Eingaenge tragen @Transactional und rufen denselben privaten Kern:
+    // Ein Aufruf auf "this" liefe am Proxy vorbei, die Transaktion muss also
+    // an jedem oeffentlichen Eingang beginnen — sonst faellt das Abbilden der
+    // LAZY gemappten Rollen auf das Dto in eine LazyInitializationException.
     @Override
     @Transactional
     public UserAccountDto register(String email, String rawPassword, AccountName name) {
+        return doRegister(email, rawPassword, name, null);
+    }
+
+    @Override
+    @Transactional
+    public UserAccountDto register(String email, String rawPassword, AccountName name,
+                                   @Nullable Locale locale) {
+        return doRegister(email, rawPassword, name, locale);
+    }
+
+    private UserAccountDto doRegister(String email, String rawPassword, AccountName name,
+                                      @Nullable Locale locale) {
         if (!properties.selfRegistrationEnabled()) {
             throw new IdentityException(IdentityMessageKeys.SELF_REGISTRATION_DISABLED,
                     "Self registration is disabled (zs.identity.self-registration-enabled=false)");
@@ -74,6 +93,7 @@ class RegistrationServiceImpl implements RegistrationService {
         }
 
         UserAccount user = new UserAccount(normalized, passwordHasher.hash(rawPassword), name, clock.instant());
+        user.changeLocale(locale);
         user.grant(defaultRole());
 
         if (properties.emailVerificationRequired()) {

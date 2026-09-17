@@ -14,15 +14,16 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
      * ohne den EntityGraph läuft er außerhalb der Transaktion in eine
      * LazyInitializationException.
      */
-    @EntityGraph(attributePaths = {"roles", "roles.authorities"})
+    @EntityGraph(attributePaths = {"roleAssignments", "roleAssignments.role",
+            "roleAssignments.role.authorities"})
     Optional<UserAccount> findByEmail(String email);
 
     boolean existsByEmail(String email);
 
-    @EntityGraph(attributePaths = {"roles"})
+    @EntityGraph(attributePaths = {"roleAssignments", "roleAssignments.role"})
     List<UserAccount> findAllByOrderByDisplayNameAsc();
 
     /** Mehrere Konten samt Rollen in einer Abfrage — für Mitgliederlisten. */
-    @EntityGraph(attributePaths = {"roles"})
+    @EntityGraph(attributePaths = {"roleAssignments", "roleAssignments.role"})
     List<UserAccount> findAllWithRolesByIdIn(Collection<Long> ids);
 }

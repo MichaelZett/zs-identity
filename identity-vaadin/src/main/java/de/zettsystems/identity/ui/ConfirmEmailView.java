@@ -1,14 +1,9 @@
 package de.zettsystems.identity.ui;
 
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import de.zettsystems.identity.application.IdentityException;
@@ -33,22 +28,19 @@ import java.util.Map;
  */
 @Route(value = IdentityRoutes.CONFIRM_EMAIL, autoLayout = false)
 @AnonymousAllowed
-public class ConfirmEmailView extends VerticalLayout implements BeforeEnterObserver, HasDynamicTitle {
+public class ConfirmEmailView extends IdentityFormView implements BeforeEnterObserver {
 
     private final RegistrationService registrationService;
-    private final IdentityTexts texts;
 
     public ConfirmEmailView(RegistrationService registrationService, IdentityProperties properties,
                             IdentityMessages messages) {
+        super(messages, properties, "confirm-email");
         this.registrationService = registrationService;
-        this.texts = new IdentityTexts(messages, properties);
-        setMaxWidth("32rem");
-        getStyle().set("margin", "0 auto");
     }
 
     @Override
     public String getPageTitle() {
-        return texts.get("identity.confirm.pageTitle");
+        return text("identity.confirm.pageTitle");
     }
 
     @Override
@@ -58,7 +50,7 @@ public class ConfirmEmailView extends VerticalLayout implements BeforeEnterObser
         Map<String, List<String>> parameters = event.getLocation().getQueryParameters().getParameters();
         List<String> tokens = parameters.getOrDefault(IdentityRoutes.TOKEN_PARAMETER, List.of());
         if (tokens.isEmpty()) {
-            showFailure(texts.get("identity.confirm.incompleteLink"));
+            showFailure(text("identity.confirm.incompleteLink"));
             return;
         }
 
@@ -66,48 +58,40 @@ public class ConfirmEmailView extends VerticalLayout implements BeforeEnterObser
     }
 
     private void showPrompt(String token) {
-        add(new H2(texts.get("identity.confirm.title")));
-        add(new Paragraph(texts.get("identity.confirm.prompt")));
-        Button confirm = new Button(texts.get("identity.confirm.submit"), event -> confirm(token));
-        confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        confirm.setId("confirm-email-button");
-        confirm.setWidthFull();
-        add(confirm);
+        add(heading("identity.confirm.title"));
+        add(paragraph("identity.confirm.prompt"));
+        addFullWidth(primaryButton("identity.confirm.submit", "confirm-email-button",
+                event -> confirm(token)));
     }
 
     private void confirm(String token) {
         removeAll();
         try {
             registrationService.confirmEmail(token);
-            add(new H2(texts.get("identity.confirm.done.title")));
-            add(new Paragraph(texts.get("identity.confirm.done.message")));
-            add(loginButton());
+            add(heading("identity.confirm.done.title"));
+            add(paragraph("identity.confirm.done.message"));
+            addFullWidth(loginButton());
         } catch (IdentityException _) {
-            showFailure(texts.get("identity.confirm.failed.message"));
+            showFailure(text("identity.confirm.failed.message"));
         }
     }
 
     private void showFailure(String message) {
-        add(new H2(texts.get("identity.confirm.failed.title")));
+        add(heading("identity.confirm.failed.title"));
         add(new Paragraph(message));
-        add(resendButton(), loginButton());
+        addFullWidth(resendButton(), loginButton());
     }
 
     /** Der Ausweg aus einem abgelaufenen Link — sonst bleibt das Konto gesperrt. */
     private Button resendButton() {
-        Button button = new Button(texts.get("identity.confirm.resend"),
-                event -> UI.getCurrent().navigate(IdentityRoutes.RESEND_VERIFICATION));
+        Button button = navigationButton("identity.confirm.resend", IdentityRoutes.RESEND_VERIFICATION);
         button.setId("confirm-resend-verification-button");
-        button.setWidthFull();
         return button;
     }
 
-    /** Navigations-Button zur Anmeldung — volle Breite, weil die Ansicht schmal ist. */
     private Button loginButton() {
-        Button button = new Button(texts.get("identity.common.toLogin"),
-                event -> UI.getCurrent().navigate(IdentityRoutes.LOGIN));
+        Button button = navigationButton("identity.common.toLogin", IdentityRoutes.LOGIN);
         button.setId("confirm-login-button");
-        button.setWidthFull();
         return button;
     }
 }

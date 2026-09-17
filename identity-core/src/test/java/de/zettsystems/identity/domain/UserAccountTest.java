@@ -1,9 +1,11 @@
 package de.zettsystems.identity.domain;
 
 import de.zettsystems.identity.values.AccountName;
+import de.zettsystems.identity.values.Scope;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,6 +27,26 @@ class UserAccountTest {
         // Auf einem System mit türkischem Locale würde toLowerCase() aus "I" ein
         // punktloses "ı" machen — die Adresse wäre dann eine andere.
         assertThat(UserAccount.normalizeEmail("INFO@EXAMPLE.COM")).isEqualTo("info@example.com");
+    }
+
+    /**
+     * {@link java.util.Locale#ROOT} ist die Abwesenheit einer Sprache. Ohne
+     * diese Regel stünde dafür ein leeres Sprachkennzeichen in der Datenbank —
+     * ununterscheidbar von einer echten Wahl.
+     */
+    @Test
+    void theRootLocaleCountsAsNoChoiceAtAll() {
+        UserAccount user = newAccount("neu@example.com");
+
+        user.changeLocale(Locale.ENGLISH);
+        assertThat(user.getLocale()).isEqualTo(Locale.ENGLISH);
+
+        user.changeLocale(Locale.ROOT);
+        assertThat(user.getLocale()).isNull();
+
+        user.changeLocale(Locale.GERMAN);
+        user.changeLocale(null);
+        assertThat(user.getLocale()).isNull();
     }
 
     @Test
@@ -98,6 +120,75 @@ class UserAccountTest {
 
         user.replaceRoles(Set.of(member));
         assertThat(user.getRoles()).containsExactly(member);
+    }
+
+    /** Dieselbe Rolle in zwei Vereinen ist zweierlei — und beides gleichzeitig möglich. */
+    @Test
+    void aRoleCanBeHeldInSeveralScopes() {
+        UserAccount user = newAccount("a@b.c");
+        Role admin = new Role("GROUP_ADMIN", "role.groupAdmin");
+        Scope club17 = Scope.of("club", "17");
+        Scope club4 = Scope.of("club", "4");
+
+        user.grant(admin, club17);
+        user.grant(admin, club4);
+
+        assertThat(user.rolesIn(club17)).containsExactly(admin);
+        assertThat(user.rolesIn(club4)).containsExactly(admin);
+        assertThat(user.getRoles())
+                .as("in keinem Verein Admin zu sein, heißt nicht überall Admin zu sein")
+                .isEmpty();
+        assertThat(user.scopesOf("club")).containsExactlyInAnyOrder(club17, club4);
+        assertThat(user.scopesOf("game")).isEmpty();
+    }
+
+    @Test
+    void revokingInOneScopeLeavesTheOthersAlone() {
+        UserAccount user = newAccount("a@b.c");
+        Role admin = new Role("GROUP_ADMIN", "role.groupAdmin");
+        Scope club17 = Scope.of("club", "17");
+        Scope club4 = Scope.of("club", "4");
+        user.grant(admin, club17);
+        user.grant(admin, club4);
+        user.grant(admin);
+
+        user.revoke(admin, club17);
+
+        assertThat(user.rolesIn(club17)).isEmpty();
+        assertThat(user.rolesIn(club4)).containsExactly(admin);
+        assertThat(user.getRoles()).containsExactly(admin);
+    }
+
+    @Test
+    void theSameAssignmentIsNeverStoredTwice() {
+        UserAccount user = newAccount("a@b.c");
+        Role admin = new Role("GROUP_ADMIN", "role.groupAdmin");
+        Scope club17 = Scope.of("club", "17");
+
+        user.grant(admin, club17);
+        user.grant(admin, club17);
+
+        assertThat(user.getRoleAssignments()).hasSize(1);
+    }
+
+    /**
+     * {@code replaceRoles} setzt die globalen Rollen — über die Mandanten
+     * einer Person sagt der Aufruf nichts, also darf er sie auch nicht
+     * stillschweigend leeren.
+     */
+    @Test
+    void replacingTheGlobalRolesKeepsTheScopedOnes() {
+        UserAccount user = newAccount("a@b.c");
+        Role member = new Role("MEMBER", "role.member");
+        Role admin = new Role("GROUP_ADMIN", "role.groupAdmin");
+        Scope club17 = Scope.of("club", "17");
+        user.grant(admin, club17);
+        user.grant(admin);
+
+        user.replaceRoles(Set.of(member));
+
+        assertThat(user.getRoles()).containsExactly(member);
+        assertThat(user.rolesIn(club17)).containsExactly(admin);
     }
 
     @Test

@@ -6,6 +6,8 @@ import de.zettsystems.identity.testsupport.AbstractIdentityIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -38,7 +40,7 @@ class RoleSynchronizerIT extends AbstractIdentityIntegrationTest {
 
         // Zweiter Lauf mit denselben Katalogen — der Synchronizer muss idempotent
         // sein, sonst würde jeder Neustart Rollen vervielfachen.
-        new RoleSynchronizer(java.util.List.of(new BuiltinRoleCatalog()), roleRepository).run(null);
+        new RoleSynchronizer(List.of(new BuiltinRoleCatalog()), roleRepository).run(null);
 
         assertThat(roleRepository.count()).isEqualTo(before);
     }

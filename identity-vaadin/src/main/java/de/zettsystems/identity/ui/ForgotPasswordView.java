@@ -1,13 +1,9 @@
 package de.zettsystems.identity.ui;
 
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.Autocomplete;
 import com.vaadin.flow.component.textfield.EmailField;
-import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import de.zettsystems.identity.application.IdentityMessages;
@@ -17,52 +13,43 @@ import de.zettsystems.identity.values.IdentityProperties;
 /** Formular für "Passwort vergessen". */
 @Route(value = IdentityRoutes.FORGOT_PASSWORD, autoLayout = false)
 @AnonymousAllowed
-public class ForgotPasswordView extends VerticalLayout implements HasDynamicTitle {
+public class ForgotPasswordView extends IdentityFormView {
 
     private final PasswordResetService passwordResetService;
-    private final IdentityTexts texts;
     private final EmailField email = new EmailField();
 
     public ForgotPasswordView(PasswordResetService passwordResetService, IdentityProperties properties,
                               IdentityMessages messages) {
+        super(messages, properties, "forgot-password");
         this.passwordResetService = passwordResetService;
-        this.texts = new IdentityTexts(messages, properties);
 
-        setMaxWidth("28rem");
-        getStyle().set("margin", "0 auto");
+        add(heading("identity.forgot.title"));
+        add(paragraph("identity.forgot.intro"));
 
-        add(new H2(texts.get("identity.forgot.title")));
-        add(new Paragraph(texts.get("identity.forgot.intro")));
-
-        email.setLabel(texts.get("identity.common.email"));
+        email.setLabel(text("identity.common.email"));
         email.setRequiredIndicatorVisible(true);
-        email.setWidthFull();
+        // Die Kennung, unter der der Passwortmanager das Zugangsdatenpaar
+        // ablegt — damit er sie hier anbietet, statt sie tippen zu lassen.
+        email.setAutocomplete(Autocomplete.USERNAME);
         email.setId("forgot-email-field");
 
-        Button submit = new Button(texts.get("identity.forgot.submit"), event -> submit());
-        submit.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        submit.setWidthFull();
-        submit.setId("forgot-submit-button");
+        Button submit = primaryButton("identity.forgot.submit", "forgot-submit-button", event -> submit());
 
-        add(email, submit, backToLoginButton());
+        addFullWidth(email, submit, backToLoginButton());
     }
 
     @Override
     public String getPageTitle() {
-        return texts.get("identity.forgot.pageTitle");
+        return text("identity.forgot.pageTitle");
     }
 
-    /** Navigations-Button zur Anmeldung — volle Breite, weil das Formular schmal ist. */
     private Button backToLoginButton() {
-        Button button = new Button(texts.get("identity.common.backToLogin"),
-                event -> UI.getCurrent().navigate(IdentityRoutes.LOGIN));
-        button.setWidthFull();
-        return button;
+        return navigationButton("identity.common.backToLogin", IdentityRoutes.LOGIN);
     }
 
     private void submit() {
         if (email.isEmpty() || email.isInvalid()) {
-            email.setErrorMessage(texts.get("identity.common.invalidEmail"));
+            email.setErrorMessage(text("identity.common.invalidEmail"));
             email.setInvalid(true);
             return;
         }
@@ -78,9 +65,9 @@ public class ForgotPasswordView extends VerticalLayout implements HasDynamicTitl
      */
     private void showConfirmation() {
         removeAll();
-        add(new H2(texts.get("identity.common.mailSent.title")));
-        add(new Paragraph(texts.get("identity.forgot.sent", email.getValue())
-                + " " + texts.get("identity.common.spamHint")));
-        add(backToLoginButton());
+        add(heading("identity.common.mailSent.title"));
+        add(new Paragraph(text("identity.forgot.sent", email.getValue())
+                + " " + text("identity.common.spamHint")));
+        addFullWidth(backToLoginButton());
     }
 }

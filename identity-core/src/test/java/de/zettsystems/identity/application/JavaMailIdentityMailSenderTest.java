@@ -3,10 +3,13 @@ package de.zettsystems.identity.application;
 import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.NameMode;
+import de.zettsystems.identity.values.ScopedRole;
+import de.zettsystems.identity.values.UiSettings;
 import de.zettsystems.identity.values.UserAccountDto;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
@@ -183,6 +186,38 @@ class JavaMailIdentityMailSenderTest {
         assertThat(htmlPart(message)).contains("Confirm e-mail address");
     }
 
+    /**
+     * Der Grund, warum die Sprache seit V1_4 am Konto steht: Die Einstellung
+     * der Anwendung sagt „deutsch", das Konto hat sich englisch registriert —
+     * und die Mail entsteht ohne Browser, den man fragen könnte.
+     */
+    @Test
+    void theAccountLanguageBeatsTheApplicationLanguage() throws Exception {
+        CapturingMailSender mailSender = new CapturingMailSender();
+        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender,
+                IdentityProperties.defaults(), MESSAGES);
+
+        testee.sendEmailVerification(userSpeaking(Locale.ENGLISH), "http://example.com/x");
+
+        assertThat(mailSender.sent.getFirst().getSubject()).isEqualTo("Please confirm your e-mail address");
+    }
+
+    @Test
+    void withoutALanguageAtTheAccountTheApplicationLanguageStands() throws Exception {
+        CapturingMailSender mailSender = new CapturingMailSender();
+        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender,
+                IdentityProperties.defaults(), MESSAGES);
+
+        testee.sendEmailVerification(userSpeaking(null), "http://example.com/x");
+
+        assertThat(mailSender.sent.getFirst().getSubject()).contains("bestätige");
+    }
+
+    private static UserAccountDto userSpeaking(@Nullable Locale locale) {
+        return new UserAccountDto(1L, "anna@example.com", AccountName.of("Anna", "Beispiel"), true, true,
+                Instant.parse("2026-09-01T10:00:00Z"), Set.of(ScopedRole.global("USER")), false, locale);
+    }
+
     private static List<String> recipients(MimeMessage message) throws Exception {
         return List.of(message.getAllRecipients()).stream().map(Object::toString).toList();
     }
@@ -216,12 +251,12 @@ class JavaMailIdentityMailSenderTest {
     private static IdentityProperties propertiesWithValidity(Duration validity) {
         return new IdentityProperties(true, true, validity, validity, 12,
                 "noreply@localhost", "Terminplanung", "http://localhost:8080", "USER", NameMode.FULL_NAME,
-                Locale.GERMAN);
+                Locale.GERMAN, UiSettings.defaults());
     }
 
     private static IdentityProperties englishProperties() {
         return new IdentityProperties(true, true, Duration.ofHours(24), Duration.ofDays(7), 12,
                 "noreply@localhost", "Terminplanung", "http://localhost:8080", "USER", NameMode.FULL_NAME,
-                Locale.ENGLISH);
+                Locale.ENGLISH, UiSettings.defaults());
     }
 }

@@ -11,6 +11,7 @@ import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.NameMode;
+import de.zettsystems.identity.values.UiSettings;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -32,7 +33,8 @@ class RegistrationViewTest extends AbstractViewTest {
 
     private static IdentityProperties propertiesWith(NameMode nameMode, boolean verificationRequired) {
         return new IdentityProperties(true, verificationRequired, Duration.ofHours(24), Duration.ofDays(7), 12,
-                "noreply@localhost", "Test", "http://localhost:8080", "USER", nameMode, Locale.GERMAN);
+                "noreply@localhost", "Test", "http://localhost:8080", "USER", nameMode, Locale.GERMAN,
+                UiSettings.defaults());
     }
 
     private void fillCredentials(RegistrationView view, String email, String password, String repeat) {
@@ -129,6 +131,21 @@ class RegistrationViewTest extends AbstractViewTest {
         assertThat(_get(view, Paragraph.class).getText())
                 .as("die Adresse gehört in die Bestätigung, damit ein Tippfehler auffällt")
                 .contains("anna@example.com");
+    }
+
+    /**
+     * Die Sprache der Registrierung wird die Sprache des Kontos: Beim späteren
+     * Mailversand gibt es keinen Browser mehr, den man fragen könnte.
+     */
+    @Test
+    void theLanguageOfTheViewIsHandedToTheService() {
+        RegistrationView view = showRegistrationView(propertiesWith(NameMode.DISPLAY_NAME, true));
+        _setValue(_get(view, TextField.class), "Anna");
+        fillCredentials(view, "anna@example.com", "sicheres-passwort", "sicheres-passwort");
+
+        submit(view);
+
+        assertThat(registrationService.registeredLocales).containsExactly(Locale.GERMAN);
     }
 
     @Test

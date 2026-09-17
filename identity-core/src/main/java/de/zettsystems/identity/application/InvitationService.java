@@ -2,7 +2,9 @@ package de.zettsystems.identity.application;
 
 import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.UserAccountDto;
+import org.jspecify.annotations.Nullable;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -62,6 +64,19 @@ public interface InvitationService {
     }
 
     /**
+     * Wie {@link #inviteNewAccount(String, AccountName)}, legt die Sprache des
+     * Kontos aber gleich fest — damit schon die Einladungsmail in der richtigen
+     * Sprache ankommt. Wer einlädt, weiß in aller Regel, in welcher Sprache er
+     * die Person anspricht; dem Baustein ist sie sonst bis zum Einlösen
+     * unbekannt.
+     *
+     * @param locale Sprache des Kontos, {@code null} für „keine eigene Wahl"
+     */
+    default UserAccountDto inviteNewAccount(String email, AccountName name, @Nullable Locale locale) {
+        return inviteNewAccount(email, name);
+    }
+
+    /**
      * Wem eine Einladung gilt — ohne sie einzulösen. Die Einlöse-Ansicht zeigt
      * damit den Namen an, damit sichtbar ist, welches Konto man übernimmt.
      *
@@ -77,4 +92,20 @@ public interface InvitationService {
      *                           abgelaufen ist oder das Passwort zu kurz
      */
     UserAccountDto claim(String token, String rawPassword);
+
+    /**
+     * Wie {@link #claim(String, String)}, hinterlegt zusätzlich die Sprache,
+     * in der die Person die Einlöse-Ansicht benutzt hat — der erste Moment, in
+     * dem sie selbst etwas dazu sagt.
+     *
+     * <p>Eine <strong>bereits gesetzte</strong> Sprache bleibt unangetastet:
+     * Hat die Verwaltung beim Einladen eine gewählt, war das eine Entscheidung
+     * über dieses Konto; die Ansicht kennt dagegen nur die Sprache des
+     * Browsers, und die ist oft nur die des gerade benutzten Geräts.
+     *
+     * @param locale Sprache der Einlöse-Ansicht, {@code null} wenn unbekannt
+     */
+    default UserAccountDto claim(String token, String rawPassword, @Nullable Locale locale) {
+        return claim(token, rawPassword);
+    }
 }

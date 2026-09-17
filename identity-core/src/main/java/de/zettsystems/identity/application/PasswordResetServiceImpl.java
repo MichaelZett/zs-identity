@@ -7,10 +7,11 @@ import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityPaths;
 import de.zettsystems.identity.values.IdentityProperties;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 class PasswordResetServiceImpl implements PasswordResetService {
 

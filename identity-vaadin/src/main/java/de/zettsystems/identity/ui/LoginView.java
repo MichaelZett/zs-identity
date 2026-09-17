@@ -1,15 +1,11 @@
 package de.zettsystems.identity.ui;
 
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.login.LoginI18n;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import de.zettsystems.identity.application.IdentityMessages;
@@ -23,57 +19,59 @@ import de.zettsystems.identity.values.IdentityProperties;
  * {@code /login} POSTet und damit direkt von Spring Securitys
  * Formular-Anmeldung verarbeitet wird — es gibt also keinen eigenen
  * Anmeldecode, der Fehler enthalten könnte.
+ *
+ * <p>Die einzige Ansicht, die {@link #centerOnPage()} benutzt: Sie ist so
+ * kurz, dass sie oben am Rand kleben würde.
  */
 @Route(value = IdentityRoutes.LOGIN, autoLayout = false)
 @AnonymousAllowed
-public class LoginView extends VerticalLayout implements BeforeEnterObserver, HasDynamicTitle {
+public class LoginView extends IdentityFormView implements BeforeEnterObserver {
 
     private final LoginForm loginForm = new LoginForm();
-    private final IdentityTexts texts;
 
     public LoginView(RegistrationService registrationService, IdentityProperties properties,
                      IdentityMessages messages) {
-        this.texts = new IdentityTexts(messages, properties);
-
-        setSizeFull();
-        setAlignItems(Alignment.CENTER);
-        setJustifyContentMode(JustifyContentMode.CENTER);
+        super(messages, properties, "login");
+        centerOnPage();
 
         loginForm.setAction(IdentityRoutes.LOGIN);
-        loginForm.setI18n(loginI18n(texts));
+        loginForm.setI18n(loginI18n(texts()));
         loginForm.setForgotPasswordButtonVisible(true);
         loginForm.addForgotPasswordListener(
                 event -> getUI().ifPresent(ui -> ui.navigate(IdentityRoutes.FORGOT_PASSWORD)));
 
-        add(loginForm);
+        // Die Anmeldung füllt die Seite; damit Formular und Knöpfe trotzdem
+        // eine gemeinsame, begrenzte Breite haben, sitzen sie in einer Spalte.
+        VerticalLayout column = centeredColumn();
+        column.add(fullWidth(loginForm));
 
         // Der Verweis erscheint nur, wenn die Selbstregistrierung eingeschaltet
         // ist — sonst führt er auf eine Seite, die jede Eingabe ablehnt.
         if (registrationService.isSelfRegistrationEnabled()) {
-            Button register = new Button(texts.get("identity.login.register"),
-                    event -> UI.getCurrent().navigate(IdentityRoutes.REGISTER));
-            register.setId("login-register-button");
-            add(centered(register));
+            column.add(fullWidth(registerButton()));
         }
         // Ohne Bestätigungspflicht gibt es keine Bestätigungsmail — dann führt
         // der Weg ins Leere und bleibt weg.
         if (registrationService.isEmailVerificationRequired()) {
-            Button resend = new Button(texts.get("identity.login.resendVerification"),
-                    event -> UI.getCurrent().navigate(IdentityRoutes.RESEND_VERIFICATION));
-            resend.setId("login-resend-verification-button");
-            add(centered(resend));
+            column.add(fullWidth(resendButton()));
         }
     }
 
     @Override
     public String getPageTitle() {
-        return texts.get("identity.login.pageTitle");
+        return text("identity.login.pageTitle");
     }
 
-    private static HorizontalLayout centered(Button button) {
-        HorizontalLayout row = new HorizontalLayout(button);
-        row.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-        return row;
+    private Button registerButton() {
+        Button button = navigationButton("identity.login.register", IdentityRoutes.REGISTER);
+        button.setId("login-register-button");
+        return button;
+    }
+
+    private Button resendButton() {
+        Button button = navigationButton("identity.login.resendVerification", IdentityRoutes.RESEND_VERIFICATION);
+        button.setId("login-resend-verification-button");
+        return button;
     }
 
     @Override

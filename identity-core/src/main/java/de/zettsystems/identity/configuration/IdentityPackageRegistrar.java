@@ -1,7 +1,7 @@
 package de.zettsystems.identity.configuration;
 
-import org.springframework.boot.autoconfigure.AutoConfigurationPackages;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.boot.autoconfigure.AutoConfigurationPackages;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.type.AnnotationMetadata;
 

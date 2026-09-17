@@ -1,7 +1,5 @@
 package de.zettsystems.identity.application;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,12 +10,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * Frischt die Berechtigungen der <em>laufenden</em> Sitzung auf, nachdem sich
@@ -125,28 +120,7 @@ public class AuthenticationRefresher {
         }
     }
 
-    /**
-     * Ohne Servlet-Umgebung (Tests, Hintergrundläufe) gibt es keine Sitzung, in
-     * die sich etwas schreiben ließe — dann bleibt es beim aufgefrischten
-     * Kontext im aktuellen Thread.
-     *
-     * <p>Das Repository entsteht bewusst erst hier und nicht im Konstruktor:
-     * Es zieht die Servlet-Typen nach sich, die der Baustein nur
-     * {@code compileOnly} kennt. Eine Anwendung ohne Servlet-Umgebung könnte
-     * die Bean sonst gar nicht erst erzeugen.
-     */
     private void saveToSession(SecurityContext context) {
-        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes)) {
-            return;
-        }
-        HttpServletRequest request = attributes.getRequest();
-        HttpServletResponse response = attributes.getResponse();
-        if (response == null) {
-            return;
-        }
-        SecurityContextRepository repository = contextRepository != null
-                ? contextRepository
-                : new HttpSessionSecurityContextRepository();
-        repository.saveContext(context, request, response);
+        SecurityContexts.saveToSession(context, contextRepository);
     }
 }

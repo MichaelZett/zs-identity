@@ -34,6 +34,12 @@ import java.util.Locale;
  *                                 folgen die Ansichten dieser; sonst gilt diese
  *                                 Einstellung. Mitgeliefert sind {@code de} und
  *                                 {@code en}, bei allem anderen greift Englisch.
+ *                                 Ein Konto kann eine eigene Sprache tragen —
+ *                                 dann gilt dessen (siehe
+ *                                 {@code UserAccountDto#locale()}).
+ * @param ui                       Aussehen der mitgelieferten Ansichten
+ *                                 (siehe {@link UiSettings}); ohne Vaadin im
+ *                                 Klassenpfad ohne Wirkung
  */
 @ConfigurationProperties(prefix = "zs.identity")
 public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationEnabled,
@@ -46,7 +52,8 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                                  @DefaultValue("http://localhost:8080") String baseUrl,
                                  @DefaultValue("USER") String defaultRoleCode,
                                  @DefaultValue("FULL_NAME") NameMode nameMode,
-                                 @DefaultValue("de") Locale locale) {
+                                 @DefaultValue("de") Locale locale,
+                                 @DefaultValue UiSettings ui) {
 
     public IdentityProperties {
         if (passwordMinLength < 8) {
@@ -71,10 +78,29 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
+    /**
+     * Dieselben Einstellungen in einer anderen Sprache. Der Record hat viele
+     * Komponenten, und ein Test, der nur die Sprache wechseln will, soll sie
+     * nicht alle abschreiben müssen — sonst kostet jede neue Einstellung eine
+     * Änderung in jedem Test, auch in denen einbindender Anwendungen.
+     */
+    public IdentityProperties withLocale(Locale newLocale) {
+        return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
+                invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
+                nameMode, newLocale, ui);
+    }
+
+    /** Dieselben Einstellungen mit anderem Erscheinungsbild — siehe {@link #withLocale(Locale)}. */
+    public IdentityProperties withUi(UiSettings newUi) {
+        return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
+                invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
+                nameMode, locale, newUi);
+    }
+
     /** Voreinstellungen für Tests, die den Record von Hand bauen. */
     public static IdentityProperties defaults() {
         return new IdentityProperties(true, true, Duration.ofHours(24), Duration.ofDays(7), 12,
                 "noreply@localhost", "Application", "http://localhost:8080", "USER", NameMode.FULL_NAME,
-                Locale.GERMAN);
+                Locale.GERMAN, UiSettings.defaults());
     }
 }

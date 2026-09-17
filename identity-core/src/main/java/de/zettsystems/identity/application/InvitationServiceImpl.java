@@ -10,9 +10,11 @@ import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityPaths;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.UserAccountDto;
+import org.jspecify.annotations.Nullable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.util.Locale;
 import java.util.Optional;
 
 class InvitationServiceImpl implements InvitationService {
@@ -75,9 +77,21 @@ class InvitationServiceImpl implements InvitationService {
         sendInvitation(user);
     }
 
+    // Beide Eingaenge tragen @Transactional und rufen denselben privaten Kern
+    // — Begruendung wie in RegistrationServiceImpl.
     @Override
     @Transactional
     public UserAccountDto inviteNewAccount(String email, AccountName name) {
+        return doInviteNewAccount(email, name, null);
+    }
+
+    @Override
+    @Transactional
+    public UserAccountDto inviteNewAccount(String email, AccountName name, @Nullable Locale locale) {
+        return doInviteNewAccount(email, name, locale);
+    }
+
+    private UserAccountDto doInviteNewAccount(String email, AccountName name, @Nullable Locale locale) {
         String normalized = UserAccount.normalizeEmail(email);
         requireFreeAddress(normalized);
 
@@ -86,6 +100,7 @@ class InvitationServiceImpl implements InvitationService {
         // Beide Einladungswege enden damit im selben Zustand.
         UserAccount user = UserAccount.managed(name, clock.instant());
         user.assignEmail(normalized);
+        user.changeLocale(locale);
         user.grant(defaultRole());
         userRepository.save(user);
 
@@ -101,6 +116,16 @@ class InvitationServiceImpl implements InvitationService {
     @Override
     @Transactional
     public UserAccountDto claim(String token, String rawPassword) {
+        return doClaim(token, rawPassword, null);
+    }
+
+    @Override
+    @Transactional
+    public UserAccountDto claim(String token, String rawPassword, @Nullable Locale locale) {
+        return doClaim(token, rawPassword, locale);
+    }
+
+    private UserAccountDto doClaim(String token, String rawPassword, @Nullable Locale locale) {
         if (rawPassword == null || rawPassword.length() < properties.passwordMinLength()) {
             throw new IdentityException(IdentityMessageKeys.PASSWORD_TOO_SHORT,
                     "Password must be at least %d characters".formatted(properties.passwordMinLength()));
@@ -108,6 +133,10 @@ class InvitationServiceImpl implements InvitationService {
 
         UserAccount user = tokenIssuer.redeem(token, AuthTokenType.INVITATION);
         user.claimWithPassword(passwordHasher.hash(rawPassword));
+        // Nur, wenn beim Einladen keine gewählt wurde — siehe InvitationService#claim.
+        if (user.getLocale() == null) {
+            user.changeLocale(locale);
+        }
         return UserAccountMapper.toDto(user);
     }
 

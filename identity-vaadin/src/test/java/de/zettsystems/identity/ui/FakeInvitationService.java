@@ -9,6 +9,7 @@ import org.jspecify.annotations.Nullable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
@@ -27,6 +28,7 @@ class FakeInvitationService implements InvitationService {
     final List<String> lookedUpTokens = new ArrayList<>();
     final List<String> usedTokens = new ArrayList<>();
     final List<String> newPasswords = new ArrayList<>();
+    final List<@Nullable Locale> claimedLocales = new ArrayList<>();
 
     @Override
     public UserAccountDto inviteToClaim(Long userId, String email) {
@@ -51,11 +53,17 @@ class FakeInvitationService implements InvitationService {
 
     @Override
     public UserAccountDto claim(String token, String rawPassword) {
+        return claim(token, rawPassword, null);
+    }
+
+    @Override
+    public UserAccountDto claim(String token, String rawPassword, @Nullable Locale locale) {
         if (failure != null) {
             throw failure;
         }
         usedTokens.add(token);
         newPasswords.add(rawPassword);
+        claimedLocales.add(locale);
         return Optional.ofNullable(invitee).orElseThrow();
     }
 }

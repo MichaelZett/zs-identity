@@ -1,5 +1,6 @@
 package de.zettsystems.identity.configuration;
 
+import de.zettsystems.identity.application.ActiveScopeService;
 import de.zettsystems.identity.application.IdentityMailSender;
 import de.zettsystems.identity.application.InvitationService;
 import de.zettsystems.identity.application.PasswordResetService;
@@ -7,9 +8,11 @@ import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.application.RoleCatalog;
 import de.zettsystems.identity.application.UserAccountService;
 import de.zettsystems.identity.domain.AuthTokenRepository;
+import de.zettsystems.identity.domain.Role;
 import de.zettsystems.identity.domain.RoleRepository;
 import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.testsupport.PostgresTestImage;
+import de.zettsystems.identity.testsupport.RecordingMailSender;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.RoleDefinition;
 import jakarta.persistence.EntityManager;
@@ -75,7 +78,7 @@ class AutoConfigurationIT {
 
         @Bean
         IdentityMailSender testMailSender() {
-            return new de.zettsystems.identity.testsupport.RecordingMailSender();
+            return new RecordingMailSender();
         }
     }
 
@@ -93,6 +96,7 @@ class AutoConfigurationIT {
         assertThat(context.getBean(InvitationService.class)).isNotNull();
         assertThat(context.getBean(UserAccountService.class)).isNotNull();
         assertThat(context.getBean(UserDetailsService.class)).isNotNull();
+        assertThat(context.getBean(ActiveScopeService.class)).isNotNull();
         assertThat(context.getBean(IdentityProperties.class)).isNotNull();
     }
 
@@ -111,6 +115,7 @@ class AutoConfigurationIT {
                 .extracting(type -> type.getJavaType().getName())
                 .contains("de.zettsystems.identity.domain.UserAccount",
                         "de.zettsystems.identity.domain.Role",
+                        "de.zettsystems.identity.domain.RoleAssignment",
                         "de.zettsystems.identity.domain.AuthToken");
     }
 
@@ -133,7 +138,7 @@ class AutoConfigurationIT {
         RoleRepository roles = context.getBean(RoleRepository.class);
 
         assertThat(roles.findAllByOrderByCodeAsc())
-                .extracting(de.zettsystems.identity.domain.Role::getCode)
+                .extracting(Role::getCode)
                 .contains("SYSTEM_ADMIN", "USER", "GROUP_ADMIN", "MEMBER");
     }
 
@@ -143,7 +148,7 @@ class AutoConfigurationIT {
         // Sie muss die Voreinstellung des Bausteins verdrängt haben — genau das
         // funktionierte nicht, solange die Beans per Komponentensuche kamen.
         assertThat(context.getBean(IdentityMailSender.class))
-                .isInstanceOf(de.zettsystems.identity.testsupport.RecordingMailSender.class);
+                .isInstanceOf(RecordingMailSender.class);
         assertThat(context.getBeanNamesForType(IdentityMailSender.class))
                 .as("keine zweite Bean daneben")
                 .hasSize(1);
@@ -152,7 +157,7 @@ class AutoConfigurationIT {
     @Test
     void aFullRegistrationRunsThroughInThisBareSetup() {
         RegistrationService registration = context.getBean(RegistrationService.class);
-        var mails = (de.zettsystems.identity.testsupport.RecordingMailSender)
+        var mails = (RecordingMailSender)
                 context.getBean(IdentityMailSender.class);
         mails.clear();
 
