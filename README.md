@@ -36,8 +36,8 @@ dependencies {
 `gpr.user`/`gpr.key` (a personal access token with `read:packages`) belong in
 `~/.gradle/gradle.properties`, never in the project.
 
-After that the application has to do exactly three things; the
-auto-configuration takes care of everything else:
+After that the application has to do three things (1 to 3); the rest of the
+list is optional, and the auto-configuration takes care of everything else:
 
 1. **Declare roles**: a `RoleCatalog` bean holding the domain roles. Without it
    there are only `SYSTEM_ADMIN` and `USER`. The `RoleSynchronizer` mirrors the
@@ -95,6 +95,7 @@ auto-configuration takes care of everything else:
 | `ui.max-width`                | `28rem`                  | width beyond which the form column stops growing |
 | `ui.class-names`              | --                       | additional CSS classes on every view (the hook for your own theme) |
 | `ui.notification-duration`    | `5s`                     | how long notifications stay; `0` = until dismissed |
+| `migrations.enabled`          | `true`                   | the building block migrates its schema `identity` itself, before the application's Flyway; `false` = the application calls `IdentityMigrations#migrate` (see Database) |
 
 **Mail delivery is optional** (since 0.7.0). `spring-boot-starter-mail` only
 hangs `compileOnly` off the building block -- whoever wants to send mails takes
@@ -293,6 +294,12 @@ form (on the sign-in page inside the centred column) and gives it the full
 column width plus the class `identity-view__header`; nothing else, so the
 appearance stays yours. `viewName` is the identifier from the CSS class, so the
 head may differ per view. The component must be a fresh one per call.
+
+One consequence to know about: since 0.7.2 the sign-in page sets
+`--vaadin-login-form-padding: 0` and `--vaadin-login-form-width: 100%` on the
+login form, so that its fields line up with the buttons below. An application
+that draws a card around the form through `vaadin-login-form::part(form)`
+therefore has to add the inner padding itself.
 
 Whoever needs more than that writes a view of their own -- but then under a
 path of its own and with the package scan for `de.zettsystems.identity.ui`
