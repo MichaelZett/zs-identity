@@ -5,6 +5,21 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## Unreleased
+
+### Fixed
+- **Sign-in page: the fields were narrower than the buttons below them.**
+  Found at phone width (430 px) in `terminplanung-halle` after the move to
+  0.7.1: three edges, two widths. `LoginForm` has no `HasSize`, so the
+  full-width rule never reached it, and inside its shadow DOM Vaadin's
+  `vaadin-login-form-wrapper` keeps a width of its own (`360px`) plus a
+  padding all around. `LoginView` now sets the element's width and the
+  component's public custom properties `--vaadin-login-form-width` and
+  `--vaadin-login-form-padding`. Measured afterwards at 430 px and 1280 px:
+  fields, submit button and the two navigation buttons share the same two
+  edges. No stylesheet of the building block is involved, so an application's
+  theme stays untouched.
+
 ## 0.7.1 - 2026-09-17
 
 ### Fixed

@@ -5,6 +5,7 @@ import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
@@ -120,6 +121,28 @@ class IdentityViewLayoutTest extends AbstractViewTest {
 
         assertThat(view.getMaxWidth()).isEqualTo("100%");
         assertThat(view.getHeight()).isEqualTo("100%");
+    }
+
+    /**
+     * The one field group that does not come from us: Vaadin's login form has
+     * no {@code HasSize} and sizes and pads its wrapper inside the shadow DOM,
+     * so the fields were narrower than the buttons below. Found at phone width
+     * in an application on 0.7.1.
+     */
+    @Test
+    void theLoginFormLinesUpWithTheButtonsBelowIt() {
+        LoginView view = show(new LoginView(new FakeRegistrationService(), PROPERTIES, MESSAGES));
+
+        LoginForm form = _get(view, LoginForm.class);
+        assertThat(form.getStyle().get("width"))
+                .as("without a width the host shrinks to its content once the wrapper follows it")
+                .isEqualTo("100%");
+        assertThat(form.getStyle().get(LoginView.FORM_WIDTH_PROPERTY))
+                .as("the wrapper keeps its own 360px unless told otherwise")
+                .isEqualTo("100%");
+        assertThat(form.getStyle().get(LoginView.FORM_PADDING_PROPERTY))
+                .as("the wrapper's padding would inset the fields against the buttons")
+                .isEqualTo("0");
     }
 
     /** The hook for an application's theme. */

@@ -26,6 +26,11 @@ import de.zettsystems.identity.values.IdentityProperties;
 @AnonymousAllowed
 public class LoginView extends IdentityFormView implements BeforeEnterObserver {
 
+    /** Custom properties of {@code vaadin-login-form}; see {@link #alignedWithColumn}. */
+    static final String FORM_WIDTH_PROPERTY = "--vaadin-login-form-width";
+    static final String FORM_PADDING_PROPERTY = "--vaadin-login-form-padding";
+    private static final String FULL_WIDTH = "100%";
+
     private final LoginForm loginForm = new LoginForm();
 
     public LoginView(RegistrationService registrationService, IdentityProperties properties,
@@ -42,7 +47,7 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
         // Sign-in fills the page; for the form and the buttons to still share
         // one limited width, they sit in a column.
         VerticalLayout column = centeredColumn();
-        column.add(fullWidth(loginForm));
+        column.add(alignedWithColumn(loginForm));
 
         // The link only appears when self-registration is switched on.
         // Otherwise it leads to a page that rejects every input.
@@ -59,6 +64,27 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
     @Override
     public String getPageTitle() {
         return text("identity.login.pageTitle");
+    }
+
+    /**
+     * Makes the form's fields line up with the buttons below it.
+     *
+     * <p>{@code LoginForm} has no {@code HasSize}, so {@link #fullWidth} cannot
+     * reach it; the width goes onto the element by hand. That alone is not
+     * enough: inside its shadow DOM the web component gives its wrapper a
+     * width of its own ({@code 360px} by default) and a padding all around, so
+     * on a phone the fields ended up narrower than the buttons underneath --
+     * three edges, two widths. Both values are public custom properties of the
+     * component and are set here, on the element, rather than in a stylesheet
+     * the building block does not own. Measured at 430 px: fields and buttons
+     * share the same two edges afterwards.
+     */
+    private static LoginForm alignedWithColumn(LoginForm form) {
+        form.getStyle()
+                .setWidth(FULL_WIDTH)
+                .set(FORM_WIDTH_PROPERTY, FULL_WIDTH)
+                .set(FORM_PADDING_PROPERTY, "0");
+        return form;
     }
 
     private Button registerButton() {
