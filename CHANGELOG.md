@@ -5,6 +5,23 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 0.9.1 - 2026-09-18
+
+### Added
+- **A head above the forms: `IdentityViewHeader`** (`identity-vaadin`). An
+  application provides a bean with `Component create(String viewName)` and
+  every shipped view places the component as its first element above the
+  form -- a club's logo, say; on the sign-in page inside the centred column,
+  so that it shares the column's width with the form. The building block
+  gives it the full column width and the class `identity-view__header`, and
+  nothing else: no colours, no sizes, no markup of its own. Without the bean
+  nothing changes. `viewName` is the identifier already used in the CSS
+  class (`login`, `claim-account`, ...), so the head may differ per view. A
+  bean rather than a `logo-url` property, because a logo per tenant stays
+  possible and the building block need not know how images are served.
+  Asked for by `tennistournament`, whose old sign-in page showed the club's
+  logo.
+
 ## 0.9.0 - 2026-09-18
 
 ### Added

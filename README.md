@@ -278,6 +278,22 @@ zs:
 }
 ```
 
+**A head above the form** (since 0.9.1) -- a club's logo, a title -- comes from
+the application through an optional bean:
+
+```java
+@Bean
+IdentityViewHeader clubLogo() {
+    return viewName -> new Image("images/club-logo.svg", "TC Beispiel");
+}
+```
+
+Every shipped view places the created component as its first element above the
+form (on the sign-in page inside the centred column) and gives it the full
+column width plus the class `identity-view__header`; nothing else, so the
+appearance stays yours. `viewName` is the identifier from the CSS class, so the
+head may differ per view. The component must be a fresh one per call.
+
 Whoever needs more than that writes a view of their own -- but then under a
 path of its own and with the package scan for `de.zettsystems.identity.ui`
 switched off: Vaadin rejects two `@Route` annotations on the same path.

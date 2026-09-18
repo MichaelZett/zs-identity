@@ -19,6 +19,8 @@ import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.UiSettings;
+import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Duration;
 import java.util.Set;
@@ -81,6 +83,9 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
     private final IdentityTexts texts;
     private final UiSettings ui;
     private final int passwordMinLength;
+    private final String viewName;
+    /** The column of {@link #centeredColumn()}, once there is one; the head goes in there. */
+    private @Nullable VerticalLayout column;
 
     /**
      * @param viewName identifier of this view for the CSS class, {@code login}
@@ -90,6 +95,7 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
         this.texts = new IdentityTexts(messages, properties);
         this.ui = properties.ui();
         this.passwordMinLength = properties.passwordMinLength();
+        this.viewName = viewName;
 
         setWidthFull();
         setMaxWidth(ui.maxWidth());
@@ -100,6 +106,28 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
         addClassName(VIEW_CLASS);
         addClassName(VIEW_CLASS + "--" + viewName);
         ui.classNames().forEach(this::addClassName);
+    }
+
+    /**
+     * Puts the application's head above the form (since 0.9.1).
+     *
+     * <p>Setter injection on purpose, and optional: Vaadin creates a route
+     * through Spring's {@code createBean}, which autowires setters as reliably
+     * as constructors -- and a constructor parameter would have to be threaded
+     * through eight views and every test that builds one by hand. Without an
+     * {@link IdentityViewHeader} bean Spring never calls this, and the view
+     * looks as before. On the sign-in page the head goes into the centred
+     * column, so that it shares the column's width with the form.
+     */
+    @Autowired(required = false)
+    public void setHeader(IdentityViewHeader header) {
+        Component head = fullWidth(header.create(viewName));
+        head.addClassName(VIEW_CLASS + "__header");
+        if (column != null) {
+            column.addComponentAsFirst(head);
+        } else {
+            addComponentAsFirst(head);
+        }
     }
 
     /** The texts of this view in the language of the person calling it. */
@@ -162,6 +190,7 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
         column.setPadding(false);
         column.addClassName(VIEW_CLASS + "__column");
         add(column);
+        this.column = column;
         return column;
     }
 

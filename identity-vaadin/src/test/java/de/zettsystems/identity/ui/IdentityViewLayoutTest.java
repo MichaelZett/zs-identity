@@ -3,9 +3,11 @@ package de.zettsystems.identity.ui;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.login.LoginForm;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
@@ -18,6 +20,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -143,6 +146,42 @@ class IdentityViewLayoutTest extends AbstractViewTest {
         assertThat(form.getStyle().get(LoginView.FORM_PADDING_PROPERTY))
                 .as("the wrapper's padding would inset the fields against the buttons")
                 .isEqualTo("0");
+    }
+
+    /**
+     * The head of the application (since 0.9.1): first element above the form,
+     * full column width, created per view with the view's name -- on the
+     * sign-in page inside the column, everywhere else in the view itself.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("allViews")
+    void anApplicationHeadSitsFirstAboveTheForm(String name, Supplier<IdentityFormView> factory) {
+        List<String> askedFor = new ArrayList<>();
+        IdentityFormView view = factory.get();
+        view.setHeader(viewName -> {
+            askedFor.add(viewName);
+            Div head = new Div("Vereinslogo");
+            head.setId("app-head");
+            return head;
+        });
+        show(view);
+
+        Component holder = view instanceof LoginView
+                ? view.getChildren().filter(VerticalLayout.class::isInstance).findFirst().orElseThrow()
+                : view;
+        Component first = holder.getChildren().findFirst().orElseThrow();
+        assertThat(askedFor).containsExactly(name);
+        assertThat(first.getId()).contains("app-head");
+        assertThat(first.getClassNames()).contains(IdentityFormView.VIEW_CLASS + "__header");
+        assertThat(((HasSize) first).getWidth()).isEqualTo("100%");
+    }
+
+    /** Without the bean nothing is added -- not even an empty slot. */
+    @Test
+    void withoutAHeadTheFormComesFirst() {
+        ForgotPasswordView view = show(new ForgotPasswordView(new FakePasswordResetService(), PROPERTIES, MESSAGES));
+
+        assertThat(view.getChildren().findFirst().orElseThrow()).isInstanceOf(H2.class);
     }
 
     /** The hook for an application's theme. */
