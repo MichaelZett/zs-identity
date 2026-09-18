@@ -5,6 +5,36 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 0.9.0 - 2026-09-18
+
+### Added
+- **A seam for delivery alone: `IdentityMailTransport`.** Until now an
+  application that wanted to send the building block's mails through a mail
+  account of its own choosing had to replace the whole `IdentityMailSender`
+  -- and with it rebuild every text. Now the building block renders subject,
+  text and HTML part itself (language of the account, link, validity, HTML
+  escaping) into the new record **`IdentityMail`** (`type`, `to`, `subject`,
+  `text`, `html`) and hands it to the transport together with the
+  `UserAccountDto`. An application implements `send(mail, user)`, reads what
+  it needs about the account from its own tables and picks server and sender
+  address -- one SMTP account per club, another per tournament, with a
+  sender the relay accepts. **`IdentityMailType`** (`EMAIL_VERIFICATION`,
+  `PASSWORD_RESET`, `INVITATION`) is part of the record so that a transport
+  can route by it. Found while embedding into `tennistournament`.
+
+  The defaults are unchanged in behaviour: `JavaMailSender` with the sender
+  from `zs.identity.from-address`/`from-name` (`JavaMailFactory.transport`),
+  or the log (`IdentityMailFactory.logOnlyTransport`). A failure in a
+  transport is caught by the sender and logged, so a registration never rolls
+  back over a mail. An application's own `IdentityMailSender` bean keeps
+  working as before; the log fallback is not created next to it.
+
+### Changed
+- `IdentityMailFactory.logOnly()` now takes `(IdentityProperties,
+  IdentityMessages)`: the log fallback renders the real texts too, so the
+  link in the log is the one the mail would carry. `JavaMailFactory.javaMail(..)`
+  is unchanged.
+
 ## 0.8.0 - 2026-09-18
 
 > 0.8.0: the building block's tables move to a schema of their own. One

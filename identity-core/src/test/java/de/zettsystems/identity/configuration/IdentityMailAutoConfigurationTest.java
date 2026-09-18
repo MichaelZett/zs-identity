@@ -1,8 +1,18 @@
 package de.zettsystems.identity.configuration;
 
 import de.zettsystems.identity.application.IdentityMailSender;
+import de.zettsystems.identity.application.IdentityMailTransport;
 import de.zettsystems.identity.application.IdentityMessages;
+import de.zettsystems.identity.values.AccountName;
+import de.zettsystems.identity.values.IdentityMail;
+import de.zettsystems.identity.values.IdentityMailType;
 import de.zettsystems.identity.values.IdentityProperties;
+import de.zettsystems.identity.values.UserAccountDto;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.FilteredClassLoader;
@@ -53,11 +63,51 @@ class IdentityMailAutoConfigurationTest {
     void withAJavaMailSenderTheMailsGoOut() {
         contextRunner
                 .withBean(JavaMailSender.class, () -> mock(JavaMailSender.class))
-                .run(context -> assertThat(context)
-                        .hasSingleBean(IdentityMailSender.class)
-                        .getBean(IdentityMailSender.class)
-                        .satisfies(sender -> assertThat(sender.getClass().getSimpleName())
-                                .isEqualTo("JavaMailIdentityMailSender")));
+                .run(context -> {
+                    assertThat(context).hasSingleBean(IdentityMailSender.class);
+                    assertThat(context).getBean(IdentityMailTransport.class)
+                            .satisfies(transport -> assertThat(transport.getClass().getSimpleName())
+                                    .isEqualTo("JavaMailTransport"));
+                });
+    }
+
+    /**
+     * The seam of 0.9.0: an application that only wants to deliver differently
+     * brings a transport and keeps the texts of the building block.
+     */
+    @Test
+    void anApplicationCanBringItsOwnTransportAndKeepTheTexts() {
+        List<IdentityMail> delivered = new ArrayList<>();
+        IdentityMailTransport own = (mail, user) -> delivered.add(mail);
+
+        contextRunner
+                .withBean(IdentityMailTransport.class, () -> own)
+                .withClassLoader(new FilteredClassLoader(JavaMailSender.class))
+                .run(context -> {
+                    assertThat(context).getBean(IdentityMailTransport.class).isSameAs(own);
+                    context.getBean(IdentityMailSender.class)
+                            .sendPasswordReset(someUser(), "http://example.com/reset?token=t");
+                    assertThat(delivered).singleElement().satisfies(mail -> {
+                        assertThat(mail.type()).isEqualTo(IdentityMailType.PASSWORD_RESET);
+                        assertThat(mail.text()).contains("http://example.com/reset?token=t");
+                    });
+                });
+    }
+
+    /** An own transport wins over a configured {@code JavaMailSender}. */
+    @Test
+    void anOwnTransportDisplacesTheJavaMailOne() {
+        IdentityMailTransport own = (mail, user) -> { };
+
+        contextRunner
+                .withBean(IdentityMailTransport.class, () -> own)
+                .withBean(JavaMailSender.class, () -> mock(JavaMailSender.class))
+                .run(context -> assertThat(context).getBean(IdentityMailTransport.class).isSameAs(own));
+    }
+
+    private static UserAccountDto someUser() {
+        return new UserAccountDto(1L, "anna@example.com", AccountName.of("Anna", "Beispiel"), true, true,
+                Instant.parse("2026-09-01T10:00:00Z"), Set.of("USER"));
     }
 
     /** A bean of the application's own displaces both variants. */

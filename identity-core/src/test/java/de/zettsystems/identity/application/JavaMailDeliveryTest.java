@@ -27,7 +27,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-class JavaMailIdentityMailSenderTest {
+class JavaMailDeliveryTest {
 
     private static final IdentityMessages MESSAGES = IdentityMessages.resourceBundles();
 
@@ -75,7 +75,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void theVerificationMailCarriesRecipientSubjectAndLink() throws Exception {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, IdentityProperties.defaults(), MESSAGES);
+        IdentityMailSender testee = JavaMailFactory.javaMail(mailSender, IdentityProperties.defaults(), MESSAGES);
 
         testee.sendEmailVerification(USER, "http://example.com/register/confirm?token=abc");
 
@@ -96,7 +96,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void theVerificationMailAlsoCarriesTheLinkAsAnHtmlAnchor() throws Exception {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, IdentityProperties.defaults(), MESSAGES);
+        IdentityMailSender testee = JavaMailFactory.javaMail(mailSender, IdentityProperties.defaults(), MESSAGES);
 
         testee.sendEmailVerification(USER, "http://example.com/register/confirm?token=abc");
 
@@ -115,7 +115,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void theResetMailCarriesTheResetLink() throws Exception {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, IdentityProperties.defaults(), MESSAGES);
+        IdentityMailSender testee = JavaMailFactory.javaMail(mailSender, IdentityProperties.defaults(), MESSAGES);
 
         testee.sendPasswordReset(USER, "http://example.com/password/reset?token=xyz");
 
@@ -129,7 +129,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void aDisplayNameWithMarkupIsEscapedInTheHtmlPart() throws Exception {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, IdentityProperties.defaults(), MESSAGES);
+        IdentityMailSender testee = JavaMailFactory.javaMail(mailSender, IdentityProperties.defaults(), MESSAGES);
         UserAccountDto tricky = new UserAccountDto(2L, "b@example.com",
                 AccountName.display("<script>alert(1)</script>"), true, true,
                 Instant.parse("2026-09-01T10:00:00Z"), Set.of("USER"));
@@ -144,7 +144,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void theValidityPeriodIsSpelledOutInTheMail() throws Exception {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender,
+        IdentityMailSender testee = JavaMailFactory.javaMail(mailSender,
                 propertiesWithValidity(Duration.ofHours(2)), MESSAGES);
 
         testee.sendEmailVerification(USER, "http://example.com/x");
@@ -155,7 +155,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void aValidityBelowAnHourIsSpelledOutInMinutes() throws Exception {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender,
+        IdentityMailSender testee = JavaMailFactory.javaMail(mailSender,
                 propertiesWithValidity(Duration.ofMinutes(30)), MESSAGES);
 
         testee.sendEmailVerification(USER, "http://example.com/x");
@@ -165,7 +165,7 @@ class JavaMailIdentityMailSenderTest {
 
     @Test
     void aFailedDeliveryDoesNotPropagate() {
-        IdentityMailSender testee = new JavaMailIdentityMailSender(new FailingMailSender(),
+        IdentityMailSender testee = JavaMailFactory.javaMail(new FailingMailSender(),
                 IdentityProperties.defaults(), MESSAGES);
 
         assertThatCode(() -> testee.sendEmailVerification(USER, "http://example.com/x"))
@@ -177,7 +177,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void theMailFollowsTheConfiguredLocale() throws Exception {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender, englishProperties(), MESSAGES);
+        IdentityMailSender testee = JavaMailFactory.javaMail(mailSender, englishProperties(), MESSAGES);
 
         testee.sendEmailVerification(USER, "http://example.com/x");
 
@@ -195,7 +195,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void theAccountLanguageBeatsTheApplicationLanguage() throws Exception {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender,
+        IdentityMailSender testee = JavaMailFactory.javaMail(mailSender,
                 IdentityProperties.defaults(), MESSAGES);
 
         testee.sendEmailVerification(userSpeaking(Locale.ENGLISH), "http://example.com/x");
@@ -206,7 +206,7 @@ class JavaMailIdentityMailSenderTest {
     @Test
     void withoutALanguageAtTheAccountTheApplicationLanguageStands() throws Exception {
         CapturingMailSender mailSender = new CapturingMailSender();
-        IdentityMailSender testee = new JavaMailIdentityMailSender(mailSender,
+        IdentityMailSender testee = JavaMailFactory.javaMail(mailSender,
                 IdentityProperties.defaults(), MESSAGES);
 
         testee.sendEmailVerification(userSpeaking(null), "http://example.com/x");

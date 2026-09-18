@@ -15,11 +15,17 @@ import org.springframework.mail.javamail.JavaMailSender;
 public final class JavaMailFactory {
 
     private JavaMailFactory() {
-        // Factory method
+        // Factory methods
     }
 
+    /** The default transport: {@code JavaMailSender} with the sender from the properties. */
+    public static IdentityMailTransport transport(JavaMailSender mailSender, IdentityProperties properties) {
+        return new JavaMailTransport(mailSender, properties);
+    }
+
+    /** Sender over the default transport, as before 0.9.0. */
     public static IdentityMailSender javaMail(JavaMailSender mailSender, IdentityProperties properties,
                                               IdentityMessages messages) {
-        return new JavaMailIdentityMailSender(mailSender, properties, messages);
+        return IdentityMailFactory.viaTransport(transport(mailSender, properties), properties, messages);
     }
 }

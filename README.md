@@ -75,7 +75,8 @@ auto-configuration takes care of everything else:
    decided by the application, and the building block does not check it.
    Anyone bringing their **own `IdentityMailSender`** implements
    `sendInvitation(..)` for this; until then delivery fails with a clear
-   message rather than silently doing nothing.
+   message rather than silently doing nothing. An own `IdentityMailTransport`
+   (see "Mail delivery") gets invitations for free.
 
 ## Configuration (`zs.identity.*`)
 
@@ -104,14 +105,32 @@ implementation 'org.springframework.boot:spring-boot-starter-mail'
 ```
 
 The application starts without it all the same: the building block falls back
-to delivery through the log (`LoggingIdentityMailSender`), and an application
-with a delivery path of its own (a transactional mail service) simply provides
-its own `IdentityMailSender` bean. If the starter is present and
-`spring.mail.*` is configured, real mails go out. Every mail goes out as
-`multipart/alternative` -- text, and next to it a plain HTML part in which the
-link is a real `<a href>`. The reason is Outlook: in plain-text mails it wraps
-long lines and turns a link longer than 76 characters into one that can no
-longer be clicked.
+to delivery through the log. If the starter is present and `spring.mail.*` is
+configured, real mails go out with the sender from `from-address`/`from-name`.
+Every mail goes out as `multipart/alternative` -- text, and next to it a plain
+HTML part in which the link is a real `<a href>`. The reason is Outlook: in
+plain-text mails it wraps long lines and turns a link longer than 76 characters
+into one that can no longer be clicked.
+
+**Two seams around mail** (the finer one since 0.9.0):
+
+- **`IdentityMailTransport`** -- *delivery only*. The building block renders
+  subject, text and HTML part (language of the account, link, validity, HTML
+  escaping) into an `IdentityMail` and hands it to the transport together with
+  the `UserAccountDto`. An application whose mail account depends on the
+  recipient -- one SMTP account per club, another per tournament, each with a
+  sender address its relay accepts -- implements only this and never touches
+  the texts. `IdentityMail.type()` (`EMAIL_VERIFICATION`, `PASSWORD_RESET`,
+  `INVITATION`) is there for routing; what the transport needs to know about
+  the account it reads from its own tables by `user.id()`. A transport should
+  log a failed delivery rather than throw; what does escape is caught and
+  logged by the sender, so a registration never rolls back over a mail.
+- **`IdentityMailSender`** -- *texts and delivery*. For an application that
+  wants mails of its own design; `sendInvitation(..)` has to be implemented
+  along with the other two.
+
+Either bean displaces the default; the defaults themselves are
+`JavaMailFactory.transport(..)` and `IdentityMailFactory.logOnlyTransport()`.
 
 ## Languages
 

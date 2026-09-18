@@ -5,10 +5,15 @@ import de.zettsystems.identity.values.UserAccountDto;
 /**
  * Delivery of the mails this building block sends.
  *
- * <p>A port, not a fixed implementation: the default writes through
- * {@code JavaMailSender}, while an application with a delivery path of its own
- * (transactional mail service, a queue, a test double) simply provides its own
- * bean and thereby displaces the default.
+ * <p>A port, not a fixed implementation: the default renders the texts of the
+ * building block and hands them to an {@link IdentityMailTransport}, while an
+ * application with mails of its own (a transactional mail service with its
+ * own templates, a queue, a test double) simply provides its own bean and
+ * thereby displaces the default.
+ *
+ * <p>Whoever only wants to <em>deliver</em> differently -- another server or
+ * sender address per recipient -- keeps this and implements
+ * {@link IdentityMailTransport} instead (since 0.9.0); the texts stay.
  */
 public interface IdentityMailSender {
 
