@@ -1,5 +1,6 @@
 package de.zettsystems.identity.domain;
 
+import de.zettsystems.identity.values.IdentitySchema;
 import de.zettsystems.identity.values.Scope;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -31,13 +32,13 @@ import java.util.Objects;
  * {@link #getScope()}).
  */
 @Entity
-@Table(name = "auth_user_role")
+@Table(name = "auth_user_role", schema = IdentitySchema.NAME)
 @Getter
 public class RoleAssignment extends AbstractAuthEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "auth_user_role_seq")
-    @SequenceGenerator(name = "auth_user_role_seq", sequenceName = "auth_user_role_seq", allocationSize = 20)
+    @SequenceGenerator(name = "auth_user_role_seq", sequenceName = "auth_user_role_seq", schema = IdentitySchema.NAME, allocationSize = 20)
     private @Nullable Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

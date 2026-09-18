@@ -57,4 +57,14 @@
         <Source name="~.*/build/generated/.*"/>
     </Match>
 
+    <!-- IdentityMigrations moves the tables of an installation from before
+         0.8.0 with ALTER ... SET SCHEMA and cleans its rows out of the
+         application's history table. Identifiers cannot be bound as
+         parameters; they come from Flyway's configuration and the connection,
+         never from user input, and are quoted. The values are bound. -->
+    <Match>
+        <Class name="de.zettsystems.identity.configuration.IdentityMigrations"/>
+        <Bug pattern="SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE,SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING"/>
+    </Match>
+
 </FindBugsFilter>

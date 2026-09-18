@@ -1,5 +1,6 @@
 package de.zettsystems.identity.domain;
 
+import de.zettsystems.identity.values.IdentitySchema;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -26,13 +27,13 @@ import java.util.Set;
  * would already be wrong in the second application.
  */
 @Entity
-@Table(name = "auth_role")
+@Table(name = "auth_role", schema = IdentitySchema.NAME)
 @Getter
 public class Role extends AbstractAuthEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "auth_role_seq")
-    @SequenceGenerator(name = "auth_role_seq", sequenceName = "auth_role_seq", allocationSize = 20)
+    @SequenceGenerator(name = "auth_role_seq", sequenceName = "auth_role_seq", schema = IdentitySchema.NAME, allocationSize = 20)
     private @Nullable Long id;
 
     @Column(nullable = false, unique = true, length = 64)
@@ -44,7 +45,8 @@ public class Role extends AbstractAuthEntity {
     private String displayNameKey;
 
     @ElementCollection
-    @CollectionTable(name = "auth_role_authority", joinColumns = @JoinColumn(name = "role_id"))
+    @CollectionTable(name = "auth_role_authority", schema = IdentitySchema.NAME,
+            joinColumns = @JoinColumn(name = "role_id"))
     @Column(name = "authority", nullable = false, length = 128)
     private Set<String> authorities = new LinkedHashSet<>();
 

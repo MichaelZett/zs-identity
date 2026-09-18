@@ -51,8 +51,8 @@ class AutoConfigurationIT {
 
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(PostgresTestImage.resolve())
             .withDatabaseName("identity")
-            .withUsername("identity")
-            .withPassword("identity")
+            .withUsername("app")
+            .withPassword("app")
             .withReuse(true);
 
     static {
@@ -122,15 +122,28 @@ class AutoConfigurationIT {
     @Test
     void theModuleBringsItsOwnDatabaseTables() {
         // The actual proof for IdentityFlywayAutoConfiguration: the application
-        // never touched spring.flyway.locations.
+        // never touched spring.flyway.locations, and since 0.8.0 the tables
+        // live in a schema of their own with a history of their own.
         Integer tables = jdbcTemplate.queryForObject("""
                 select count(*) from information_schema.tables
-                 where table_schema = 'public'
+                 where table_schema = 'identity'
                    and table_name in ('auth_user', 'auth_role', 'auth_token',
                                       'auth_user_role', 'auth_role_authority')
                 """, Integer.class);
+        Integer ourHistory = jdbcTemplate.queryForObject(
+                "select count(*) from identity.flyway_schema_history where version is not null", Integer.class);
+        // The application's own history may not even exist (it has no
+        // migrations of its own here); if it does, nothing of ours is in it.
+        Integer applicationHistories = jdbcTemplate.queryForObject("""
+                select count(*) from information_schema.tables
+                 where table_schema = 'public' and table_name = 'flyway_schema_history'
+                """, Integer.class);
+        Integer inTheApplicationsHistory = applicationHistories == 0 ? 0 : jdbcTemplate.queryForObject(
+                "select count(*) from public.flyway_schema_history where script like 'V1\\_%'", Integer.class);
 
         assertThat(tables).isEqualTo(5);
+        assertThat(ourHistory).as("all five migrations recorded in identity.flyway_schema_history").isEqualTo(5);
+        assertThat(inTheApplicationsHistory).as("nothing of ours in the application's history").isZero();
     }
 
     @Test

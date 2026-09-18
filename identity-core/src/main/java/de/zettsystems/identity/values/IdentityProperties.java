@@ -1,6 +1,7 @@
 package de.zettsystems.identity.values;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 import java.time.Duration;
@@ -42,6 +43,8 @@ import java.util.Locale;
  * @param ui                       appearance of the shipped views (see
  *                                 {@link UiSettings}); without Vaadin on the
  *                                 classpath it has no effect
+ * @param migrations               how the building block's own database
+ *                                 migrations run (see {@link MigrationSettings})
  */
 @ConfigurationProperties(prefix = "zs.identity")
 public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationEnabled,
@@ -55,8 +58,24 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                                  @DefaultValue("USER") String defaultRoleCode,
                                  @DefaultValue("FULL_NAME") NameMode nameMode,
                                  @DefaultValue("de") Locale locale,
-                                 @DefaultValue UiSettings ui) {
+                                 @DefaultValue UiSettings ui,
+                                 @DefaultValue MigrationSettings migrations) {
 
+    /**
+     * The shape before 0.8.0, kept so that applications and tests that build
+     * the record by hand keep compiling. Migrations run automatically, as they
+     * always did.
+     */
+    public IdentityProperties(boolean selfRegistrationEnabled, boolean emailVerificationRequired,
+                              Duration tokenValidity, Duration invitationValidity, int passwordMinLength,
+                              String fromAddress, String fromName, String baseUrl, String defaultRoleCode,
+                              NameMode nameMode, Locale locale, UiSettings ui) {
+        this(selfRegistrationEnabled, emailVerificationRequired, tokenValidity, invitationValidity,
+                passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode, nameMode, locale, ui,
+                MigrationSettings.defaults());
+    }
+
+    @ConstructorBinding
     public IdentityProperties {
         if (passwordMinLength < 8) {
             throw new IllegalArgumentException(
@@ -89,20 +108,27 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
     public IdentityProperties withLocale(Locale newLocale) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, newLocale, ui);
+                nameMode, newLocale, ui, migrations);
     }
 
     /** The same settings with a different appearance; see {@link #withLocale(Locale)}. */
     public IdentityProperties withUi(UiSettings newUi) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, newUi);
+                nameMode, locale, newUi, migrations);
+    }
+
+    /** The same settings with the migrations run differently; see {@link #withLocale(Locale)}. */
+    public IdentityProperties withMigrations(MigrationSettings newMigrations) {
+        return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
+                invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
+                nameMode, locale, ui, newMigrations);
     }
 
     /** Defaults for tests that build the record by hand. */
     public static IdentityProperties defaults() {
         return new IdentityProperties(true, true, Duration.ofHours(24), Duration.ofDays(7), 12,
                 "noreply@localhost", "Application", "http://localhost:8080", "USER", NameMode.FULL_NAME,
-                Locale.GERMAN, UiSettings.defaults());
+                Locale.GERMAN, UiSettings.defaults(), MigrationSettings.defaults());
     }
 }

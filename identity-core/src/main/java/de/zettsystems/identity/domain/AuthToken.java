@@ -1,5 +1,6 @@
 package de.zettsystems.identity.domain;
 
+import de.zettsystems.identity.values.IdentitySchema;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -26,13 +27,13 @@ import java.util.Objects;
  * database cannot reconstruct a valid token from it.
  */
 @Entity
-@Table(name = "auth_token")
+@Table(name = "auth_token", schema = IdentitySchema.NAME)
 @Getter
 public class AuthToken extends AbstractAuthEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "auth_token_seq")
-    @SequenceGenerator(name = "auth_token_seq", sequenceName = "auth_token_seq", allocationSize = 20)
+    @SequenceGenerator(name = "auth_token_seq", sequenceName = "auth_token_seq", schema = IdentitySchema.NAME, allocationSize = 20)
     private @Nullable Long id;
 
     // LAZY: see UserAccount#roles -- the EAGER default produces N+1 queries.

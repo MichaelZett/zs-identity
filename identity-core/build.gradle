@@ -37,7 +37,9 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
     testImplementation 'org.testcontainers:testcontainers-postgresql'
-    testRuntimeOnly 'org.springframework.boot:spring-boot-starter-flyway'
+    // testImplementation, not testRuntimeOnly, since 0.8.0: IdentityMigrationsIT
+    // drives Flyway itself to build the layout from before the move.
+    testImplementation 'org.springframework.boot:spring-boot-starter-flyway'
     testRuntimeOnly 'org.flywaydb:flyway-database-postgresql'
     testRuntimeOnly 'org.postgresql:postgresql'
 }

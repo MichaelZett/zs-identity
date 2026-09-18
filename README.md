@@ -56,8 +56,7 @@ auto-configuration takes care of everything else:
    the account to `IdentityRoutes.CHANGE_PASSWORD` (`password/change`) on every
    navigation until a new password is set; the view is `@PermitAll`, so the
    application's filter chain does not have to open it for signed-in users
-   separately. Migration `V1_3` carries a lower number than the application's
-   migrations, so `spring.flyway.out-of-order: true` remains mandatory.
+   separately.
 5. **Token cleanup run** (since 0.5.0): `TokenCleanupScheduler` runs daily at
    03:15 as soon as the application sets `@EnableScheduling`; it can be turned
    off with `zs.identity.token-cleanup.enabled=false`. Member lists load their
@@ -288,12 +287,37 @@ catch up; before then it only costs.
 
 ## Database
 
-`identity-core` ships its Flyway migrations under `classpath:db/identity` and
-appends the location to `spring.flyway.locations` itself
-(`IdentityFlywayAutoConfiguration`). Version space **V1_x** is reserved for the
-building block; applications use **V2_x** upwards. Because a new migration of
-the building block carries a lower number than migrations the application has
-already applied, the application needs `spring.flyway.out-of-order: true`.
+`identity-core` keeps its tables in a schema of their own, **`identity`**, with
+a Flyway history of their own (`identity.flyway_schema_history`). The scripts
+live under `classpath:db/identity` and run through `IdentityMigrations` --
+**before** the application's Flyway, against the same data source
+(`IdentityFlywayAutoConfiguration` hooks into the application's Flyway setup
+through a `FlywayConfigurationCustomizer`). The application does nothing for
+that; in particular it needs no `spring.flyway.out-of-order` and no entry in
+`spring.flyway.locations`. The two histories are independent: the application
+may number and baseline its own migrations as it likes.
+
+Because the identity schema is always migrated first, an application migration
+may reference **`identity.auth_user`** -- for a foreign key, or to copy
+accounts from a table of its own (`IdentitySchema.USER_TABLE` holds the
+qualified name). PostgreSQL only, like the migrations; the database user must
+be allowed to create a schema (the owner of the database is). One name to
+avoid: a database **user called `identity`**. PostgreSQL's default search path
+is `"$user", public`, so once the schema exists, that user's unqualified
+tables -- the application's own -- would silently land in it.
+
+An application that runs Flyway by hand sets
+`zs.identity.migrations.enabled: false` and calls
+`IdentityMigrations#migrate(dataSource)` at a point of its own choosing;
+without the migrations Hibernate's schema validation fails at startup.
+
+**Coming from a version before 0.8.0** (tables in the application's schema,
+versions 1.1 to 1.5 in its history): the first start moves everything once --
+tables and sequences into `identity`, our rows out of the application's
+history, a baseline for our history at the version the tables have. Data,
+indexes and foreign keys from application tables stay intact; the move is one
+transaction, so a failure leaves the old layout untouched. Take a backup
+before that first start anyway.
 
 Tables: `auth_user`, `auth_role`, `auth_role_authority`, `auth_user_role` (with
 `scope_type`/`scope_id`, empty = global), `auth_token`.

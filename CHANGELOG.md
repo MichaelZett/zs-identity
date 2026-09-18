@@ -5,6 +5,68 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 0.8.0 - 2026-09-18
+
+> 0.8.0: the building block's tables move to a schema of their own. One
+> restart does the move; what an application has to change is listed below.
+
+### Changed
+- **Own database schema `identity`, own Flyway history.** Until now the
+  building block's migrations were appended to the application's Flyway run
+  and shared its history under a reserved version space (V1_x here, V2_x
+  upwards in the application). That broke the moment an application drew a
+  baseline over its own history: with a `B20` in the application, V1_1 to V1_5
+  are `BELOW_BASELINE` and never run -- on a fresh database as on an existing
+  one, `out-of-order` or not (found while embedding into `tennistournament`,
+  spike on 2026-09-18). Two independently growing products cannot share one
+  linear version line.
+
+  Now `IdentityMigrations` runs the scripts under `classpath:db/identity`
+  itself: schema `identity`, history `identity.flyway_schema_history`,
+  **before** the application's Flyway and against the same data source. The
+  hook is still a `FlywayConfigurationCustomizer`, so the application does
+  nothing for it. Entities are mapped with `schema = IdentitySchema.NAME`.
+
+  **What changes for an application:**
+  - `spring.flyway.out-of-order: true` is no longer needed; remove it.
+  - The database user must be allowed to create a schema (the owner of the
+    database is).
+  - Own migrations may reference `identity.auth_user` -- for a foreign key, or
+    to copy existing accounts over -- because the identity schema is always
+    migrated first.
+  - An application that runs Flyway by hand sets
+    `zs.identity.migrations.enabled: false` and calls
+    `IdentityMigrations#migrate(dataSource)` itself; the bean is
+    `@ConditionalOnMissingBean` and can be replaced.
+  - An application that still lists `classpath:db/identity` in
+    `spring.flyway.locations` may leave it: the customizer strips it.
+
+  **Existing installations** (layout before 0.8.0: tables in the
+  application's schema, versions 1.1 to 1.5 in its history) are moved
+  **once, at the first start**: `ALTER TABLE ... SET SCHEMA identity` for the
+  five tables and four sequences (data, indexes and foreign keys from
+  application tables stay intact), our rows leave the application's history
+  (its validation would otherwise stop on "applied migration not resolved
+  locally"), and our own history begins with a baseline at the version the
+  tables actually have -- read off the columns, so an installation that
+  stopped at 1.3 gets 1.4 and 1.5 right after the move. The move runs in one
+  transaction; if it fails, nothing has changed and the application does not
+  start. Take a backup before the first start with 0.8.0 all the same.
+- **`IdentityProperties` has a new component `migrations`**
+  (`MigrationSettings`, `zs.identity.migrations.enabled`, default `true`). The
+  twelve-argument constructor stays as an overload, `withMigrations(..)` comes
+  alongside `withLocale(..)`/`withUi(..)`.
+
+### Added
+- **`IdentitySchema`** with the schema name (`NAME`) and the qualified user
+  table (`USER_TABLE`), for SQL and mappings in applications.
+- **Two rehearsal tests for the move**, skipped unless `PROBE_JDBC_URL` names
+  a copy of a real database: `LegacyLayoutRehearsalIT` (the migrator alone,
+  then the application's Flyway validates the cleaned history) and
+  `LegacyLayoutFirstStartIT` (the whole Spring Boot start, twice). Run them
+  against a copy before the first start with 0.8.0; both passed against a
+  production dump of `terminplanung-halle`.
+
 ## 0.7.2 - 2026-09-18
 
 ### Fixed

@@ -28,8 +28,8 @@ class SelfRegistrationDisabledIT {
 
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(PostgresTestImage.resolve())
             .withDatabaseName("identity")
-            .withUsername("identity")
-            .withPassword("identity")
+            .withUsername("app")
+            .withPassword("app")
             .withReuse(true);
 
     static {

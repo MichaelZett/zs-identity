@@ -73,10 +73,12 @@ To try a change against your own application without publishing:
 - **Tests come with the change.** A bug fix carries a test that fails without
   it. Behaviour that is not covered will be asked about.
 - **Database migrations** live in
-  `identity-core/src/main/resources/db/identity` and use the **V1_x** version
-  space — applications own V2_x upwards. Never edit a migration that has been
-  released; add a new one. The `INCREMENT BY` of a sequence must match the
-  `allocationSize` of its `@SequenceGenerator`.
+  `identity-core/src/main/resources/db/identity` and run in the building
+  block's own schema `identity` with a Flyway history of its own — keep the
+  **V1_x** numbering, write them schema-less (Flyway sets the search path),
+  and never reference an application's tables. Never edit a migration that
+  has been released; add a new one. The `INCREMENT BY` of a sequence must
+  match the `allocationSize` of its `@SequenceGenerator`.
 - **No hard-coded user-facing text.** Everything goes through
   `IdentityMessages` and the bundles under
   `de/zettsystems/identity/messages/`: `core*` in `identity-core`, `ui*` in

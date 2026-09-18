@@ -1,5 +1,6 @@
 package de.zettsystems.identity.domain;
 
+import de.zettsystems.identity.values.IdentitySchema;
 import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.Scope;
 import jakarta.persistence.CascadeType;
@@ -45,13 +46,13 @@ import java.util.stream.Collectors;
  * {@code IdentityUserDetailsService} never hands them out either.
  */
 @Entity
-@Table(name = "auth_user")
+@Table(name = "auth_user", schema = IdentitySchema.NAME)
 @Getter
 public class UserAccount extends AbstractAuthEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "auth_user_seq")
-    @SequenceGenerator(name = "auth_user_seq", sequenceName = "auth_user_seq", allocationSize = 20)
+    @SequenceGenerator(name = "auth_user_seq", sequenceName = "auth_user_seq", schema = IdentitySchema.NAME, allocationSize = 20)
     private @Nullable Long id;
 
     // Nullable: managed accounts have neither an address nor a password.
