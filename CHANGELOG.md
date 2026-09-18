@@ -5,6 +5,21 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 0.10.0 - 2026-09-18
+
+### Added
+- **`UserAccountDto.claimed()`**: whether the account belongs to a person who
+  can sign in with it -- registered, or an invitation redeemed. `false` for
+  managed accounts and for invitations still open, so an application can
+  offer "invite again" only where `resendInvitation(..)` will not refuse
+  with `ACCOUNT_ALREADY_CLAIMED`. Deliberately not "has a password": with
+  sign-in through external providers (issue #1) there will be claimed
+  accounts without one. Asked for by `terminplanung-halle`.
+
+  The record gains a last component. The shape up to 0.9.x (nine
+  components, ending in `locale`) stays as a constructor and derives
+  `claimed` from the address, so records built by hand keep compiling.
+
 ## 0.9.1 - 2026-09-18
 
 ### Added

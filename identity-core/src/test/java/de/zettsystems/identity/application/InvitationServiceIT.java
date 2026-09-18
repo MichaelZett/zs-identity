@@ -72,6 +72,19 @@ class InvitationServiceIT extends AbstractIdentityIntegrationTest {
                 .as("the link went to exactly this address, so a second confirmation would be a detour")
                 .isTrue();
         assertThat(claimed.enabled()).isTrue();
+        assertThat(claimed.claimed()).isTrue();
+    }
+
+    /** "Invite again" is offered exactly as long as this says false. */
+    @Test
+    void anOpenInvitationIsNotClaimedYet() {
+        Long userId = userAccountService.createManagedAccount("Ida", "Beispiel").id();
+
+        UserAccountDto invited = invitationService.inviteToClaim(userId, EMAIL);
+
+        assertThat(invited.claimed()).isFalse();
+        assertThat(invitationService.inviteNewAccount("other@example.com", AccountName.of("Ole", "Beispiel"))
+                .claimed()).isFalse();
     }
 
     @Test

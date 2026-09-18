@@ -64,6 +64,15 @@ class UserAccountDtoTest {
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
+    /** The shapes before 0.10.0 know no invitations; an account with an address counts as registered. */
+    @Test
+    void theOlderShapesDeriveClaimedFromTheAddress() {
+        AccountName name = AccountName.of("Anna", "Beispiel");
+
+        assertThat(accountWith("anna@example.com", name, Set.of()).claimed()).isTrue();
+        assertThat(accountWith(null, name, Set.of()).claimed()).isFalse();
+    }
+
     @Test
     void theMandatoryFieldsAreChecked() {
         AccountName name = AccountName.display("Anna");

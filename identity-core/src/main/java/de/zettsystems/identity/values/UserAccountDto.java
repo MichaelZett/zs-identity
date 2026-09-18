@@ -31,6 +31,13 @@ import java.util.stream.Collectors;
  *               means "no choice of its own", and then {@code zs.identity.locale}
  *               applies. For the common case "some language, whichever" there
  *               is {@link #localeOr(Locale)}.
+ * @param claimed the account belongs to a person who can sign in with it:
+ *                registered, or an invitation redeemed. {@code false} for
+ *                managed accounts and for invitations still open -- the
+ *                moment an application may offer "invite again"
+ *                ({@code InvitationService#resendInvitation}). Deliberately
+ *                not "has a password": with external providers there will be
+ *                claimed accounts without one.
  */
 public record UserAccountDto(Long id,
                              @Nullable String email,
@@ -40,7 +47,8 @@ public record UserAccountDto(Long id,
                              Instant createdAt,
                              Set<ScopedRole> roleAssignments,
                              boolean mustChangePassword,
-                             @Nullable Locale locale) {
+                             @Nullable Locale locale,
+                             boolean claimed) {
 
     public UserAccountDto {
         Objects.requireNonNull(id, "id");
@@ -48,6 +56,20 @@ public record UserAccountDto(Long id,
         Objects.requireNonNull(createdAt, "createdAt");
         Objects.requireNonNull(roleAssignments, "roleAssignments");
         roleAssignments = Set.copyOf(roleAssignments);
+    }
+
+    /**
+     * The shape before 0.10.0, without {@code claimed}. It stays so that
+     * applications building the record by hand (common in tests) do not break.
+     * {@code claimed} is then derived from the address: an account with one
+     * counts as registered. An open invitation has to be built with the full
+     * shape.
+     */
+    public UserAccountDto(Long id, @Nullable String email, AccountName name, boolean enabled,
+                          boolean emailVerified, Instant createdAt, Set<ScopedRole> roleAssignments,
+                          boolean mustChangePassword, @Nullable Locale locale) {
+        this(id, email, name, enabled, emailVerified, createdAt, roleAssignments, mustChangePassword,
+                locale, email != null);
     }
 
     /**

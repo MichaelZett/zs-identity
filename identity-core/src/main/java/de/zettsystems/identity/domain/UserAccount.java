@@ -165,6 +165,17 @@ public class UserAccount extends AbstractAuthEntity {
         return email == null;
     }
 
+    /**
+     * Claimed = the account belongs to a person who can sign in with it:
+     * registered, or an invitation redeemed. Today that is exactly "a password
+     * is set"; with sign-in through external providers (issue #1) an account
+     * without a password will count as well, so callers ask this rather than
+     * looking at the password.
+     */
+    public boolean isClaimed() {
+        return passwordHash != null;
+    }
+
     public static String normalizeEmail(String email) {
         // Locale.ROOT: without it, on a system with a Turkish locale an "I"
         // would turn into a dotless "i" and the address would be a different one.

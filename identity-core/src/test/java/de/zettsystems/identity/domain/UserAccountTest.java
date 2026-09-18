@@ -50,6 +50,18 @@ class UserAccountTest {
     }
 
     @Test
+    void anAccountIsClaimedOnceItHasAPassword() {
+        UserAccount managed = UserAccount.managed(AccountName.of("Ida", "Beispiel"), CREATED);
+        assertThat(managed.isClaimed()).isFalse();
+
+        managed.assignEmail("ida@example.com");
+        assertThat(managed.isClaimed()).as("invited, not yet redeemed").isFalse();
+
+        managed.claimWithPassword("hash");
+        assertThat(managed.isClaimed()).isTrue();
+    }
+
+    @Test
     void aNewAccountIsLockedUntilTheAddressIsConfirmed() {
         UserAccount user = newAccount("neu@example.com");
 

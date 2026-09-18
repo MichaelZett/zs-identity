@@ -73,6 +73,9 @@ list is optional, and the auto-configuration takes care of everything else:
    `self-registration-enabled=false` this is the only way in. The view lives in
    `identity-vaadin` under `IdentityRoutes.CLAIM_ACCOUNT`; who may invite is
    decided by the application, and the building block does not check it.
+   `resendInvitation(userId)` sends a fresh link as long as the invitation is
+   open; `UserAccountDto.claimed()` (since 0.10.0) tells beforehand whether it still is, so
+   an "invite again" button can be disabled instead of failing.
    Anyone bringing their **own `IdentityMailSender`** implements
    `sendInvitation(..)` for this; until then delivery fails with a clear
    message rather than silently doing nothing. An own `IdentityMailTransport`

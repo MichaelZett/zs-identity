@@ -66,11 +66,10 @@ class InvitationServiceImpl implements InvitationService {
             throw new IdentityException(IdentityMessageKeys.ACCOUNT_NOT_FOUND,
                     "Account %d has no email address — invite it first".formatted(userId));
         }
-        // A password that is set means the invitation has been redeemed and
-        // the account belongs to someone. A second invitation would then be a
-        // way to take over other people's accounts; whoever forgot their
+        // A claimed account belongs to someone. A second invitation would then
+        // be a way to take over other people's accounts; whoever forgot their
         // password uses "forgot password".
-        if (user.getPasswordHash() != null) {
+        if (user.isClaimed()) {
             throw new IdentityException(IdentityMessageKeys.ACCOUNT_ALREADY_CLAIMED,
                     "Account %d is already claimed".formatted(userId));
         }
