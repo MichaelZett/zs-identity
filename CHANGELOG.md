@@ -5,7 +5,7 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
-## Unreleased
+## 0.7.2 - 2026-09-18
 
 ### Fixed
 - **Sign-in page: the fields were narrower than the buttons below them.**
