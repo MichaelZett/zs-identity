@@ -7,7 +7,7 @@ permissions.
 | Artifact                          | Contents                                                      |
 |-----------------------------------|---------------------------------------------------------------|
 | `de.zettsystems:identity-core`    | Domain, services, Spring Security integration, auto-configuration, Flyway migrations. No UI. |
-| `de.zettsystems:identity-vaadin`  | Vaadin Flow views: sign-in, registration, verification, forgot/reset password. Optional. |
+| `de.zettsystems:identity-vaadin`  | Vaadin Flow views: sign-in (password or passkey), registration, verification, forgot/reset password, passkeys. Optional. |
 
 Stack: Java 25, Spring Boot 4.1, Spring Data JPA, Spring Security, Vaadin 25
 (`identity-vaadin` only), PostgreSQL.
@@ -80,6 +80,46 @@ list is optional, and the auto-configuration takes care of everything else:
    `sendInvitation(..)` for this; until then delivery fails with a clear
    message rather than silently doing nothing. An own `IdentityMailTransport`
    (see "Mail delivery") gets invitations for free.
+8. **Passkeys** (since 0.11.0): sign-in with Face ID, Touch ID or the device
+   lock, as an option per person next to the password. Three things on the
+   application's side, one of them per environment:
+   ```groovy
+   implementation 'org.springframework.security:spring-security-webauthn'
+   ```
+   ```java
+   http.with(IdentityPasskeyConfigurer.passkeys(), Customizer.withDefaults());
+   ```
+   ```yaml
+   zs:
+     identity:
+       passkeys:
+         enabled: true                       # false by default; the configurer then does nothing
+         rp-id: orgaapp.example.com          # the domain the passkeys are bound to, no scheme, no port
+         rp-name: OrgaApp                    # what the authenticator shows when a passkey is created
+         allowed-origins: [ https://orgaapp.example.com ]   # locally http://localhost:8090
+   ```
+   The configurer opens Spring Security's WebAuthn endpoints
+   (`IdentityPaths.PASSKEY_*`): signing in is open to everyone, registering
+   needs a *fresh* sign-in with the password (`fullyAuthenticated()`; a
+   remember-me session is sent to sign in first). It also gives the sign-in
+   filter the application's `RememberMeServices`, so a passkey sign-in sets
+   the remember-me cookie like the form login, and the shared
+   `AuthenticationManager`, so the last sign-in is recorded. The access
+   rules take effect where the call sits: put it before an `anyRequest()`
+   of your own; next to a Vaadin configurer the order does not matter, since
+   that one adds its `anyRequest()` last by itself. After a passkey sign-in the session
+   holds a `PasskeyAuthentication` whose principal is the same
+   `IdentityUserDetails` as after a password sign-in.
+   With `identity-vaadin`, the sign-in page gains a button "Sign in with
+   passkey" and the view `IdentityRoutes.PASSKEYS` (`passkeys`) lets a
+   signed-in account add, list and remove its passkeys -- link it from the
+   application's settings; it is the one view that lives inside the
+   application's `@Layout`. `PasskeyService#countFor(userId)` /
+   `accountsWithPasskeys(ids)` tell a settings page or a member list who has
+   one. A passkey is bound to its domain: switch passkeys on only once the
+   domain is final, and check registration and sign-in on a real phone under
+   HTTPS (`localhost` counts as secure for WebAuthn, but Face ID needs the
+   device).
 
 ## Configuration (`zs.identity.*`)
 
@@ -99,6 +139,10 @@ list is optional, and the auto-configuration takes care of everything else:
 | `ui.class-names`              | --                       | additional CSS classes on every view (the hook for your own theme) |
 | `ui.notification-duration`    | `5s`                     | how long notifications stay; `0` = until dismissed |
 | `migrations.enabled`          | `true`                   | the building block migrates its schema `identity` itself, before the application's Flyway; `false` = the application calls `IdentityMigrations#migrate` (see Database) |
+| `passkeys.enabled`            | `false`                  | sign-in with passkeys; needs `spring-security-webauthn` and `IdentityPasskeyConfigurer` in the filter chain (see step 8) |
+| `passkeys.rp-id`              | `localhost`              | the domain the passkeys are bound to, without scheme or port |
+| `passkeys.rp-name`            | `Application`            | the name the authenticator shows when a passkey is created |
+| `passkeys.allowed-origins`    | `http://localhost:8080`  | origins the browser may sign in from, with scheme and port; each must belong to `rp-id` or a subdomain of it |
 
 **Mail delivery is optional** (since 0.7.0). `spring-boot-starter-mail` only
 hangs `compileOnly` off the building block -- whoever wants to send mails takes
@@ -263,8 +307,10 @@ that works everywhere (`IdentityFormView`):
 every view carries `identity-view` and an identifier of its own
 (`identity-view--login`, `--registration`, `--forgot-password`,
 `--resend-verification`, `--reset-password`, `--change-password`,
-`--claim-account`, `--confirm-email`); sign-in additionally has
-`identity-view__column` inside. Classes of your own reach every view through
+`--claim-account`, `--confirm-email`, `--passkeys`); sign-in additionally has
+`identity-view__column` inside, and the passkey list has
+`identity-view__passkey-row`, `__passkey`, `__passkey-label` and
+`__passkey-dates` per entry. Classes of your own reach every view through
 `zs.identity.ui.class-names`:
 
 ```yaml
@@ -364,8 +410,11 @@ indexes and foreign keys from application tables stay intact; the move is one
 transaction, so a failure leaves the old layout untouched. Take a backup
 before that first start anyway.
 
-Tables: `auth_user`, `auth_role`, `auth_role_authority`, `auth_user_role` (with
-`scope_type`/`scope_id`, empty = global), `auth_token`.
+Tables: `auth_user` (since V1_6 with `passkey_user_handle`, the opaque id
+WebAuthn knows an account by), `auth_role`, `auth_role_authority`,
+`auth_user_role` (with `scope_type`/`scope_id`, empty = global),
+`auth_token`, `auth_passkey` (since V1_6; one row per registered passkey,
+hanging off `auth_user` with `ON DELETE CASCADE`).
 
 The comments inside the migration scripts are German. They are the one place
 that was left untranslated on purpose: Flyway checksums the whole file, so

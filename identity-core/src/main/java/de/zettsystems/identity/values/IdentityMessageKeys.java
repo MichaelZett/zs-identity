@@ -18,6 +18,8 @@ public final class IdentityMessageKeys {
     public static final String ACCOUNT_NOT_FOUND = "identity.error.accountNotFound";
     /** The account already has an address, so it already belongs to someone. */
     public static final String ACCOUNT_ALREADY_CLAIMED = "identity.error.accountAlreadyClaimed";
+    /** No passkey with this id belongs to the account (since 0.11.0). */
+    public static final String PASSKEY_NOT_FOUND = "identity.error.passkeyNotFound";
     /** The UI's fallback for everything it does not handle individually. */
     public static final String UNEXPECTED = "identity.error.unexpected";
 

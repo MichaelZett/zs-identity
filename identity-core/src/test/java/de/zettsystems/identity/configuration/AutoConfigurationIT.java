@@ -3,11 +3,13 @@ package de.zettsystems.identity.configuration;
 import de.zettsystems.identity.application.ActiveScopeService;
 import de.zettsystems.identity.application.IdentityMailSender;
 import de.zettsystems.identity.application.InvitationService;
+import de.zettsystems.identity.application.PasskeyService;
 import de.zettsystems.identity.application.PasswordResetService;
 import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.application.RoleCatalog;
 import de.zettsystems.identity.application.UserAccountService;
 import de.zettsystems.identity.domain.AuthTokenRepository;
+import de.zettsystems.identity.domain.PasskeyRepository;
 import de.zettsystems.identity.domain.Role;
 import de.zettsystems.identity.domain.RoleRepository;
 import de.zettsystems.identity.domain.UserAccountRepository;
@@ -24,6 +26,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
+import org.springframework.security.web.webauthn.management.UserCredentialRepository;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -97,7 +101,19 @@ class AutoConfigurationIT {
         assertThat(context.getBean(UserAccountService.class)).isNotNull();
         assertThat(context.getBean(UserDetailsService.class)).isNotNull();
         assertThat(context.getBean(ActiveScopeService.class)).isNotNull();
+        assertThat(context.getBean(PasskeyService.class)).isNotNull();
         assertThat(context.getBean(IdentityProperties.class)).isNotNull();
+    }
+
+    /**
+     * The stores behind Spring Security's WebAuthn filters exist as soon as
+     * the module is on the classpath (it is, in this test run); whether the
+     * filter chain uses them is the application's call.
+     */
+    @Test
+    void thePasskeyStoresAreThereForSpringSecurity() {
+        assertThat(context.getBean(UserCredentialRepository.class)).isNotNull();
+        assertThat(context.getBean(PublicKeyCredentialUserEntityRepository.class)).isNotNull();
     }
 
     @Test
@@ -107,6 +123,7 @@ class AutoConfigurationIT {
         assertThat(context.getBean(UserAccountRepository.class)).isNotNull();
         assertThat(context.getBean(RoleRepository.class)).isNotNull();
         assertThat(context.getBean(AuthTokenRepository.class)).isNotNull();
+        assertThat(context.getBean(PasskeyRepository.class)).isNotNull();
     }
 
     @Test
@@ -116,7 +133,8 @@ class AutoConfigurationIT {
                 .contains("de.zettsystems.identity.domain.UserAccount",
                         "de.zettsystems.identity.domain.Role",
                         "de.zettsystems.identity.domain.RoleAssignment",
-                        "de.zettsystems.identity.domain.AuthToken");
+                        "de.zettsystems.identity.domain.AuthToken",
+                        "de.zettsystems.identity.domain.Passkey");
     }
 
     @Test
@@ -128,7 +146,7 @@ class AutoConfigurationIT {
                 select count(*) from information_schema.tables
                  where table_schema = 'identity'
                    and table_name in ('auth_user', 'auth_role', 'auth_token',
-                                      'auth_user_role', 'auth_role_authority')
+                                      'auth_user_role', 'auth_role_authority', 'auth_passkey')
                 """, Integer.class);
         Integer ourHistory = jdbcTemplate.queryForObject(
                 "select count(*) from identity.flyway_schema_history where version is not null", Integer.class);
@@ -141,8 +159,8 @@ class AutoConfigurationIT {
         Integer inTheApplicationsHistory = applicationHistories == 0 ? 0 : jdbcTemplate.queryForObject(
                 "select count(*) from public.flyway_schema_history where script like 'V1\\_%'", Integer.class);
 
-        assertThat(tables).isEqualTo(5);
-        assertThat(ourHistory).as("all five migrations recorded in identity.flyway_schema_history").isEqualTo(5);
+        assertThat(tables).isEqualTo(6);
+        assertThat(ourHistory).as("all six migrations recorded in identity.flyway_schema_history").isEqualTo(6);
         assertThat(inTheApplicationsHistory).as("nothing of ours in the application's history").isZero();
     }
 

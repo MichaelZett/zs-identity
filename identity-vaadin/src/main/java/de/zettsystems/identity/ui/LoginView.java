@@ -11,6 +11,7 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.values.IdentityProperties;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The sign-in page.
@@ -31,6 +32,8 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
     static final String FORM_PADDING_PROPERTY = "--vaadin-login-form-padding";
     private static final String FULL_WIDTH = "100%";
 
+    static final String PASSKEY_BUTTON_ID = "login-passkey-button";
+
     private final LoginForm loginForm = new LoginForm();
 
     public LoginView(RegistrationService registrationService, IdentityProperties properties,
@@ -49,6 +52,11 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
         VerticalLayout column = centeredColumn();
         column.add(alignedWithColumn(loginForm));
 
+        // Passkeys are an option per person, never a requirement: the button
+        // sits next to the form, the form stays as it is.
+        if (properties.passkeys().enabled()) {
+            column.add(fullWidth(passkeyButton()));
+        }
         // The link only appears when self-registration is switched on.
         // Otherwise it leads to a page that rejects every input.
         if (registrationService.isSelfRegistrationEnabled()) {
@@ -97,6 +105,21 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
         Button button = navigationButton("identity.login.resendVerification", IdentityRoutes.RESEND_VERIFICATION);
         button.setId("login-resend-verification-button");
         return button;
+    }
+
+    /**
+     * Starts the WebAuthn ceremony in the browser. On success the script
+     * itself moves the browser to the page after sign-in, so only the
+     * failures come back here.
+     */
+    private Button passkeyButton() {
+        return secondaryButton("identity.login.passkey", PASSKEY_BUTTON_ID,
+                event -> PasskeyScripts.authenticate(this).then(String.class, result -> { }, this::onPasskeyError));
+    }
+
+    /** Package-visible so that the test can play the browser's answer. */
+    void onPasskeyError(@Nullable String message) {
+        warn(text("identity.login.passkey.error." + PasskeyScripts.errorCode(message)));
     }
 
     @Override

@@ -2,15 +2,18 @@ package de.zettsystems.identity.ui;
 
 import com.github.mvysny.kaributesting.v10.LoginFormKt;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.internal.PendingJavaScriptInvocation;
 import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import de.zettsystems.identity.values.IdentityProperties;
+import de.zettsystems.identity.values.PasskeySettings;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ._click;
 import static com.github.mvysny.kaributesting.v10.LocatorJ._find;
@@ -97,6 +100,60 @@ class LoginViewTest extends AbstractViewTest {
         _click(_get(view, Button.class, spec -> spec.withId("login-resend-verification-button")));
 
         assertThat(currentPath()).isEqualTo(IdentityRoutes.RESEND_VERIFICATION);
+    }
+
+    /** Passkeys are an option per person; without the setting there is no button. */
+    @Test
+    void thePasskeyButtonAppearsOnlyWhenPasskeysAreSwitchedOn() {
+        LoginView plain = showLoginView(IdentityProperties.defaults());
+        assertThat(_find(plain, Button.class, spec -> spec.withId(LoginView.PASSKEY_BUTTON_ID))).isEmpty();
+
+        LoginView withPasskeys = showLoginView(IdentityProperties.defaults()
+                .withPasskeys(PasskeySettings.defaults().enabled(true)));
+        Button button = _get(withPasskeys, Button.class, spec -> spec.withId(LoginView.PASSKEY_BUTTON_ID));
+        assertThat(button.getText()).isEqualTo("Mit Passkey anmelden");
+        assertThat(button.getWidth()).as("lines up with the form").isEqualTo("100%");
+        assertThat(_get(withPasskeys, LoginForm.class)).as("the password form stays").isNotNull();
+    }
+
+    /**
+     * The button starts the ceremony in the browser; the view only queues the
+     * script and listens for its answer. On success the script navigates
+     * away itself, so nothing happens here; a rejection becomes a text.
+     */
+    @Test
+    void thePasskeyButtonStartsTheCeremonyInTheBrowserAndShowsItsFailure() {
+        LoginView view = showLoginView(IdentityProperties.defaults()
+                .withPasskeys(PasskeySettings.defaults().enabled(true)));
+
+        _click(_get(view, Button.class, spec -> spec.withId(LoginView.PASSKEY_BUTTON_ID)));
+
+        PendingJavaScriptInvocation call = browserCall("navigator.credentials.get");
+        // Vaadin appends the element itself as the last parameter ($this).
+        assertThat(call.getInvocation().getParameters().subList(0, 3))
+                .as("context path, CSRF header, CSRF token -- none of them in a test")
+                .containsExactly("", "", "");
+
+        browserRejects(call, "cancelled");
+        assertThat(notificationTexts()).containsExactly("Die Anmeldung mit Passkey wurde abgebrochen.");
+    }
+
+    /** The failures of the ceremony come back as one word each and are shown as texts. */
+    @Test
+    void thePasskeyFailuresAreNamed() {
+        LoginView view = showLoginView(IdentityProperties.defaults()
+                .withPasskeys(PasskeySettings.defaults().enabled(true)));
+
+        view.onPasskeyError("Error: cancelled");
+        view.onPasskeyError("disabled");
+        view.onPasskeyError("unsupported");
+        view.onPasskeyError(null);
+
+        assertThat(notificationTexts()).containsExactly(
+                "Die Anmeldung mit Passkey wurde abgebrochen.",
+                "Dieses Konto ist gesperrt. Bitte wende dich an die Administration.",
+                "Dieser Browser unterstützt keine Passkeys.",
+                "Die Anmeldung mit diesem Passkey hat nicht geklappt. Bitte melde dich mit deinem Passwort an.");
     }
 
     /** Spring Security appends {@code ?error} after a failed sign-in. */

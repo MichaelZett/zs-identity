@@ -45,6 +45,8 @@ import java.util.Locale;
  *                                 classpath it has no effect
  * @param migrations               how the building block's own database
  *                                 migrations run (see {@link MigrationSettings})
+ * @param passkeys                 sign-in with passkeys, off unless switched
+ *                                 on (see {@link PasskeySettings})
  */
 @ConfigurationProperties(prefix = "zs.identity")
 public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationEnabled,
@@ -59,12 +61,25 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                                  @DefaultValue("FULL_NAME") NameMode nameMode,
                                  @DefaultValue("de") Locale locale,
                                  @DefaultValue UiSettings ui,
-                                 @DefaultValue MigrationSettings migrations) {
+                                 @DefaultValue MigrationSettings migrations,
+                                 @DefaultValue PasskeySettings passkeys) {
 
     /**
-     * The shape before 0.8.0, kept so that applications and tests that build
-     * the record by hand keep compiling. Migrations run automatically, as they
-     * always did.
+     * The shape before 0.11.0, kept so that applications and tests that build
+     * the record by hand keep compiling. Passkeys stay off, as they were.
+     */
+    public IdentityProperties(boolean selfRegistrationEnabled, boolean emailVerificationRequired,
+                              Duration tokenValidity, Duration invitationValidity, int passwordMinLength,
+                              String fromAddress, String fromName, String baseUrl, String defaultRoleCode,
+                              NameMode nameMode, Locale locale, UiSettings ui, MigrationSettings migrations) {
+        this(selfRegistrationEnabled, emailVerificationRequired, tokenValidity, invitationValidity,
+                passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode, nameMode, locale, ui,
+                migrations, PasskeySettings.defaults());
+    }
+
+    /**
+     * The shape before 0.8.0, kept for the same reason. Migrations run
+     * automatically, as they always did.
      */
     public IdentityProperties(boolean selfRegistrationEnabled, boolean emailVerificationRequired,
                               Duration tokenValidity, Duration invitationValidity, int passwordMinLength,
@@ -72,7 +87,7 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                               NameMode nameMode, Locale locale, UiSettings ui) {
         this(selfRegistrationEnabled, emailVerificationRequired, tokenValidity, invitationValidity,
                 passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode, nameMode, locale, ui,
-                MigrationSettings.defaults());
+                MigrationSettings.defaults(), PasskeySettings.defaults());
     }
 
     @ConstructorBinding
@@ -108,27 +123,34 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
     public IdentityProperties withLocale(Locale newLocale) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, newLocale, ui, migrations);
+                nameMode, newLocale, ui, migrations, passkeys);
     }
 
     /** The same settings with a different appearance; see {@link #withLocale(Locale)}. */
     public IdentityProperties withUi(UiSettings newUi) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, newUi, migrations);
+                nameMode, locale, newUi, migrations, passkeys);
     }
 
     /** The same settings with the migrations run differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withMigrations(MigrationSettings newMigrations) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, newMigrations);
+                nameMode, locale, ui, newMigrations, passkeys);
+    }
+
+    /** The same settings with passkeys set up differently; see {@link #withLocale(Locale)}. */
+    public IdentityProperties withPasskeys(PasskeySettings newPasskeys) {
+        return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
+                invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
+                nameMode, locale, ui, migrations, newPasskeys);
     }
 
     /** Defaults for tests that build the record by hand. */
     public static IdentityProperties defaults() {
         return new IdentityProperties(true, true, Duration.ofHours(24), Duration.ofDays(7), 12,
                 "noreply@localhost", "Application", "http://localhost:8080", "USER", NameMode.FULL_NAME,
-                Locale.GERMAN, UiSettings.defaults(), MigrationSettings.defaults());
+                Locale.GERMAN, UiSettings.defaults(), MigrationSettings.defaults(), PasskeySettings.defaults());
     }
 }

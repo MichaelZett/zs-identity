@@ -3,6 +3,7 @@ package de.zettsystems.identity.values;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,6 +69,35 @@ class IdentityPropertiesTest {
         assertThat(defaults.invitationValidity())
                 .as("an invitation sits in the inbox until someone has time")
                 .isEqualTo(Duration.ofDays(7));
+    }
+
+    /** Off unless switched on: a passkey is bound to a domain the application has to settle first. */
+    @Test
+    void passkeysAreOffByDefaultAndCanBeSwitchedOnWithoutTouchingTheRest() {
+        IdentityProperties defaults = IdentityProperties.defaults();
+        assertThat(defaults.passkeys().enabled()).isFalse();
+
+        PasskeySettings live = new PasskeySettings(true, "orgaapp.example.com", "OrgaApp",
+                List.of("https://orgaapp.example.com/", "http://localhost:8090"));
+        IdentityProperties withPasskeys = defaults.withPasskeys(live);
+
+        assertThat(withPasskeys.passkeys().enabled()).isTrue();
+        assertThat(withPasskeys.passkeys().allowedOrigins())
+                .as("a trailing slash would never match the origin the browser sends")
+                .containsExactly("https://orgaapp.example.com", "http://localhost:8090");
+        assertThat(withPasskeys.locale()).isEqualTo(defaults.locale());
+        assertThat(withPasskeys.withLocale(Locale.ENGLISH).passkeys()).isEqualTo(live);
+    }
+
+    @Test
+    void passkeySettingsRefuseABlankRelyingPartyOrNoOrigin() {
+        List<String> origins = List.of("https://example.com");
+        assertThatThrownBy(() -> new PasskeySettings(true, " ", "App", origins))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("rp-id");
+        assertThatThrownBy(() -> new PasskeySettings(true, "example.com", "App", List.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("allowed-origins");
     }
 
     private static IdentityProperties propertiesWithBaseUrl(String baseUrl) {

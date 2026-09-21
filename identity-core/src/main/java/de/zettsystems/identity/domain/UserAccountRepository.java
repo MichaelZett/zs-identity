@@ -20,6 +20,9 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
 
     boolean existsByEmail(String email);
 
+    /** The account behind a WebAuthn user handle; the sign-in with a passkey ends here. */
+    Optional<UserAccount> findByPasskeyUserHandle(String passkeyUserHandle);
+
     @EntityGraph(attributePaths = {"roleAssignments", "roleAssignments.role"})
     List<UserAccount> findAllByOrderByDisplayNameAsc();
 

@@ -1,20 +1,26 @@
 package de.zettsystems.identity.ui;
 
+import com.github.mvysny.kaributesting.v10.KaribuConfig;
 import com.github.mvysny.kaributesting.v10.MockVaadin;
 import com.github.mvysny.kaributesting.v10.Routes;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.internal.PendingJavaScriptInvocation;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.internal.JacksonUtils;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.Location;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.values.IdentityProperties;
+import kotlin.Unit;
+import kotlin.jvm.functions.Function1;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -70,6 +76,19 @@ abstract class AbstractViewTest {
     /** The shipped resolution: the tests check the real texts, not stand-ins. */
     protected static final IdentityMessages MESSAGES = IdentityMessages.resourceBundles();
 
+    /**
+     * What the views asked the browser to run (the passkey ceremonies). Karibu
+     * hands every pending invocation to this hook on a client round trip; a
+     * test plays the browser's answer back through
+     * {@link PendingJavaScriptInvocation#complete} or
+     * {@link PendingJavaScriptInvocation#completeExceptionally}.
+     */
+    private final List<PendingJavaScriptInvocation> browserCalls = new ArrayList<>();
+    private final Function1<PendingJavaScriptInvocation, Unit> captureBrowserCalls = invocation -> {
+        browserCalls.add(invocation);
+        return Unit.INSTANCE;
+    };
+
     @BeforeEach
     void setUpVaadin() {
         Routes routes = new Routes();
@@ -77,11 +96,40 @@ abstract class AbstractViewTest {
                 ResendTarget.class, ForgotPasswordTarget.class, RootTarget.class,
                 SomewhereTarget.class, ChangePasswordTarget.class));
         MockVaadin.setup(routes);
+        KaribuConfig.getPendingJavascriptInvocationHandlers().add(captureBrowserCalls);
     }
 
     @AfterEach
     void tearDownVaadin() {
+        KaribuConfig.getPendingJavascriptInvocationHandlers().remove(captureBrowserCalls);
         MockVaadin.tearDown();
+    }
+
+    /**
+     * Flushes what was queued for the browser and returns the one script
+     * whose source contains the marker. Vaadin queues scripts of its own
+     * (titles, focus), so the views' are picked out by content.
+     */
+    protected final PendingJavaScriptInvocation browserCall(String marker) {
+        MockVaadin.clientRoundtrip();
+        List<PendingJavaScriptInvocation> matching = browserCalls.stream()
+                .filter(call -> call.getInvocation().getExpression().contains(marker))
+                .toList();
+        if (matching.size() != 1) {
+            throw new AssertionError("Expected exactly one script containing '" + marker + "', found "
+                    + matching.size());
+        }
+        return matching.getFirst();
+    }
+
+    /** The browser's answer to a script: what its promise resolved with. */
+    protected static void browserResolves(PendingJavaScriptInvocation call, String value) {
+        call.complete(JacksonUtils.createNode(value));
+    }
+
+    /** The browser's answer to a script: what its promise rejected with. */
+    protected static void browserRejects(PendingJavaScriptInvocation call, String value) {
+        call.completeExceptionally(JacksonUtils.createNode(value));
     }
 
     /** Attaches the view to the UI; only then do Karibu's lookups find it. */

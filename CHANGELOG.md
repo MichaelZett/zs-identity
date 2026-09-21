@@ -5,6 +5,71 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 0.11.0 - 2026-09-21
+
+### Added
+- **Sign-in with passkeys** (WebAuthn: Face ID, Touch ID, the device lock),
+  as an option per person next to the password, never instead of it. Asked
+  for by `terminplanung-halle`, whose members use the application as an
+  installed PWA on the phone. Off by default: a passkey is bound to the
+  domain it was created on, so an application switches it on per environment
+  under `zs.identity.passkeys.*` (`enabled`, `rp-id`, `rp-name`,
+  `allowed-origins`) once its domain is settled.
+  - **`IdentityPasskeyConfigurer.passkeys()`** for the security filter chain:
+    `http.with(IdentityPasskeyConfigurer.passkeys(), Customizer.withDefaults())`.
+    Opens Spring Security's WebAuthn endpoints -- signing in to everyone,
+    registering only to a *fresh* sign-in (`fullyAuthenticated()`, which a
+    remember-me session does not satisfy) -- and wires the sign-in filter
+    with what Spring's own `http.webAuthn(..)` leaves out: the application's
+    `RememberMeServices` (a passkey sign-in sets the remember-me cookie like
+    the form login), the session strategy, the shared `AuthenticationManager`
+    (so the `LoginRecorder` sees the sign-in), and JSON answers for a page
+    that calls the endpoints through `fetch`. Does nothing while
+    `zs.identity.passkeys.enabled` is `false`. The access rules take effect
+    where the `with(..)` call sits: before an `anyRequest()` of the
+    application's own, anywhere in relation to a Vaadin configurer.
+  - **`PasskeyAuthentication`**: the session token after a passkey sign-in,
+    with the account's `UserDetails` as principal -- the same
+    `IdentityUserDetails` a password sign-in leaves, so that guards, views
+    and applications see no difference. Spring's own token would carry the
+    WebAuthn user entity instead. A disabled account fails with
+    `DisabledException`, and the sign-in page says so.
+  - **Persistence in the `identity` schema** (V1_6): table `auth_passkey`,
+    hanging off `auth_user` with `ON DELETE CASCADE`, so `deleteAccount(..)`
+    takes the passkeys along; column `auth_user.passkey_user_handle` for the
+    opaque id WebAuthn knows the account by. The building block's own JPA
+    stores stand in for Spring's `JdbcUserCredentialRepository` and
+    `JdbcPublicKeyCredentialUserEntityRepository`; both are beans under
+    `@ConditionalOnMissingBean`.
+  - **`PasskeyService`** (`findAllOf`, `countFor`, `hasPasskey`,
+    `accountsWithPasskeys`, `delete`) with **`PasskeyDto`** (`id`, `label`,
+    `createdAt`, `lastUsedAt`), for settings pages and member lists. Deleting
+    checks the owner.
+  - `identity-vaadin`: a button **"Sign in with passkey"** on the sign-in
+    page (`login-passkey-button`), shown only when passkeys are on, and the
+    view **`PasskeyView`** under `IdentityRoutes.PASSKEYS` (`passkeys`) to
+    add, list and remove passkeys -- for signed-in accounts, linked from an
+    application's settings. The one view of the building block that lives
+    inside the application's `@Layout`. A remember-me session sees the list
+    but is sent to sign in with the password before it may add one. Element
+    ids for end-to-end tests: `passkeys-register-button`,
+    `passkeys-sign-in-again-button`, `passkeys-delete-button-<id>`,
+    `passkeys-list`, `passkeys-empty`. The browser side runs through two
+    small scripts via `executeJs`, no frontend build involved.
+  - `IdentityPaths.PASSKEYS` and the four endpoint constants
+    (`PASSKEY_AUTHENTICATION_OPTIONS`, `PASSKEY_LOGIN`,
+    `PASSKEY_REGISTRATION_OPTIONS`, `PASSKEY_REGISTRATION`);
+    `IdentityMessageKeys.PASSKEY_NOT_FOUND`; texts in both languages.
+- `spring-security-webauthn` hangs `compileOnly` off `identity-core`, like
+  the mail library: an application that offers passkeys takes it itself,
+  every other one stays without webauthn4j. `IdentityBeansPasskeyTest` holds
+  that with a `FilteredClassLoader`.
+
+### Changed
+- `IdentityProperties` gains a last component `passkeys`. The shape up to
+  0.10.x stays as a constructor, as does the shape before 0.8.0;
+  `withPasskeys(..)` next to the other `with` methods.
+
 ## 0.10.0 - 2026-09-18
 
 ### Added

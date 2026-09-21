@@ -78,7 +78,8 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
             IdentityMessageKeys.TOKEN_EXPIRED,
             IdentityMessageKeys.EMAIL_ALREADY_REGISTERED,
             IdentityMessageKeys.SELF_REGISTRATION_DISABLED,
-            IdentityMessageKeys.ACCOUNT_ALREADY_CLAIMED);
+            IdentityMessageKeys.ACCOUNT_ALREADY_CLAIMED,
+            IdentityMessageKeys.PASSKEY_NOT_FOUND);
 
     private final IdentityTexts texts;
     private final UiSettings ui;

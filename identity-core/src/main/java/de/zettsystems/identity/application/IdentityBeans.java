@@ -1,9 +1,11 @@
 package de.zettsystems.identity.application;
 
 import de.zettsystems.identity.domain.AuthTokenRepository;
+import de.zettsystems.identity.domain.PasskeyRepository;
 import de.zettsystems.identity.domain.RoleRepository;
 import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.values.IdentityProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -12,6 +14,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
+import org.springframework.security.web.webauthn.management.UserCredentialRepository;
 
 import java.time.Clock;
 import java.util.List;
@@ -146,6 +150,42 @@ public class IdentityBeans {
     @ConditionalOnMissingBean
     UserDetailsService identityUserDetailsService(UserAccountRepository userRepository) {
         return new IdentityUserDetailsService(userRepository);
+    }
+
+    /**
+     * What an application shows about passkeys. Free of WebAuthn types, so
+     * it exists whether or not the application brings the module.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    PasskeyService passkeyService(PasskeyRepository passkeyRepository) {
+        return new PasskeyServiceImpl(passkeyRepository);
+    }
+
+    /**
+     * The stores Spring Security's WebAuthn filters read and write, backed by
+     * the building block's tables. Only with {@code spring-security-webauthn}
+     * on the classpath: the interfaces come from there, and a class that
+     * mentions them in a signature cannot even be loaded without it.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(UserCredentialRepository.class)
+    static class Passkeys {
+
+        @Bean
+        @ConditionalOnMissingBean
+        UserCredentialRepository identityUserCredentialRepository(PasskeyRepository passkeyRepository,
+                                                                  UserAccountRepository userRepository,
+                                                                  Clock clock) {
+            return new JpaUserCredentialRepository(passkeyRepository, userRepository, clock);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        PublicKeyCredentialUserEntityRepository identityPasskeyUserEntityRepository(
+                UserAccountRepository userRepository) {
+            return new JpaPublicKeyCredentialUserEntityRepository(userRepository);
+        }
     }
 
     @Bean

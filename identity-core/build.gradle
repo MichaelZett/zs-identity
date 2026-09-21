@@ -29,6 +29,14 @@ dependencies {
     // delivery through the log.
     compileOnly 'org.springframework.boot:spring-boot-starter-mail'
 
+    // compileOnly as well (since 0.11.0): sign-in with passkeys needs Spring
+    // Security's WebAuthn module, which brings webauthn4j along. An application
+    // that offers passkeys takes the module itself; without it the classes
+    // that touch it are never loaded (@ConditionalOnClass), and the security
+    // configurer for passkeys is simply not called.
+    compileOnly 'org.springframework.security:spring-security-webauthn'
+
+    testImplementation 'org.springframework.security:spring-security-webauthn'
     testImplementation 'org.springframework.boot:spring-boot-starter-mail'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     // For MockHttpServletRequest/-Response: the main code knows the servlet

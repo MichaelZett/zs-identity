@@ -102,6 +102,15 @@ public class UserAccount extends AbstractAuthEntity {
     @Column(name = "must_change_password", nullable = false)
     private boolean mustChangePassword;
 
+    /**
+     * The opaque id WebAuthn knows this account by (the "user handle"), since
+     * V1_6. Random, assigned the first time a passkey is registered, and never
+     * the email address: the authenticator stores it and the specification
+     * forbids personal data in it. {@code null} until the first passkey.
+     */
+    @Column(name = "passkey_user_handle", length = 128)
+    private @Nullable String passkeyUserHandle;
+
     // LAZY is mandatory: the EAGER default of JPA fetches the roles one by one
     // for every list of users (N+1).
     //
@@ -287,6 +296,26 @@ public class UserAccount extends AbstractAuthEntity {
 
     public void recordLogin(Instant at) {
         this.lastLoginAt = Objects.requireNonNull(at, "at");
+    }
+
+    /**
+     * Gives the account its WebAuthn user handle, once. The same handle again
+     * is harmless; a different one is refused, because every passkey already
+     * registered points at the old one and would be orphaned.
+     *
+     * @throws IllegalStateException if the account already has a different handle
+     */
+    public void assignPasskeyUserHandle(String handle) {
+        Objects.requireNonNull(handle, "handle");
+        if (this.passkeyUserHandle != null && !this.passkeyUserHandle.equals(handle)) {
+            throw new IllegalStateException("Account " + id + " already has a passkey user handle");
+        }
+        this.passkeyUserHandle = handle;
+    }
+
+    /** Takes the handle back; only meaningful once every passkey is gone. */
+    public void withdrawPasskeyUserHandle() {
+        this.passkeyUserHandle = null;
     }
 
     /** Grants the role globally, so that it applies everywhere. */

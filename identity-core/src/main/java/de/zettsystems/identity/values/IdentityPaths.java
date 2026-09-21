@@ -24,8 +24,28 @@ public final class IdentityPaths {
     /** Redeem an invitation: claim the account and set a first password. */
     public static final String CLAIM_ACCOUNT = "invitation";
 
+    /** Manage the passkeys of the signed-in account (since 0.11.0). */
+    public static final String PASSKEYS = "passkeys";
+
     /** Name of the token parameter in verification, reset and invitation links. */
     public static final String TOKEN_PARAMETER = "token";
+
+    /*
+     * The endpoints of the passkey sign-in, WITH a leading slash: these are
+     * not views but the paths Spring Security's WebAuthn filters listen on,
+     * and its request matchers want them absolute. The building block's
+     * security configurer opens them; the sign-in page and the management
+     * view call them from the browser.
+     */
+
+    /** {@code POST}: the challenge for a sign-in; open to everyone. */
+    public static final String PASSKEY_AUTHENTICATION_OPTIONS = "/webauthn/authenticate/options";
+    /** {@code POST}: the signed challenge; open to everyone, this is the sign-in itself. */
+    public static final String PASSKEY_LOGIN = "/login/webauthn";
+    /** {@code POST}: the challenge for registering a passkey; signed in with a password. */
+    public static final String PASSKEY_REGISTRATION_OPTIONS = "/webauthn/register/options";
+    /** {@code POST}: the new passkey; {@code DELETE /webauthn/register/{id}} removes one. */
+    public static final String PASSKEY_REGISTRATION = "/webauthn/register";
 
     private IdentityPaths() {
         // Constants class

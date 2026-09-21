@@ -36,9 +36,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>The test runs across <strong>every</strong> anonymously reachable view of
  * the building block: the rules are only rules if no view leaves them out. A
- * new view therefore belongs in {@link #allViews()}. The only one missing there
- * is {@code ChangePasswordView}, which shows nothing at all without a signed-in
- * account; its shape is checked by {@code ChangePasswordViewTest}.
+ * new view therefore belongs in {@link #allViews()}. Missing there are only
+ * {@code ChangePasswordView} and {@code PasskeyView}, which show nothing at all
+ * without a signed-in account; their shape is checked by
+ * {@code ChangePasswordViewTest} and {@code PasskeyViewTest}.
  */
 class IdentityViewLayoutTest extends AbstractViewTest {
 
