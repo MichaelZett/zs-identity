@@ -64,4 +64,16 @@ public final class PasskeyAuthentication extends AbstractAuthenticationToken {
     public String getName() {
         return principal.getUsername();
     }
+
+    /** The base class compares authorities and details; the principal has to count as well. */
+    @Override
+    public boolean equals(@Nullable Object obj) {
+        return obj instanceof PasskeyAuthentication that && super.equals(obj)
+                && principal.equals(that.principal);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), principal);
+    }
 }

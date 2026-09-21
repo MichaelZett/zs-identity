@@ -26,6 +26,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -103,6 +104,20 @@ class AutoConfigurationIT {
         assertThat(context.getBean(ActiveScopeService.class)).isNotNull();
         assertThat(context.getBean(PasskeyService.class)).isNotNull();
         assertThat(context.getBean(IdentityProperties.class)).isNotNull();
+    }
+
+    /**
+     * The remember-me cleanup is wired even though this application brings no
+     * {@code PersistentTokenRepository}: it then has nothing to do. An
+     * application without "keep me signed in" must not fail to start over a
+     * bean it never asked for.
+     */
+    @Test
+    void theRememberMeCleanupIsThereEvenWithoutRememberMe() {
+        assertThat(context.containsBean("rememberMeTokenCleaner")).isTrue();
+        assertThat(context.getBeanNamesForType(PersistentTokenRepository.class))
+                .as("nothing here keeps tokens, and that is allowed")
+                .isEmpty();
     }
 
     /**

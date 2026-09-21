@@ -71,8 +71,9 @@ class PasskeyAuthenticationProviderTest {
     @Test
     void whatTheRelyingPartyRejectsBecomesBadCredentials() {
         when(relyingParty.authenticate(any())).thenThrow(new IllegalArgumentException("Unable to find CredentialRecord"));
+        WebAuthnAuthenticationRequestToken request = request();
 
-        assertThatThrownBy(() -> provider.authenticate(request()))
+        assertThatThrownBy(() -> provider.authenticate(request))
                 .isInstanceOf(BadCredentialsException.class)
                 .hasCauseInstanceOf(IllegalArgumentException.class);
     }
@@ -82,8 +83,9 @@ class PasskeyAuthenticationProviderTest {
         when(relyingParty.authenticate(any())).thenReturn(ANNA);
         when(userDetailsService.loadUserByUsername("anna@example.com"))
                 .thenThrow(new UsernameNotFoundException("gone"));
+        WebAuthnAuthenticationRequestToken request = request();
 
-        assertThatThrownBy(() -> provider.authenticate(request())).isInstanceOf(BadCredentialsException.class);
+        assertThatThrownBy(() -> provider.authenticate(request)).isInstanceOf(BadCredentialsException.class);
     }
 
     /** The one failure the sign-in page names: the account may not sign in. */
@@ -91,8 +93,9 @@ class PasskeyAuthenticationProviderTest {
     void aDisabledAccountFailsAsDisabledNotAsUnknown() {
         when(relyingParty.authenticate(any())).thenReturn(ANNA);
         when(userDetailsService.loadUserByUsername("anna@example.com")).thenReturn(anna(false));
+        WebAuthnAuthenticationRequestToken request = request();
 
-        assertThatThrownBy(() -> provider.authenticate(request())).isInstanceOf(DisabledException.class);
+        assertThatThrownBy(() -> provider.authenticate(request)).isInstanceOf(DisabledException.class);
     }
 
     @Test

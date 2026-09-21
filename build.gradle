@@ -378,13 +378,20 @@ sonar {
         // The Serializable rules are pure noise with Vaadin and Spring; java:S2160
         // complains about every JPA entity that inherits equals/hashCode from
         // AbstractAuthEntity; java:S110 counts the Vaadin hierarchy as our
-        // inheritance depth.
-        property 'sonar.issue.ignore.multicriteria', 's1948,s2160,s110'
+        // inheritance depth. java:S107 counts the parameters of the service
+        // constructors: nobody calls those by hand -- they are the dependency
+        // list of a bean that IdentityBeans wires explicitly (rule "no
+        // @ComponentScan"), so the number says nothing about how complex the
+        // class is. Scoped to the services; a real method with eight
+        // parameters is still reported everywhere else.
+        property 'sonar.issue.ignore.multicriteria', 's1948,s2160,s110,s107'
         property 'sonar.issue.ignore.multicriteria.s2160.ruleKey', 'java:S2160'
         property 'sonar.issue.ignore.multicriteria.s2160.resourceKey', '**/domain/**/*.java'
         property 'sonar.issue.ignore.multicriteria.s1948.ruleKey', 'java:S1948'
         property 'sonar.issue.ignore.multicriteria.s1948.resourceKey', '**/*.java'
         property 'sonar.issue.ignore.multicriteria.s110.ruleKey', 'java:S110'
         property 'sonar.issue.ignore.multicriteria.s110.resourceKey', '**/ui/**/*.java'
+        property 'sonar.issue.ignore.multicriteria.s107.ruleKey', 'java:S107'
+        property 'sonar.issue.ignore.multicriteria.s107.resourceKey', '**/application/**/*.java'
     }
 }

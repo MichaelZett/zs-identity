@@ -2,6 +2,7 @@ package de.zettsystems.identity.configuration;
 
 import de.zettsystems.identity.configuration.IdentityFlywayAutoConfiguration.IdentityMigrationsCustomizer;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.Location;
 import org.flywaydb.core.api.configuration.FluentConfiguration;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.jspecify.annotations.Nullable;
@@ -72,7 +73,7 @@ class IdentityFlywayAutoConfigurationTest {
         new IdentityMigrationsCustomizer(migrations, true).customize(configuration);
 
         assertThat(configuration.getLocations())
-                .extracting(location -> location.getDescriptor())
+                .extracting(Location::getDescriptor)
                 .containsExactly("classpath:db/migration");
     }
 
@@ -85,7 +86,7 @@ class IdentityFlywayAutoConfigurationTest {
         new IdentityMigrationsCustomizer(migrations, true).customize(configuration);
 
         assertThat(configuration.getLocations())
-                .extracting(location -> location.getDescriptor())
+                .extracting(Location::getDescriptor)
                 .containsExactly("classpath:db/migration/app");
     }
 
@@ -105,7 +106,10 @@ class IdentityFlywayAutoConfigurationTest {
     /** A Flyway without a data source cannot happen through Spring Boot; if it does, say so rather than NPE. */
     @Test
     void refusesToRunWithoutADataSource() {
-        assertThatThrownBy(() -> new IdentityMigrationsCustomizer(migrations, true).customize(Flyway.configure()))
+        IdentityMigrationsCustomizer customizer = new IdentityMigrationsCustomizer(migrations, true);
+        FluentConfiguration withoutDataSource = Flyway.configure();
+
+        assertThatThrownBy(() -> customizer.customize(withoutDataSource))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("zs.identity.migrations.enabled=false");
     }

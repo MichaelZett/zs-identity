@@ -7,10 +7,13 @@ import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityPaths;
 import de.zettsystems.identity.values.IdentityProperties;
+import de.zettsystems.identity.values.PasswordChanged;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
 import java.util.Optional;
 
 class PasswordResetServiceImpl implements PasswordResetService {
@@ -22,17 +25,20 @@ class PasswordResetServiceImpl implements PasswordResetService {
     private final IdentityMailSender mailSender;
     private final PasswordHasher passwordHasher;
     private final IdentityProperties properties;
+    private final ApplicationEventPublisher events;
 
     PasswordResetServiceImpl(UserAccountRepository userRepository,
                              AuthTokenIssuer tokenIssuer,
                              IdentityMailSender mailSender,
                              PasswordHasher passwordHasher,
-                             IdentityProperties properties) {
+                             IdentityProperties properties,
+                             ApplicationEventPublisher events) {
         this.userRepository = userRepository;
         this.tokenIssuer = tokenIssuer;
         this.mailSender = mailSender;
         this.passwordHasher = passwordHasher;
         this.properties = properties;
+        this.events = events;
     }
 
     @Override
@@ -61,6 +67,10 @@ class PasswordResetServiceImpl implements PasswordResetService {
 
         UserAccount user = tokenIssuer.redeem(token, AuthTokenType.PASSWORD_RESET);
         user.changePassword(passwordHasher.hash(newRawPassword));
+        // The usual reason for a reset is a device that is gone. Whatever let
+        // it in without a password has to go with it; see PasswordChanged.
+        events.publishEvent(new PasswordChanged(
+                Objects.requireNonNull(user.getId(), "user.id"), user.getEmail()));
 
         // Resetting the password through the link in the mail also proves that
         // the address belongs to this person.

@@ -5,6 +5,7 @@ import de.zettsystems.identity.application.RoleCatalog;
 import de.zettsystems.identity.values.RoleDefinition;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
 import java.time.Clock;
 import java.util.Set;
@@ -33,6 +34,16 @@ public class IdentityTestApplication {
     @Bean
     IdentityMailSender recordingMailSender() {
         return new RecordingMailSender();
+    }
+
+    /**
+     * What an application with "keep me signed in" brings along. It is here so
+     * that every integration test runs with the RememberMeTokenCleaner in
+     * place -- proof that it gets in nobody's way.
+     */
+    @Bean
+    PersistentTokenRepository recordingTokenRepository() {
+        return new RecordingTokenRepository();
     }
 
     /** A fixed time, so that tests can control when tokens expire. */

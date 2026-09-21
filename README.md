@@ -287,6 +287,53 @@ Applications without tenants notice none of this: granted without a `Scope`,
 every role is global, and `roleCodes()`, `hasRole(code)` and `@RolesAllowed`
 behave exactly as before 0.7.0.
 
+## Events, and "keep me signed in"
+
+Four things that happen to an account are published as Spring application
+events (since 0.12.0, all in `de.zettsystems.identity.values`, all
+implementing the sealed `IdentityAccountEvent`):
+
+| Event             | Published when | Carries |
+|-------------------|----------------|---------|
+| `PasswordChanged` | `changePassword`, `resetPassword`, and the first password of a redeemed invitation | `userId`, `email` |
+| `EmailChanged`    | an address is put on an account (`inviteToClaim`) | `userId`, `previousEmail`, `email` |
+| `AccountLocked`   | `setEnabled(id, false)` | `userId`, `email` |
+| `AccountDeleted`  | `deleteAccount` | `userId`, `email` |
+
+They are published **inside** the transaction that makes the change. Listen
+with `@TransactionalEventListener` if you must not act on a change that is
+rolled back afterwards, and with `@EventListener` if you only want to be told:
+
+```java
+@TransactionalEventListener
+void forget(AccountDeleted deleted) {
+    pushSubscriptions.deleteByUserId(deleted.userId());
+}
+```
+
+**The building block already uses them for remember-me.** An application that
+keeps its people signed in with Spring Security's
+`PersistentTokenRepository` (`persistent_logins`, keyed by the sign-in name)
+needs no line for this: whoever changes or resets their password -- typically
+because a phone is gone -- has the tokens of *all* their devices discarded,
+and so does an account that is locked, deleted or given a different address.
+Without that the cookie on the lost phone would keep working for its full
+lifetime; it never asks for the password that has just been replaced.
+
+The session of whoever makes the change stays: it hangs off the HTTP session,
+not off the cookie. It is the *other* devices that are meant to be out.
+
+An application that brings no `PersistentTokenRepository` bean notices
+nothing, and one that would rather act on the events itself switches the
+cleanup off:
+
+```yaml
+zs:
+  identity:
+    remember-me-cleanup:
+      enabled: false
+```
+
 ## The shipped views
 
 Sign-in, registration, password reset and the redemption view are often the

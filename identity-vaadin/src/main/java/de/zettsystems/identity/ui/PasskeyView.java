@@ -181,9 +181,9 @@ public class PasskeyView extends IdentityFormView implements BeforeEnterObserver
         text.addClassName(VIEW_CLASS + "__passkey");
         Span name = new Span(passkey.label());
         name.addClassName(VIEW_CLASS + "__passkey-label");
-        Div dates = new Div(datesOf(passkey));
-        dates.addClassName(VIEW_CLASS + "__passkey-dates");
-        text.add(name, dates);
+        Div when = new Div(datesOf(passkey));
+        when.addClassName(VIEW_CLASS + "__passkey-dates");
+        text.add(name, when);
 
         Button remove = secondaryButton("identity.passkeys.delete", DELETE_BUTTON_ID_PREFIX + passkey.id(),
                 e -> executeDelete(passkey.id()));

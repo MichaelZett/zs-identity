@@ -62,9 +62,11 @@ public class IdentityMigrations {
 
     private static final Logger LOG = LoggerFactory.getLogger(IdentityMigrations.class);
 
+    /** The table whose presence tells a pre-0.8.0 layout apart; the first one created. */
+    private static final String USER_TABLE = "auth_user";
     /** The tables, in creation order; moved in this order too. */
     private static final List<String> TABLES =
-            List.of("auth_user", "auth_role", "auth_role_authority", "auth_user_role", "auth_token");
+            List.of(USER_TABLE, "auth_role", "auth_role_authority", "auth_user_role", "auth_token");
     private static final List<String> SEQUENCES =
             List.of("auth_user_seq", "auth_role_seq", "auth_token_seq", "auth_user_role_seq");
     /** The scripts as they appear in the {@code script} column of a shared history. */
@@ -131,44 +133,58 @@ public class IdentityMigrations {
             String from = legacySchema != null ? legacySchema : connection.getSchema();
             if (from == null || IdentitySchema.NAME.equals(from)
                     || tableExists(connection, IdentitySchema.NAME, HISTORY_TABLE)
-                    || !tableExists(connection, from, "auth_user")) {
+                    || !tableExists(connection, from, USER_TABLE)) {
                 return Optional.empty();
             }
             String version = versionOf(connection, from);
             LOG.warn("Identity tables found in schema '{}' (layout before 0.8.0, at version {}): "
                     + "moving them to schema '{}' once", from, version, IdentitySchema.NAME);
 
-            boolean autoCommit = connection.getAutoCommit();
-            connection.setAutoCommit(false);
-            try (Statement statement = connection.createStatement()) {
-                statement.execute("CREATE SCHEMA IF NOT EXISTS " + IdentitySchema.NAME);
-                for (String table : TABLES) {
-                    if (tableExists(connection, from, table)) {
-                        statement.execute("ALTER TABLE " + qualified(from, table)
-                                + " SET SCHEMA " + IdentitySchema.NAME);
-                    }
-                }
-                for (String sequence : SEQUENCES) {
-                    if (sequenceExists(connection, from, sequence)) {
-                        statement.execute("ALTER SEQUENCE " + qualified(from, sequence)
-                                + " SET SCHEMA " + IdentitySchema.NAME);
-                    }
-                }
-                if (tableExists(connection, from, appHistoryTable)) {
-                    int removed = removeOurRows(connection, from, appHistoryTable);
-                    LOG.info("Removed {} row(s) of the identity migrations from {}",
-                            removed, qualified(from, appHistoryTable));
-                }
-                connection.commit();
-            } catch (SQLException | RuntimeException e) {
-                connection.rollback();
-                throw e;
-            } finally {
-                connection.setAutoCommit(autoCommit);
-            }
+            moveInOneTransaction(connection, from, appHistoryTable);
             return Optional.of(version);
         } catch (SQLException e) {
             throw new IllegalStateException("Could not move the identity tables to their own schema", e);
+        }
+    }
+
+    /** All or nothing: a failure halfway leaves the old layout untouched. */
+    private static void moveInOneTransaction(Connection connection, String from, String appHistoryTable)
+            throws SQLException {
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+            moveLayout(connection, from, appHistoryTable);
+            connection.commit();
+        } catch (SQLException | RuntimeException e) {
+            connection.rollback();
+            throw e;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+    }
+
+    /** The move itself, inside the transaction the caller opened. */
+    private static void moveLayout(Connection connection, String from, String appHistoryTable)
+            throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("CREATE SCHEMA IF NOT EXISTS " + IdentitySchema.NAME);
+            for (String table : TABLES) {
+                if (tableExists(connection, from, table)) {
+                    statement.execute("ALTER TABLE " + qualified(from, table)
+                            + " SET SCHEMA " + IdentitySchema.NAME);
+                }
+            }
+            for (String sequence : SEQUENCES) {
+                if (sequenceExists(connection, from, sequence)) {
+                    statement.execute("ALTER SEQUENCE " + qualified(from, sequence)
+                            + " SET SCHEMA " + IdentitySchema.NAME);
+                }
+            }
+            if (tableExists(connection, from, appHistoryTable)) {
+                int removed = removeOurRows(connection, from, appHistoryTable);
+                String history = qualified(from, appHistoryTable);
+                LOG.info("Removed {} row(s) of the identity migrations from {}", removed, history);
+            }
         }
     }
 
@@ -181,13 +197,13 @@ public class IdentityMigrations {
         if (columnExists(connection, schema, "auth_user_role", "scope_type")) {
             return "1.5";
         }
-        if (columnExists(connection, schema, "auth_user", "locale")) {
+        if (columnExists(connection, schema, USER_TABLE, "locale")) {
             return "1.4";
         }
-        if (columnExists(connection, schema, "auth_user", "must_change_password")) {
+        if (columnExists(connection, schema, USER_TABLE, "must_change_password")) {
             return "1.3";
         }
-        if (columnExists(connection, schema, "auth_user", "display_name")) {
+        if (columnExists(connection, schema, USER_TABLE, "display_name")) {
             return "1.2";
         }
         return "1.1";

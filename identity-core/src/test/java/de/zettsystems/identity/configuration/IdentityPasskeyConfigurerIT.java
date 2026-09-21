@@ -34,7 +34,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.FilterChainProxy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.RememberMeServices;
 import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.webauthn.authentication.WebAuthnAuthenticationFilter;
@@ -107,7 +106,7 @@ class IdentityPasskeyConfigurerIT {
         }
 
         @Bean
-        SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        SecurityFilterChain securityFilterChain(HttpSecurity http) {
             http.csrf(AbstractHttpConfigurer::disable)
                     .authorizeHttpRequests(requests -> requests.requestMatchers("/public/**").permitAll())
                     .with(IdentityPasskeyConfigurer.passkeys(), Customizer.withDefaults())
@@ -186,10 +185,10 @@ class IdentityPasskeyConfigurerIT {
         MockHttpServletResponse response = call(post(IdentityPaths.PASSKEY_REGISTRATION_OPTIONS), fresh);
 
         assertThat(response.getStatus()).isEqualTo(200);
+        // Spring alone would put the address into displayName on the first
+        // registration; the configurer swaps in the account's name.
         assertThat(body(response))
                 .contains("\"name\":\"anna@example.com\"")
-                // Spring would show the address here on the first registration;
-                // the configurer swaps in the account's name.
                 .contains("\"displayName\":\"Anna Beispiel\"")
                 .contains("\"rp\":{\"id\":\"localhost\",\"name\":\"Test\"}");
         assertThat(userEntities.findByUsername(anna.email())).as("the handle now lives on the account").isNotNull();
@@ -207,8 +206,8 @@ class IdentityPasskeyConfigurerIT {
         WebAuthnAuthenticationFilter signIn = filterOf(WebAuthnAuthenticationFilter.class);
 
         Object rememberMe = ReflectionTestUtils.getField(signIn, "rememberMeServices");
-        assertThat(rememberMe).isInstanceOf(TokenBasedRememberMeServices.class);
-        assertThat(rememberMe).isInstanceOf(RememberMeServices.class);
+        assertThat(rememberMe).as("the application's, not Spring's null implementation")
+                .isInstanceOf(TokenBasedRememberMeServices.class);
 
         Object manager = ReflectionTestUtils.getField(signIn, "authenticationManager");
         assertThat(manager).isInstanceOf(ProviderManager.class);

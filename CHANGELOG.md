@@ -5,6 +5,36 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 0.12.0 - 2026-09-21
+
+### Added
+- **Events for four things that happen to an account**, and with them the end
+  of a remember-me cookie that outlives the password it was issued under.
+  Asked for by `terminplanung-halle`, which keeps its members signed in for 30
+  days: whoever loses a phone changes their password and expects that phone to
+  be out -- but until now the building block kept a password change to itself,
+  and the cookie on the lost device stayed valid, because a cookie never asks
+  for a password.
+  - **`IdentityAccountEvent`** (sealed) with `PasswordChanged`, `EmailChanged`,
+    `AccountLocked` and `AccountDeleted` in
+    `de.zettsystems.identity.values`. Published inside the transaction that
+    makes the change; an application listens with
+    `@TransactionalEventListener` if it must not act on a change that is rolled
+    back, and with `@EventListener` if it only wants to be told. Useful well
+    beyond remember-me: push subscriptions, sessions in a `SessionRegistry`,
+    caches per account.
+  - **`RememberMeTokenCleaner`**: the building block cleans up by itself.
+    Wherever a password is set (`UserAccountService#changePassword`,
+    `PasswordResetService#resetPassword`, a redeemed invitation), an account is
+    locked (`setEnabled(id, false)`) or deleted, or an address is put on an
+    account, the `PersistentTokenRepository` of the application loses the
+    tokens of that account -- all devices, `AFTER_COMMIT`. An application with
+    "keep me signed in" needs no line for it; one without such a bean notices
+    nothing; `zs.identity.remember-me-cleanup.enabled=false` switches it off
+    for an application that would rather act on the events itself. The session
+    of whoever makes the change stays -- it hangs off the HTTP session, not off
+    the cookie.
+
 ## 0.11.0 - 2026-09-21
 
 ### Added

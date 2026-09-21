@@ -39,9 +39,17 @@ not be merged, however well it is written.
 - **Settings live under the `zs.identity` prefix**, and every one of them has a
   sensible default. Convention over configuration: an application that
   configures nothing must still work.
+- **What happens to an account is announced, and cleaned up.** The services
+  publish `IdentityAccountEvent` (`PasswordChanged`, `EmailChanged`,
+  `AccountLocked`, `AccountDeleted`) inside the transaction that makes the
+  change, and the building block clears the remember-me tokens of that account
+  itself. A new route on which a password is set, an address assigned or an
+  account locked or deleted publishes the matching event — otherwise a cookie
+  stays valid at exactly that spot when it should not.
 - **The public API is a contract.** Changing a signature on
   `UserAccountService`, `RegistrationService`, `PasswordResetService`,
-  `UserAccountDto`, `AccountName`, `IdentityProperties` or `IdentityRoutes`
+  `UserAccountDto`, `AccountName`, `IdentityProperties`, `IdentityRoutes` or
+  `IdentityAccountEvent` and its four records
   breaks every application that depends on it. Extend with `default` methods or
   additional overloads instead; a genuine break needs a major version.
 

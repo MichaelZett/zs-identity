@@ -57,18 +57,18 @@ class JpaUserCredentialRepository implements UserCredentialRepository {
 
     @Override
     @Transactional
-    public void save(CredentialRecord record) {
-        String credentialId = record.getCredentialId().toBase64UrlString();
+    public void save(CredentialRecord credentialRecord) {
+        String credentialId = credentialRecord.getCredentialId().toBase64UrlString();
         Optional<Passkey> existing = passkeys.findByCredentialId(credentialId);
         if (existing.isPresent()) {
-            existing.get().recordUse(record.getSignatureCount(), clock.instant());
+            existing.get().recordUse(credentialRecord.getSignatureCount(), clock.instant());
             return;
         }
-        String handle = record.getUserEntityUserId().toBase64UrlString();
+        String handle = credentialRecord.getUserEntityUserId().toBase64UrlString();
         UserAccount user = users.findByPasskeyUserHandle(handle)
                 .orElseThrow(() -> new IllegalStateException("No account for the passkey user handle"));
-        passkeys.save(new Passkey(user, toCredential(record), record.getSignatureCount(), record.getLabel(),
-                clock.instant()));
+        passkeys.save(new Passkey(user, toCredential(credentialRecord), credentialRecord.getSignatureCount(),
+                credentialRecord.getLabel(), clock.instant()));
     }
 
     @Override
@@ -115,22 +115,22 @@ class JpaUserCredentialRepository implements UserCredentialRepository {
                 .build();
     }
 
-    static PasskeyCredential toCredential(CredentialRecord record) {
+    static PasskeyCredential toCredential(CredentialRecord credentialRecord) {
         Set<String> transports = new HashSet<>();
-        for (AuthenticatorTransport transport : record.getTransports()) {
+        for (AuthenticatorTransport transport : credentialRecord.getTransports()) {
             transports.add(transport.getValue());
         }
-        PublicKeyCredentialType type = record.getCredentialType();
+        PublicKeyCredentialType type = credentialRecord.getCredentialType();
         return new PasskeyCredential(
-                record.getCredentialId().toBase64UrlString(),
+                credentialRecord.getCredentialId().toBase64UrlString(),
                 type != null ? type.getValue() : PublicKeyCredentialType.PUBLIC_KEY.getValue(),
-                toBase64(record.getPublicKey().getBytes()),
-                record.isUvInitialized(),
-                record.isBackupEligible(),
-                record.isBackupState(),
+                toBase64(credentialRecord.getPublicKey().getBytes()),
+                credentialRecord.isUvInitialized(),
+                credentialRecord.isBackupEligible(),
+                credentialRecord.isBackupState(),
                 transports,
-                toBase64(record.getAttestationObject()),
-                toBase64(record.getAttestationClientDataJSON()));
+                toBase64(credentialRecord.getAttestationObject()),
+                toBase64(credentialRecord.getAttestationClientDataJSON()));
     }
 
     private static @Nullable Bytes fromBase64(@Nullable String base64Url) {

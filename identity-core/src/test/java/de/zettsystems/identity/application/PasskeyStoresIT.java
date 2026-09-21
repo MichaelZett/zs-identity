@@ -81,27 +81,27 @@ class PasskeyStoresIT extends AbstractIdentityIntegrationTest {
     @Test
     void aCredentialSurvivesTheRoundTripThroughTheTable() {
         Bytes handle = handleFor(anna);
-        CredentialRecord record = record(handle, Bytes.random(), "iPhone");
+        CredentialRecord saved = credentialRecord(handle, Bytes.random(), "iPhone");
 
-        credentials.save(record);
+        credentials.save(saved);
 
-        CredentialRecord found = credentials.findByCredentialId(record.getCredentialId());
+        CredentialRecord found = credentials.findByCredentialId(saved.getCredentialId());
         assertThat(found).isNotNull();
-        assertThat(found.getCredentialId()).isEqualTo(record.getCredentialId());
+        assertThat(found.getCredentialId()).isEqualTo(saved.getCredentialId());
         assertThat(found.getUserEntityUserId()).isEqualTo(handle);
-        assertThat(found.getPublicKey().getBytes()).isEqualTo(record.getPublicKey().getBytes());
+        assertThat(found.getPublicKey().getBytes()).isEqualTo(saved.getPublicKey().getBytes());
         assertThat(found.getSignatureCount()).isEqualTo(7);
         assertThat(found.isUvInitialized()).isTrue();
         assertThat(found.isBackupEligible()).isTrue();
         assertThat(found.isBackupState()).isFalse();
         assertThat(found.getTransports()).containsExactlyInAnyOrder(AuthenticatorTransport.INTERNAL,
                 AuthenticatorTransport.HYBRID);
-        assertThat(found.getAttestationObject()).isEqualTo(record.getAttestationObject());
-        assertThat(found.getAttestationClientDataJSON()).isEqualTo(record.getAttestationClientDataJSON());
+        assertThat(found.getAttestationObject()).isEqualTo(saved.getAttestationObject());
+        assertThat(found.getAttestationClientDataJSON()).isEqualTo(saved.getAttestationClientDataJSON());
         assertThat(found.getLabel()).isEqualTo("iPhone");
         assertThat(found.getCreated()).isEqualTo(clock.instant());
         assertThat(credentials.findByUserId(handle)).extracting(CredentialRecord::getCredentialId)
-                .containsExactly(record.getCredentialId());
+                .containsExactly(saved.getCredentialId());
         assertThat(credentials.findByCredentialId(Bytes.random())).isNull();
     }
 
@@ -109,14 +109,14 @@ class PasskeyStoresIT extends AbstractIdentityIntegrationTest {
     @Test
     void savingAKnownCredentialRecordsTheUseInsteadOfInsertingAgain() {
         Bytes handle = handleFor(anna);
-        CredentialRecord record = record(handle, Bytes.random(), "iPhone");
-        credentials.save(record);
+        CredentialRecord saved = credentialRecord(handle, Bytes.random(), "iPhone");
+        credentials.save(saved);
         ((MutableTestClock) clock).advanceBy(Duration.ofHours(2));
 
-        credentials.save(ImmutableCredentialRecord.fromCredentialRecord(record).signatureCount(8).build());
+        credentials.save(ImmutableCredentialRecord.fromCredentialRecord(saved).signatureCount(8).build());
 
         assertThat(credentials.findByUserId(handle)).hasSize(1);
-        CredentialRecord used = credentials.findByCredentialId(record.getCredentialId());
+        CredentialRecord used = credentials.findByCredentialId(saved.getCredentialId());
         assertThat(used).isNotNull();
         assertThat(used.getSignatureCount()).isEqualTo(8);
         assertThat(used.getLastUsed()).isEqualTo(clock.instant());
@@ -131,9 +131,9 @@ class PasskeyStoresIT extends AbstractIdentityIntegrationTest {
         Bytes handle = handleFor(anna);
         assertThat(passkeyService.hasPasskey(anna.id())).isFalse();
 
-        credentials.save(record(handle, Bytes.random(), "iPhone"));
+        credentials.save(credentialRecord(handle, Bytes.random(), "iPhone"));
         ((MutableTestClock) clock).advanceBy(Duration.ofMinutes(1));
-        credentials.save(record(handle, Bytes.random(), "Laptop"));
+        credentials.save(credentialRecord(handle, Bytes.random(), "Laptop"));
 
         assertThat(passkeyService.countFor(anna.id())).isEqualTo(2);
         assertThat(passkeyService.findAllOf(anna.id())).extracting(PasskeyDto::label)
@@ -149,11 +149,12 @@ class PasskeyStoresIT extends AbstractIdentityIntegrationTest {
     void deletingChecksTheOwnerAndSpringCanDeleteByCredential() {
         UserAccountDto ben = userAccountService.createAccount("ben@example.com", "ein-langes-passwort", "Ben",
                 "Beispiel", true);
-        CredentialRecord annas = record(handleFor(anna), Bytes.random(), "iPhone");
+        CredentialRecord annas = credentialRecord(handleFor(anna), Bytes.random(), "iPhone");
         credentials.save(annas);
         Long passkeyId = passkeyService.findAllOf(anna.id()).getFirst().id();
+        Long benId = ben.id();
 
-        assertThatThrownBy(() -> passkeyService.delete(ben.id(), passkeyId))
+        assertThatThrownBy(() -> passkeyService.delete(benId, passkeyId))
                 .isInstanceOf(IdentityException.class)
                 .extracting(e -> ((IdentityException) e).getMessageKey())
                 .isEqualTo(IdentityMessageKeys.PASSKEY_NOT_FOUND);
@@ -170,7 +171,7 @@ class PasskeyStoresIT extends AbstractIdentityIntegrationTest {
     /** The foreign key does the work; the test proves the schema, not the code. */
     @Test
     void deletingTheAccountTakesItsPasskeysAlong() {
-        credentials.save(record(handleFor(anna), Bytes.random(), "iPhone"));
+        credentials.save(credentialRecord(handleFor(anna), Bytes.random(), "iPhone"));
         assertThat(passkeyRepository.count()).isEqualTo(1);
 
         userAccountService.deleteAccount(anna.id());
@@ -188,7 +189,7 @@ class PasskeyStoresIT extends AbstractIdentityIntegrationTest {
         return ImmutablePublicKeyCredentialUserEntity.builder().id(handle).name(email).displayName(email).build();
     }
 
-    private static CredentialRecord record(Bytes handle, Bytes credentialId, String label) {
+    private static CredentialRecord credentialRecord(Bytes handle, Bytes credentialId, String label) {
         return ImmutableCredentialRecord.builder()
                 .userEntityUserId(handle)
                 .credentialId(credentialId)

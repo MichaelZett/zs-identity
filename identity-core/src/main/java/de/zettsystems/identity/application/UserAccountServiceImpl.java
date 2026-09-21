@@ -4,12 +4,16 @@ import de.zettsystems.identity.domain.Role;
 import de.zettsystems.identity.domain.RoleRepository;
 import de.zettsystems.identity.domain.UserAccount;
 import de.zettsystems.identity.domain.UserAccountRepository;
+import de.zettsystems.identity.values.AccountDeleted;
+import de.zettsystems.identity.values.AccountLocked;
 import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
+import de.zettsystems.identity.values.PasswordChanged;
 import de.zettsystems.identity.values.Scope;
 import de.zettsystems.identity.values.UserAccountDto;
 import org.jspecify.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -28,19 +32,22 @@ class UserAccountServiceImpl implements UserAccountService {
     private final IdentityProperties properties;
     private final Clock clock;
     private final AuthenticationRefresher authenticationRefresher;
+    private final ApplicationEventPublisher events;
 
     UserAccountServiceImpl(UserAccountRepository userRepository,
                            RoleRepository roleRepository,
                            PasswordHasher passwordHasher,
                            IdentityProperties properties,
                            Clock clock,
-                           AuthenticationRefresher authenticationRefresher) {
+                           AuthenticationRefresher authenticationRefresher,
+                           ApplicationEventPublisher events) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordHasher = passwordHasher;
         this.properties = properties;
         this.clock = clock;
         this.authenticationRefresher = authenticationRefresher;
+        this.events = events;
     }
 
     @Override
@@ -192,6 +199,12 @@ class UserAccountServiceImpl implements UserAccountService {
         return UserAccountMapper.toDto(user);
     }
 
+    /**
+     * Locking announces itself ({@link AccountLocked}); unlocking does not.
+     * Whoever is locked out must not stay signed in somewhere through a
+     * remember-me cookie, and applications keep things of their own per
+     * account. There is nothing to clean up when unlocking.
+     */
     @Override
     @Transactional
     public UserAccountDto setEnabled(Long userId, boolean enabled) {
@@ -200,6 +213,7 @@ class UserAccountServiceImpl implements UserAccountService {
             user.activateWithoutVerification();
         } else {
             user.disable();
+            events.publishEvent(new AccountLocked(userId, user.getEmail()));
         }
         return UserAccountMapper.toDto(user);
     }
@@ -213,6 +227,7 @@ class UserAccountServiceImpl implements UserAccountService {
         // The session carries the "must change" flag, and after the change it
         // has to disappear there too, or the person would be stuck on the view.
         authenticationRefresher.refreshAfterCommit(user.getEmail());
+        events.publishEvent(new PasswordChanged(userId, user.getEmail()));
     }
 
     @Override
@@ -227,13 +242,19 @@ class UserAccountServiceImpl implements UserAccountService {
     /**
      * Tokens hang off the account through a foreign key with {@code ON DELETE
      * CASCADE}, and JPA clears the role assignments through the association, so
-     * nothing is left behind.
+     * nothing is left behind. What an application keeps about the person is its
+     * own business -- {@link AccountDeleted} tells it.
      */
     @Override
     @Transactional
     public void deleteAccount(Long userId) {
         UserAccount user = requireUser(userId);
+        // Read before deleting: after the commit neither the row nor the
+        // address it signed in under can be looked up any more, and that is
+        // exactly what a listener needs.
+        AccountDeleted deleted = new AccountDeleted(userId, user.getEmail());
         userRepository.delete(user);
+        events.publishEvent(deleted);
     }
 
     private void requireLongEnough(String rawPassword) {

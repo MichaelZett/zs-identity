@@ -5,15 +5,18 @@ import de.zettsystems.identity.domain.PasskeyRepository;
 import de.zettsystems.identity.domain.RoleRepository;
 import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.values.IdentityProperties;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
 
@@ -76,9 +79,10 @@ public class IdentityBeans {
                                           PasswordHasher passwordHasher,
                                           IdentityProperties properties,
                                           Clock clock,
-                                          AuthenticationRefresher authenticationRefresher) {
+                                          AuthenticationRefresher authenticationRefresher,
+                                          ApplicationEventPublisher events) {
         return new UserAccountServiceImpl(userRepository, roleRepository, passwordHasher,
-                properties, clock, authenticationRefresher);
+                properties, clock, authenticationRefresher, events);
     }
 
     /** The daily token cleanup run; can be switched off through {@code zs.identity.token-cleanup.enabled}. */
@@ -129,8 +133,10 @@ public class IdentityBeans {
                                               AuthTokenIssuer tokenIssuer,
                                               IdentityMailSender mailSender,
                                               PasswordHasher passwordHasher,
-                                              IdentityProperties properties) {
-        return new PasswordResetServiceImpl(userRepository, tokenIssuer, mailSender, passwordHasher, properties);
+                                              IdentityProperties properties,
+                                              ApplicationEventPublisher events) {
+        return new PasswordResetServiceImpl(userRepository, tokenIssuer, mailSender, passwordHasher,
+                properties, events);
     }
 
     @Bean
@@ -141,9 +147,25 @@ public class IdentityBeans {
                                         IdentityMailSender mailSender,
                                         PasswordHasher passwordHasher,
                                         IdentityProperties properties,
-                                        Clock clock) {
+                                        Clock clock,
+                                        ApplicationEventPublisher events) {
         return new InvitationServiceImpl(userRepository, roleRepository, tokenIssuer, mailSender,
-                passwordHasher, properties, clock);
+                passwordHasher, properties, clock, events);
+    }
+
+    /**
+     * Throws the remember-me tokens of an account out when its password, its
+     * address or its state changes. Does nothing in an application without
+     * remember-me -- the repository is optional -- and can be switched off
+     * entirely with {@code zs.identity.remember-me-cleanup.enabled=false} by an
+     * application that would rather act on the events itself.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(name = "zs.identity.remember-me-cleanup.enabled", havingValue = "true",
+            matchIfMissing = true)
+    RememberMeTokenCleaner rememberMeTokenCleaner(ObjectProvider<PersistentTokenRepository> tokenRepository) {
+        return new RememberMeTokenCleaner(tokenRepository);
     }
 
     @Bean

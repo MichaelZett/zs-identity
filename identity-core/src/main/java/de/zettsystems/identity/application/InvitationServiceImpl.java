@@ -6,11 +6,14 @@ import de.zettsystems.identity.domain.RoleRepository;
 import de.zettsystems.identity.domain.UserAccount;
 import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.values.AccountName;
+import de.zettsystems.identity.values.EmailChanged;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityPaths;
 import de.zettsystems.identity.values.IdentityProperties;
+import de.zettsystems.identity.values.PasswordChanged;
 import de.zettsystems.identity.values.UserAccountDto;
 import org.jspecify.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -26,6 +29,7 @@ class InvitationServiceImpl implements InvitationService {
     private final PasswordHasher passwordHasher;
     private final IdentityProperties properties;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
     InvitationServiceImpl(UserAccountRepository userRepository,
                           RoleRepository roleRepository,
@@ -33,7 +37,8 @@ class InvitationServiceImpl implements InvitationService {
                           IdentityMailSender mailSender,
                           PasswordHasher passwordHasher,
                           IdentityProperties properties,
-                          Clock clock) {
+                          Clock clock,
+                          ApplicationEventPublisher events) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.tokenIssuer = tokenIssuer;
@@ -41,6 +46,7 @@ class InvitationServiceImpl implements InvitationService {
         this.passwordHasher = passwordHasher;
         this.properties = properties;
         this.clock = clock;
+        this.events = events;
     }
 
     @Override
@@ -55,6 +61,11 @@ class InvitationServiceImpl implements InvitationService {
         requireFreeAddress(normalized);
 
         user.assignEmail(normalized);
+        // A managed account had no address so far, so there is nothing to clean
+        // up. The event is published all the same: from now on the account has
+        // a name to sign in under, and whoever keys off that name should hear
+        // it from one place, not from two different ones.
+        events.publishEvent(new EmailChanged(userId, null, normalized));
         return sendInvitation(user);
     }
 
@@ -136,7 +147,13 @@ class InvitationServiceImpl implements InvitationService {
         if (user.getLocale() == null) {
             user.changeLocale(locale);
         }
-        return UserAccountMapper.toDto(user);
+        UserAccountDto claimed = UserAccountMapper.toDto(user);
+        // The first password on this account. Nobody could sign in before, so
+        // there is nothing to throw out -- but the route ends in the same state
+        // as a password change, and a listener should not have to tell the two
+        // apart.
+        events.publishEvent(new PasswordChanged(claimed.id(), claimed.email()));
+        return claimed;
     }
 
     /**

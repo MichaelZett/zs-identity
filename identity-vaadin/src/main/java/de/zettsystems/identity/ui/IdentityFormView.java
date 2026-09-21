@@ -185,14 +185,14 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
      * that goes in belongs through {@link #fullWidth}.
      */
     protected final VerticalLayout centeredColumn() {
-        VerticalLayout column = new VerticalLayout();
-        column.setWidthFull();
-        column.setMaxWidth(ui.maxWidth());
-        column.setPadding(false);
-        column.addClassName(VIEW_CLASS + "__column");
-        add(column);
-        this.column = column;
-        return column;
+        VerticalLayout layout = new VerticalLayout();
+        layout.setWidthFull();
+        layout.setMaxWidth(ui.maxWidth());
+        layout.setPadding(false);
+        layout.addClassName(VIEW_CLASS + "__column");
+        add(layout);
+        this.column = layout;
+        return layout;
     }
 
     /** Heading of a view. */
