@@ -90,6 +90,14 @@ class IdentityViewLayoutTest extends AbstractViewTest {
                 .noneMatch(width -> width.endsWith("px"));
     }
 
+    /**
+     * The footer links are the one exception, and a deliberate one: they are
+     * ways out, not actions, and making them fill the column would turn the
+     * footer into the third row of full-width boxes that 0.14.0 set out to
+     * remove. They are marked as such
+     * ({@link IdentityFormView#FOOTER_LINK_CLASS}), so the exception is
+     * visible in the component rather than hidden in this test.
+     */
     @ParameterizedTest(name = "{0}")
     @MethodSource("allViews")
     void everyFieldAndButtonFillsTheColumn(String name, Supplier<IdentityFormView> factory) {
@@ -98,6 +106,7 @@ class IdentityViewLayoutTest extends AbstractViewTest {
         List<Component> interactive = descendants(view)
                 .filter(child -> child instanceof EmailField || child instanceof PasswordField
                         || child instanceof Button)
+                .filter(child -> !child.getElement().getClassList().contains(IdentityFormView.FOOTER_LINK_CLASS))
                 .toList();
 
         assertThat(interactive)

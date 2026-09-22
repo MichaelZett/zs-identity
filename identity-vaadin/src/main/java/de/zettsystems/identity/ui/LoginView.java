@@ -1,7 +1,9 @@
 package de.zettsystems.identity.ui;
 
 import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -13,6 +15,9 @@ import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.values.IdentityProperties;
 import org.jspecify.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,42 +43,68 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
     private static final String FULL_WIDTH = "100%";
 
     static final String PASSKEY_BUTTON_ID = "login-passkey-button";
+    static final String REGISTER_BUTTON_ID = "login-register-button";
+    static final String FORGOT_PASSWORD_LINK_ID = "login-forgot-password-link";
+    static final String RESEND_VERIFICATION_LINK_ID = "login-resend-verification-link";
 
     private final LoginForm loginForm = new LoginForm();
     private final boolean passkeysEnabled;
+    private final boolean passkeyButtonShown;
 
     public LoginView(RegistrationService registrationService, IdentityProperties properties,
                      IdentityMessages messages) {
         super(messages, properties, "login");
         centerOnPage();
         this.passkeysEnabled = properties.passkeys().enabled();
+        this.passkeyButtonShown = passkeysEnabled && properties.passkeys().loginButton();
 
         loginForm.setAction(IdentityRoutes.LOGIN);
         loginForm.setI18n(loginI18n(texts()));
-        loginForm.setForgotPasswordButtonVisible(true);
-        loginForm.addForgotPasswordListener(
-                event -> getUI().ifPresent(ui -> ui.navigate(IdentityRoutes.FORGOT_PASSWORD)));
+        // "Forgot password?" is a way out, not a second offer: it moves from
+        // inside Vaadin's form into the footer, next to the other one.
+        loginForm.setForgotPasswordButtonVisible(false);
 
         // Sign-in fills the page; for the form and the buttons to still share
         // one limited width, they sit in a column.
         VerticalLayout column = centeredColumn();
         column.add(alignedWithColumn(loginForm));
 
+        // One rank per line, loudest first. Before 0.14.0 all four sat under
+        // the submit button in three shapes and equally loud; on a phone that
+        // read as a heap of links rather than as a page with one obvious next
+        // step.
+        //
         // Passkeys are an option per person, never a requirement: the button
-        // sits next to the form, the form stays as it is.
-        if (passkeysEnabled) {
+        // sits next to the form, the form stays as it is. An application that
+        // trusts the offer in the username field switches it off.
+        if (passkeyButtonShown) {
             column.add(fullWidth(passkeyButton()));
         }
-        // The link only appears when self-registration is switched on.
-        // Otherwise it leads to a page that rejects every input.
+        // The one thing that carries someone who has no account yet, so it
+        // keeps its frame and the full width. Only when self-registration is
+        // on -- otherwise it leads to a page that rejects every input.
         if (registrationService.isSelfRegistrationEnabled()) {
             column.add(fullWidth(registerButton()));
         }
-        // Without a confirmation requirement there is no verification mail, so
-        // that route leads nowhere and stays away.
+        column.add(waysOut(registrationService));
+    }
+
+    /**
+     * The footer: what someone needs when the normal way is blocked. Rarely
+     * wanted, and then at once -- so small and quiet, but never hidden.
+     *
+     * <p>"Did not get the mail?" only exists where a confirmation is
+     * required; without one that route leads nowhere.
+     */
+    private Div waysOut(RegistrationService registrationService) {
+        List<Component> links = new ArrayList<>();
+        links.add(footerLink("identity.login.forgotPassword", FORGOT_PASSWORD_LINK_ID,
+                IdentityRoutes.FORGOT_PASSWORD));
         if (registrationService.isEmailVerificationRequired()) {
-            column.add(fullWidth(resendButton()));
+            links.add(footerLink("identity.login.resendVerification", RESEND_VERIFICATION_LINK_ID,
+                    IdentityRoutes.RESEND_VERIFICATION));
         }
+        return footer(links.toArray(new Component[0]));
     }
 
     @Override
@@ -125,13 +156,7 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
 
     private Button registerButton() {
         Button button = navigationButton("identity.login.register", IdentityRoutes.REGISTER);
-        button.setId("login-register-button");
-        return button;
-    }
-
-    private Button resendButton() {
-        Button button = navigationButton("identity.login.resendVerification", IdentityRoutes.RESEND_VERIFICATION);
-        button.setId("login-resend-verification-button");
+        button.setId(REGISTER_BUTTON_ID);
         return button;
     }
 

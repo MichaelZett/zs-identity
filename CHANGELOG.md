@@ -5,6 +5,51 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 0.14.0 - 2026-09-22
+
+### Changed
+- **The sign-in page has a ranking instead of four equally loud elements.**
+  Asked for by `terminplanung-halle` after a look at the installed PWA on a
+  phone: under the submit button stood "Forgot password?" (a text link from
+  Vaadin's form), "Sign in with passkey" (borderless), "No account yet?" and
+  "Didn't get the mail?" (both full-width boxes) -- three shapes, one heap.
+  Now: the submit button stays primary; "No account yet?" keeps its frame and
+  the full width, because it is the one thing that carries someone without an
+  account; "Forgot password?" and "Didn't get the mail?" move together into a
+  small, quiet footer, side by side with a separator, wrapping on a narrow
+  screen. **Not** behind a disclosure -- they are the ways out, rarely wanted
+  and then wanted at once.
+  - **This changes the look of every application's sign-in page**, not only
+    the one that asked. It is a change of default on purpose: four boxes of
+    equal weight are poor regardless of the application, and a setting for
+    "which layout" would be the start of a collection the building block does
+    not want.
+  - The footer links are still buttons -- the shape Vaadin's own `LoginForm`
+    uses for "Forgot password?" -- and carry
+    `identity-view__footer-link`. They are the one exception to "every button
+    fills the column"; the rule in `IdentityViewLayoutTest` now names it.
+  - New CSS hooks: `identity-view__footer`, `identity-view__footer-link`,
+    `identity-view__footer-separator`. The element ids of the two links
+    changed from `...-button` to `...-link`.
+
+### Added
+- **`zs.identity.passkeys.login-button`** (default `true`) takes the button
+  "Sign in with passkey" off the sign-in page for an application that finds
+  the offer in the username field enough. The offer stays -- that is the
+  point of switching the button off.
+  - Deliberately a setting, not something worked out in the browser. Hiding
+    the button wherever `isConditionalMediationAvailable()` is true was
+    considered and rejected: that a browser *can* do conditional mediation
+    says nothing about whether this person has a passkey here or whether the
+    list turns it up, the offer only appears once the field is touched, and a
+    button that comes and goes is one nobody can be told to press.
+  - `PasskeySettings` gained the flag as its last component; the
+    four-argument shape stays as a constructor, so an application that builds
+    the record by hand goes on compiling. That second constructor is also why
+    the canonical one now carries `@ConstructorBinding` -- with more than one,
+    Spring cannot tell which one binds, and the whole `zs.identity` tree fails
+    to bind at startup. `IdentityPropertiesTest` pins both down.
+
 ## 0.13.0 - 2026-09-22
 
 ### Added

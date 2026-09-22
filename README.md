@@ -114,7 +114,8 @@ list is optional, and the auto-configuration takes care of everything else:
    username field as soon as the browser has one for the domain (WebAuthn
    conditional mediation, since 0.13.0 -- nothing to configure, and a browser
    that cannot do it simply shows nothing), keeps the button "Sign in with
-   passkey" for everyone the offer does not reach, and the view
+   passkey" for everyone the offer does not reach (`passkeys.login-button`
+   takes it away), and the view
    `IdentityRoutes.PASSKEYS` (`passkeys`) lets a
    signed-in account add, list and remove its passkeys -- link it from the
    application's settings; it is the one view that lives inside the
@@ -147,6 +148,7 @@ list is optional, and the auto-configuration takes care of everything else:
 | `passkeys.rp-id`              | `localhost`              | the domain the passkeys are bound to, without scheme or port |
 | `passkeys.rp-name`            | `Application`            | the name the authenticator shows when a passkey is created |
 | `passkeys.allowed-origins`    | `http://localhost:8080`  | origins the browser may sign in from, with scheme and port; each must belong to `rp-id` or a subdomain of it |
+| `passkeys.login-button`       | `true`                   | show the button "Sign in with passkey"; switch off where the offer in the username field is enough -- but it is the only way in for a browser without conditional mediation |
 
 **Mail delivery is optional** (since 0.7.0). `spring-boot-starter-mail` only
 hangs `compileOnly` off the building block -- whoever wants to send mails takes
@@ -359,7 +361,9 @@ every view carries `identity-view` and an identifier of its own
 (`identity-view--login`, `--registration`, `--forgot-password`,
 `--resend-verification`, `--reset-password`, `--change-password`,
 `--claim-account`, `--confirm-email`, `--passkeys`); sign-in additionally has
-`identity-view__column` inside, and the passkey list has
+`identity-view__column` inside plus `identity-view__footer`,
+`identity-view__footer-link` and `identity-view__footer-separator` for the
+quiet line of ways out below the buttons, and the passkey list has
 `identity-view__passkey-row`, `__passkey`, `__passkey-label` and
 `__passkey-dates` per entry. Classes of your own reach every view through
 `zs.identity.ui.class-names`:

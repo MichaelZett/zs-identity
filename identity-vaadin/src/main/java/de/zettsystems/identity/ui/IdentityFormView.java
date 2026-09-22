@@ -7,13 +7,16 @@ import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.BoxSizing;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.HasDynamicTitle;
+import com.vaadin.flow.theme.lumo.LumoUtility;
 import de.zettsystems.identity.application.IdentityException;
 import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.values.IdentityMessageKeys;
@@ -62,6 +65,8 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
 
     /** CSS class on every view of this building block; the hook for custom CSS. */
     public static final String VIEW_CLASS = "identity-view";
+    /** On the links in {@link #footer}; the one exception to "every button fills the column". */
+    public static final String FOOTER_LINK_CLASS = VIEW_CLASS + "__footer-link";
 
     /**
      * Vaadin's variants are still called {@code LUMO_*}, even though the base
@@ -71,6 +76,21 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
     private static final ButtonVariant PRIMARY_VARIANT = ButtonVariant.LUMO_PRIMARY;
     private static final ButtonVariant TERTIARY_VARIANT = ButtonVariant.LUMO_TERTIARY;
     private static final NotificationVariant WARNING_VARIANT = NotificationVariant.LUMO_ERROR;
+    private static final ButtonVariant[] FOOTER_VARIANTS = {ButtonVariant.LUMO_TERTIARY_INLINE,
+            ButtonVariant.LUMO_SMALL};
+
+    /**
+     * Smaller and quieter for the footer, and the row that wraps it. Utility
+     * classes rather than styles of our own: they resolve against the
+     * application's theme, so "quieter" means quieter <em>there</em> -- the
+     * rule "no colours, no spacing by hand" holds. Gathered here for the same
+     * reason as the variants above.
+     */
+    private static final String[] FOOTER_CLASSES = {LumoUtility.Display.FLEX, LumoUtility.FlexWrap.WRAP,
+            LumoUtility.JustifyContent.CENTER, LumoUtility.AlignItems.CENTER, LumoUtility.Gap.SMALL};
+    private static final String[] QUIET_CLASSES = {LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY};
+    /** Between two footer links; punctuation, not a text to translate. */
+    private static final String FOOTER_SEPARATOR = "·";
 
     /** The message keys that every view handles in the same way. */
     private static final Set<String> COMMON_KEYS = Set.of(
@@ -226,6 +246,57 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
     /** A button leading to another route of this building block. */
     protected final Button navigationButton(String key, String route) {
         return new Button(text(key), event -> UI.getCurrent().navigate(route));
+    }
+
+    /**
+     * The quiet line at the foot of a view: the ways out that are needed
+     * rarely and then at once.
+     *
+     * <p>Links, not buttons, and deliberately so. They lead somewhere, they
+     * do not act, so an {@code <a>} is what belongs there -- it opens in a new
+     * tab, it reads as a link to a screen reader, and it stays out of the
+     * rule that every <em>button</em> fills the column
+     * ({@code IdentityViewLayoutTest}), which is what keeps the footer from
+     * becoming a third row of full-width boxes.
+     *
+     * <p>They separate themselves and wrap on a narrow screen. Hiding them
+     * behind a disclosure was considered and rejected: someone who has
+     * forgotten their password is stuck until they find this.
+     */
+    protected final Div footer(Component... links) {
+        Div row = new Div();
+        row.addClassName(VIEW_CLASS + "__footer");
+        row.addClassNames(FOOTER_CLASSES);
+        for (int i = 0; i < links.length; i++) {
+            if (i > 0) {
+                Span separator = new Span(FOOTER_SEPARATOR);
+                separator.addClassName(VIEW_CLASS + "__footer-separator");
+                separator.addClassNames(QUIET_CLASSES);
+                row.add(separator);
+            }
+            row.add(links[i]);
+        }
+        return row;
+    }
+
+    /**
+     * One way out in the footer; see {@link #footer}.
+     *
+     * <p>A button, like every other navigation here, and not a
+     * {@code RouterLink}: that one takes a route <em>class</em>, and no view
+     * of this building block knows another one -- routes are strings in
+     * {@link IdentityRoutes}, which is also what keeps them replaceable.
+     * Vaadin's own {@code LoginForm} renders "Forgot password?" as exactly
+     * this kind of button, so it is the platform's shape for this control,
+     * not a workaround.
+     */
+    protected final Button footerLink(String key, String id, String route) {
+        Button link = navigationButton(key, route);
+        link.setId(id);
+        link.addThemeVariants(FOOTER_VARIANTS);
+        link.addClassName(FOOTER_LINK_CLASS);
+        link.addClassNames(QUIET_CLASSES);
+        return link;
     }
 
     /**

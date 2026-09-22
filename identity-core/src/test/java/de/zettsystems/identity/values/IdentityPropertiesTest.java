@@ -1,10 +1,13 @@
 package de.zettsystems.identity.values;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -87,6 +90,47 @@ class IdentityPropertiesTest {
                 .containsExactly("https://orgaapp.example.com", "http://localhost:8090");
         assertThat(withPasskeys.locale()).isEqualTo(defaults.locale());
         assertThat(withPasskeys.withLocale(Locale.ENGLISH).passkeys()).isEqualTo(live);
+    }
+
+    /**
+     * The sign-in button is on unless an application says otherwise, and the
+     * shape without the flag still compiles -- an application that built the
+     * record by hand before 0.14.0 keeps working.
+     */
+    @Test
+    void theSignInButtonIsOnUnlessSwitchedOff() {
+        assertThat(PasskeySettings.defaults().loginButton()).isTrue();
+        assertThat(new PasskeySettings(true, "example.com", "App", List.of("https://example.com")).loginButton())
+                .as("the four-argument shape up to 0.13.x")
+                .isTrue();
+        assertThat(PasskeySettings.defaults().loginButton(false).loginButton()).isFalse();
+        assertThat(PasskeySettings.defaults().loginButton(false).enabled(true))
+                .as("the withers do not undo each other")
+                .isEqualTo(new PasskeySettings(true, "localhost", "Application",
+                        List.of("http://localhost:8080"), false));
+    }
+
+    /**
+     * The trap the second constructor sprang: with more than one, Spring
+     * cannot tell which binds, and the whole {@code zs.identity} tree fails
+     * -- every application, at startup, not just passkeys. The canonical one
+     * carries {@code @ConstructorBinding}; this pins it down.
+     */
+    @Test
+    void thePropertiesStillBindAlthoughTheRecordHasTwoConstructors() {
+        Map<String, Object> values = Map.of(
+                "zs.identity.passkeys.enabled", "true",
+                "zs.identity.passkeys.rp-id", "orgaapp.example.com",
+                "zs.identity.passkeys.rp-name", "OrgaApp",
+                "zs.identity.passkeys.allowed-origins", "https://orgaapp.example.com",
+                "zs.identity.passkeys.login-button", "false");
+        Binder binder = new Binder(new MapConfigurationPropertySource(values));
+
+        IdentityProperties bound = binder.bind("zs.identity", IdentityProperties.class).get();
+
+        assertThat(bound.passkeys().enabled()).isTrue();
+        assertThat(bound.passkeys().rpId()).isEqualTo("orgaapp.example.com");
+        assertThat(bound.passkeys().loginButton()).isFalse();
     }
 
     @Test

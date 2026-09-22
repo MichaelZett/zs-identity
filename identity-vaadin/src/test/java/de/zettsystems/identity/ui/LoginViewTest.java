@@ -3,6 +3,7 @@ package de.zettsystems.identity.ui;
 import com.github.mvysny.kaributesting.v10.LoginFormKt;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.internal.PendingJavaScriptInvocation;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -70,7 +71,7 @@ class LoginViewTest extends AbstractViewTest {
     void theForgotPasswordButtonLeadsToTheForgotPasswordView() {
         LoginView view = showLoginView(IdentityProperties.defaults());
 
-        LoginFormKt._forgotPassword(_get(view, LoginForm.class));
+        _click(_get(view, Button.class, spec -> spec.withId(LoginView.FORGOT_PASSWORD_LINK_ID)));
 
         assertThat(currentPath()).isEqualTo(IdentityRoutes.FORGOT_PASSWORD);
     }
@@ -96,16 +97,19 @@ class LoginViewTest extends AbstractViewTest {
         LoginView view = showLoginView(IdentityProperties.defaults());
 
         assertThat(_find(view, Button.class))
-                .noneMatch(button -> "login-resend-verification-button".equals(button.getId().orElse("")));
+                .noneMatch(button -> LoginView.RESEND_VERIFICATION_LINK_ID.equals(button.getId().orElse("")));
     }
 
     @Test
     void bothSideRoutesAreOfferedInTheDefaultSetup() {
         LoginView view = showLoginView(IdentityProperties.defaults());
 
-        assertThat(_find(view, Button.class)).hasSize(2);
+        // Register as a button of its own, the two ways out as footer links.
+        assertThat(_find(view, Button.class, spec -> spec.withId(LoginView.REGISTER_BUTTON_ID))).hasSize(1);
+        assertThat(_find(view, Button.class, spec -> spec.withId(LoginView.FORGOT_PASSWORD_LINK_ID))).hasSize(1);
+        assertThat(_find(view, Button.class, spec -> spec.withId(LoginView.RESEND_VERIFICATION_LINK_ID))).hasSize(1);
 
-        _click(_get(view, Button.class, spec -> spec.withId("login-register-button")));
+        _click(_get(view, Button.class, spec -> spec.withId(LoginView.REGISTER_BUTTON_ID)));
         assertThat(currentPath()).isEqualTo(IdentityRoutes.REGISTER);
     }
 
@@ -113,7 +117,7 @@ class LoginViewTest extends AbstractViewTest {
     void theResendButtonLeadsToTheResendView() {
         LoginView view = showLoginView(IdentityProperties.defaults());
 
-        _click(_get(view, Button.class, spec -> spec.withId("login-resend-verification-button")));
+        _click(_get(view, Button.class, spec -> spec.withId(LoginView.RESEND_VERIFICATION_LINK_ID)));
 
         assertThat(currentPath()).isEqualTo(IdentityRoutes.RESEND_VERIFICATION);
     }
@@ -251,6 +255,45 @@ class LoginViewTest extends AbstractViewTest {
 
         assertThat(aborts).as("the waiting offer is ended").hasSize(1);
         assertThat(passkeyCall("")).as("and the button's own ceremony follows").isNotNull();
+    }
+
+    /**
+     * The button can go where the offer in the username field is enough. The
+     * offer itself must not go with it -- it is the whole point of switching
+     * the button off.
+     */
+    @Test
+    void theButtonCanBeSwitchedOffWhileTheOfferStays() {
+        LoginView view = showLoginView(IdentityProperties.defaults()
+                .withPasskeys(PasskeySettings.defaults().enabled(true).loginButton(false)));
+
+        assertThat(_find(view, Button.class, spec -> spec.withId(LoginView.PASSKEY_BUTTON_ID)))
+                .as("switched off by the application")
+                .isEmpty();
+        assertThat(passkeyCall("conditional")).as("the offer is still made").isNotNull();
+    }
+
+    /**
+     * The ranking the page was rebuilt for: one primary button in the form,
+     * one bordered button that carries someone without an account, and the
+     * two ways out below as small links -- not four boxes of equal weight.
+     */
+    @Test
+    void theWaysOutSitQuietlyInAFooter() {
+        LoginView view = showLoginView(IdentityProperties.defaults());
+
+        Button forgot = _get(view, Button.class, spec -> spec.withId(LoginView.FORGOT_PASSWORD_LINK_ID));
+        Button resend = _get(view, Button.class, spec -> spec.withId(LoginView.RESEND_VERIFICATION_LINK_ID));
+
+        assertThat(forgot.getClassNames()).contains(IdentityFormView.FOOTER_LINK_CLASS);
+        assertThat(resend.getClassNames()).contains(IdentityFormView.FOOTER_LINK_CLASS);
+        assertThat(forgot.getWidth()).as("a way out does not fill the column").isNull();
+        assertThat(_find(view, Div.class, spec -> spec.withClasses(IdentityFormView.VIEW_CLASS + "__footer")))
+                .as("both sit in one row, so they can wrap together on a narrow screen")
+                .hasSize(1);
+        assertThat(_get(view, LoginForm.class).isForgotPasswordButtonVisible())
+                .as("the form's own link moved into the footer")
+                .isFalse();
     }
 
     /** Spring Security appends {@code ?error} after a failed sign-in. */
