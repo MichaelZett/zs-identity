@@ -10,6 +10,9 @@
 // spring-security-webauthn.js in spring-security-web): base64url without
 // padding for every binary field, and the assertion under the same names
 // the browser uses.
+//
+// "failed" carries the HTTP status when a request was turned down ("failed
+// HTTP 400"); the view logs that and still reads the word out of it.
 const contextPath = $0;
 const csrfHeader = $1;
 const csrfToken = $2;
@@ -30,6 +33,23 @@ const base64url = {
   }
 };
 
+// An error that carries the status of a rejected request. A rejected
+// WebAuthn endpoint is the one failure nobody can see from the outside: the
+// filters answer with an empty body, and a browser console is not a server
+// log. So the status rides along in the word the view gets.
+function httpError(status) {
+  const error = new Error('HTTP ' + status);
+  error.status = status;
+  return error;
+}
+
+// The catch-all code, with the status appended when there was one. The view
+// looks for the code INSIDE the message (PasskeyScripts.errorCode), so only
+// digits are ever appended -- never text that might hold another code.
+function failed(e) {
+  return e && e.status ? 'failed HTTP ' + e.status : 'failed';
+}
+
 function headers() {
   const result = { 'Content-Type': 'application/json' };
   if (csrfHeader) {
@@ -44,7 +64,7 @@ async function fetchOptions() {
     headers: headers()
   });
   if (!response.ok) {
-    throw new Error('HTTP ' + response.status);
+    throw httpError(response.status);
   }
   return response.json();
 }
@@ -86,7 +106,7 @@ async function signIn(credential) {
     return { reason: json.reason === 'disabled' ? 'disabled' : 'failed' };
   }
   if (!answer.ok || !json.authenticated || !json.redirectUrl) {
-    return { reason: 'failed' };
+    return { reason: answer.ok ? 'failed' : 'failed HTTP ' + answer.status };
   }
   return { redirectUrl: json.redirectUrl };
 }
@@ -100,7 +120,7 @@ async function run() {
     options = await fetchOptions();
   } catch (e) {
     console.warn('Passkey sign-in: no options', e);
-    throw 'failed';
+    throw failed(e);
   }
   let credential;
   try {
@@ -117,7 +137,7 @@ async function run() {
     outcome = await signIn(credential);
   } catch (e) {
     console.warn('Passkey sign-in: request failed', e);
-    throw 'failed';
+    throw failed(e);
   }
   if (outcome.reason) {
     throw outcome.reason;

@@ -12,6 +12,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.HttpMessageConverterAuthenticationSuccessHandler;
@@ -192,9 +194,7 @@ public final class IdentityPasskeyConfigurer extends AbstractHttpConfigurer<Iden
         registration.setDeleteCredentialAuthorizationManager(
                 new CredentialRecordOwnerAuthorizationManager(credentials, userEntities));
         registration.setSecurityContextHolderStrategy(getSecurityContextHolderStrategy());
-        // The creation options filter has no setter for the strategy (as of
-        // Spring Security 7.1); it keeps the static one it read at construction.
-        PublicKeyCredentialCreationOptionsFilter creationOptions = new PublicKeyCredentialCreationOptionsFilter(operations);
+        PublicKeyCredentialCreationOptionsFilter creationOptions = creationOptionsFilter(operations);
         PublicKeyCredentialRequestOptionsFilter requestOptions = new PublicKeyCredentialRequestOptionsFilter(operations);
         requestOptions.setSecurityContextHolderStrategy(getSecurityContextHolderStrategy());
         // All three after the AuthorizationFilter, so that the access rules
@@ -204,6 +204,52 @@ public final class IdentityPasskeyConfigurer extends AbstractHttpConfigurer<Iden
         http.addFilterAfter(registration, AuthorizationFilter.class);
         http.addFilterAfter(creationOptions, AuthorizationFilter.class);
         http.addFilterAfter(requestOptions, AuthorizationFilter.class);
+    }
+
+    /**
+     * Spring's creation options filter, built so that it reads the strategy
+     * the rest of the chain writes to.
+     *
+     * <p>{@link PublicKeyCredentialCreationOptionsFilter} takes its
+     * {@code SecurityContextHolderStrategy} from {@link SecurityContextHolder}
+     * in its constructor and offers no setter for it -- not in Spring
+     * Security 7.1.1 and not on its main branch (checked 2026-09-22); the
+     * other three filters have one. That is a hole wherever an application
+     * replaces the strategy <em>after</em> the filter chain has been built,
+     * and Vaadin does exactly that: its
+     * {@code VaadinAwareSecurityContextHolderStrategy} keeps the context in a
+     * {@code ThreadLocal} of its own and is installed from a
+     * {@code SmartInitializingSingleton}, which runs once every singleton --
+     * the {@code SecurityFilterChain} among them -- has been created. The
+     * filter then reads a strategy nobody writes to any more, finds no
+     * authentication, and fails its own {@code authenticated()} check with a
+     * bare {@code 400}: no body, no log line, the ceremony over before the
+     * authenticator is ever asked. Found in {@code terminplanung-halle} on
+     * 2026-09-22, the first production run with passkeys switched on; no
+     * test had seen it, because without Vaadin every filter shares the one
+     * static strategy.
+     *
+     * <p>So the filter is constructed while the strategy it ought to read is
+     * the one {@code SecurityContextHolder} hands out, and the previous one
+     * is put back right after. The swap is safe where it stands: the chain is
+     * built on a single thread during the context refresh, and the strategy
+     * held up here is the very one the application installs globally moments
+     * later. Putting it back leaves {@code SecurityContextHolder} in its
+     * {@code MODE_PRE_INITIALIZED} -- the mode anyone who sets a strategy by
+     * hand leaves behind, and the one Vaadin leaves behind anyway; it changes
+     * nothing but which strategy a later {@code setStrategyName} would build.
+     * Should Spring add the setter, this goes; should Spring read the
+     * strategy per request instead, it would fix itself.
+     */
+    private PublicKeyCredentialCreationOptionsFilter creationOptionsFilter(
+            WebAuthnRelyingPartyOperations operations) {
+        SecurityContextHolderStrategy previous = SecurityContextHolder.getContextHolderStrategy();
+        SecurityContextHolder.setContextHolderStrategy(getSecurityContextHolderStrategy());
+        try {
+            return new PublicKeyCredentialCreationOptionsFilter(operations);
+        } finally {
+            SecurityContextHolder.setContextHolderStrategy(previous);
+        }
     }
 
     /**

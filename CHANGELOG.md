@@ -5,6 +5,40 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 0.12.1 - 2026-09-22
+
+### Fixed
+- **Registering a passkey failed in every Vaadin application**, and said
+  nothing while doing it. `POST /webauthn/register/options` answered `400`
+  with an empty body and no log line, so the browser never got as far as
+  asking the authenticator: the person saw "the passkey could not be set up"
+  and nothing else. Found by `terminplanung-halle` on 2026-09-22, its first
+  production run with passkeys switched on; passkeys are off there again
+  until this is released.
+  - The cause is a gap in Spring Security. Three of the four WebAuthn filters
+    can be told which `SecurityContextHolderStrategy` to read;
+    `PublicKeyCredentialCreationOptionsFilter` takes the static one in its
+    constructor and has no setter for it -- not in 7.1.1 and not on its main
+    branch. Vaadin replaces the strategy from a `SmartInitializingSingleton`,
+    which runs *after* the filter chain has been built, and its
+    `VaadinAwareSecurityContextHolderStrategy` keeps the context in a
+    `ThreadLocal` of its own. The filter was left reading a strategy nobody
+    writes to, found no authentication, and failed its own `authenticated()`
+    check -- which answers `400`, not `401`, and logs nothing.
+  - `IdentityPasskeyConfigurer` now builds that one filter while the strategy
+    it should read is the one `SecurityContextHolder` hands out, and puts the
+    previous one back. `IdentityPasskeyConfigurerReplacedStrategyIT` holds it
+    down: the chain of `IdentityPasskeyConfigurerIT` with a strategy bean of
+    the application's, which is the one thing no test here had ever done --
+    without it every filter shares the one static strategy and the two cannot
+    be told apart.
+- **A turned-down WebAuthn request kept its status to itself.** Both browser
+  scripts rejected with a bare `failed`, so the status of the request -- the
+  only thing there is to go on when the endpoints answer with an empty body
+  -- was gone before it reached the server. They now append it (`failed HTTP
+  400`), the views log it, and the text on the screen is the one it always
+  was: the code is still read out of the message.
+
 ## 0.12.0 - 2026-09-21
 
 ### Added

@@ -156,6 +156,23 @@ class LoginViewTest extends AbstractViewTest {
                 "Die Anmeldung mit diesem Passkey hat nicht geklappt. Bitte melde dich mit deinem Passwort an.");
     }
 
+    /**
+     * A turned-down request brings its status along. It is the one failure
+     * that cannot be seen from the screen -- the script sends it so that the
+     * server log has it -- and it must still read as the catch-all, or the
+     * person would be shown a raw code.
+     */
+    @Test
+    void aRejectedRequestKeepsItsStatusAndStillReadsAsTheCatchAll() {
+        LoginView view = showLoginView(IdentityProperties.defaults()
+                .withPasskeys(PasskeySettings.defaults().enabled(true)));
+
+        view.onPasskeyError("failed HTTP 400");
+
+        assertThat(notificationTexts()).containsExactly(
+                "Die Anmeldung mit diesem Passkey hat nicht geklappt. Bitte melde dich mit deinem Passwort an.");
+    }
+
     /** Spring Security appends {@code ?error} after a failed sign-in. */
     @Test
     void theErrorParameterSwitchesTheFormIntoItsErrorState() {

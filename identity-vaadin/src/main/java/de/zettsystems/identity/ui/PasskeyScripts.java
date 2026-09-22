@@ -26,7 +26,12 @@ import java.util.List;
  *
  * <p>Each script returns a promise. It resolves with {@value #OK} on
  * success and rejects with one of the {@link #ERROR_CODES}, which the views
- * map to a text; anything else is treated as {@value #FAILED}.
+ * map to a text; anything else is treated as {@value #FAILED}. A rejection
+ * may carry a detail behind the code ({@code failed HTTP 400}) -- only
+ * digits, never text that could hold a second code. The views log it and
+ * show the text of the code alone: a request the filters turn down answers
+ * with an empty body, and without the status nobody can tell an access rule
+ * from a broken ceremony.
  */
 final class PasskeyScripts {
 
@@ -59,7 +64,8 @@ final class PasskeyScripts {
 
     /**
      * The code inside an error message. Vaadin wraps what a script rejects
-     * with, so the message is searched rather than compared.
+     * with, and the script may append a status, so the message is searched
+     * rather than compared.
      */
     static String errorCode(@Nullable String message) {
         if (message == null) {

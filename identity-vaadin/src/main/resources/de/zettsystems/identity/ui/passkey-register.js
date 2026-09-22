@@ -5,7 +5,8 @@
 // off), $3 the label the person gave the passkey. The returned promise
 // resolves with "ok" once the server has stored the passkey, and rejects
 // with one word that the view turns into a text: "unsupported", "cancelled"
-// or "failed".
+// or "failed". "failed" carries the HTTP status when a request was turned
+// down ("failed HTTP 400"); the view logs that and still reads the word.
 //
 // The wire format is the one Spring Security's WebAuthn filters expect (see
 // spring-security-webauthn.js in spring-security-web).
@@ -30,6 +31,23 @@ const base64url = {
   }
 };
 
+// An error that carries the status of a rejected request. A rejected
+// WebAuthn endpoint is the one failure nobody can see from the outside: the
+// filters answer with an empty body, and a browser console is not a server
+// log. So the status rides along in the word the view gets.
+function httpError(status) {
+  const error = new Error('HTTP ' + status);
+  error.status = status;
+  return error;
+}
+
+// The catch-all code, with the status appended when there was one. The view
+// looks for the code INSIDE the message (PasskeyScripts.errorCode), so only
+// digits are ever appended -- never text that might hold another code.
+function failed(e) {
+  return e && e.status ? 'failed HTTP ' + e.status : 'failed';
+}
+
 function headers() {
   const result = { 'Content-Type': 'application/json' };
   if (csrfHeader) {
@@ -44,7 +62,7 @@ async function fetchOptions() {
     headers: headers()
   });
   if (!response.ok) {
-    throw new Error('HTTP ' + response.status);
+    throw httpError(response.status);
   }
   return response.json();
 }
@@ -90,7 +108,7 @@ async function store(credential) {
     body: JSON.stringify(body)
   });
   if (!answer.ok) {
-    throw new Error('HTTP ' + answer.status);
+    throw httpError(answer.status);
   }
   const json = await answer.json();
   if (!json || !json.success) {
@@ -107,7 +125,7 @@ async function run() {
     options = await fetchOptions();
   } catch (e) {
     console.warn('Passkey registration: no options', e);
-    throw 'failed';
+    throw failed(e);
   }
   let credential;
   try {
@@ -123,7 +141,7 @@ async function run() {
     await store(credential);
   } catch (e) {
     console.warn('Passkey registration: storing failed', e);
-    throw 'failed';
+    throw failed(e);
   }
   return 'ok';
 }

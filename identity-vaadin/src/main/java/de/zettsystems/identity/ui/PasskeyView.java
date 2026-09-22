@@ -19,6 +19,8 @@ import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.PasskeyDto;
 import jakarta.annotation.security.PermitAll;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.RememberMeAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -52,6 +54,8 @@ import java.util.List;
 @Route(value = IdentityRoutes.PASSKEYS)
 @PermitAll
 public class PasskeyView extends IdentityFormView implements BeforeEnterObserver {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PasskeyView.class);
 
     static final String REGISTER_BUTTON_ID = "passkeys-register-button";
     static final String SIGN_IN_AGAIN_BUTTON_ID = "passkeys-sign-in-again-button";
@@ -141,7 +145,15 @@ public class PasskeyView extends IdentityFormView implements BeforeEnterObserver
 
     /** Package-visible so that the test can play the browser's answer. */
     void onRegistrationError(@Nullable String message) {
-        warn(text("identity.passkeys.error." + PasskeyScripts.errorCode(message)));
+        String code = PasskeyScripts.errorCode(message);
+        if (PasskeyScripts.FAILED.equals(code)) {
+            // The one outcome nobody can act on from the screen alone: the
+            // text says it did not work, and what the browser actually saw --
+            // the status of a turned-down endpoint -- would otherwise stay in
+            // a console no one reads.
+            LOG.warn("Passkey registration failed in the browser: {}", message);
+        }
+        warn(text("identity.passkeys.error." + code));
     }
 
     /** Package-visible so that the test can drive it without the row's button. */

@@ -12,6 +12,8 @@ import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.values.IdentityProperties;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The sign-in page.
@@ -26,6 +28,8 @@ import org.jspecify.annotations.Nullable;
 @Route(value = IdentityRoutes.LOGIN, autoLayout = false)
 @AnonymousAllowed
 public class LoginView extends IdentityFormView implements BeforeEnterObserver {
+
+    private static final Logger LOG = LoggerFactory.getLogger(LoginView.class);
 
     /** Custom properties of {@code vaadin-login-form}; see {@link #alignedWithColumn}. */
     static final String FORM_WIDTH_PROPERTY = "--vaadin-login-form-width";
@@ -119,7 +123,15 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
 
     /** Package-visible so that the test can play the browser's answer. */
     void onPasskeyError(@Nullable String message) {
-        warn(text("identity.login.passkey.error." + PasskeyScripts.errorCode(message)));
+        String code = PasskeyScripts.errorCode(message);
+        if (PasskeyScripts.FAILED.equals(code)) {
+            // The one outcome nobody can act on from the screen alone: the
+            // text says it did not work, and what the browser actually saw --
+            // the status of a turned-down endpoint -- would otherwise stay in
+            // a console no one reads.
+            LOG.warn("Passkey sign-in failed in the browser: {}", message);
+        }
+        warn(text("identity.login.passkey.error." + code));
     }
 
     @Override

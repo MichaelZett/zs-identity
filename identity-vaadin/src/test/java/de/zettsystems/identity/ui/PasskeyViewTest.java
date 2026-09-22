@@ -239,4 +239,21 @@ class PasskeyViewTest extends AbstractViewTest {
                 "Dieser Browser unterstützt keine Passkeys.",
                 "Der Passkey konnte nicht hinzugefügt werden. Bitte versuche es noch einmal.");
     }
+
+    /**
+     * A turned-down request brings its status along. It is the one failure
+     * that cannot be seen from the screen -- the script sends it so that the
+     * server log has it -- and it must still read as the catch-all, or the
+     * person would be shown a raw code.
+     */
+    @Test
+    void aRejectedRequestKeepsItsStatusAndStillReadsAsTheCatchAll() {
+        signInFresh();
+        PasskeyView view = showView(ENABLED);
+
+        view.onRegistrationError("failed HTTP 400");
+
+        assertThat(notificationTexts()).containsExactly(
+                "Der Passkey konnte nicht hinzugefügt werden. Bitte versuche es noch einmal.");
+    }
 }
