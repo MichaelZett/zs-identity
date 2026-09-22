@@ -251,6 +251,6 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
         if (IdentityMessageKeys.PASSWORD_TOO_SHORT.equals(key)) {
             return text(key, passwordMinLength);
         }
-        return COMMON_KEYS.contains(key) ? text(key) : text(IdentityMessageKeys.UNEXPECTED);
+        return text(COMMON_KEYS.contains(key) ? key : IdentityMessageKeys.UNEXPECTED);
     }
 }

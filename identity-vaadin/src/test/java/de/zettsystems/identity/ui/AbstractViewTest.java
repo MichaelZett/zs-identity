@@ -106,15 +106,20 @@ abstract class AbstractViewTest {
     }
 
     /**
-     * Flushes what was queued for the browser and returns the one script
-     * whose source contains the marker. Vaadin queues scripts of its own
-     * (titles, focus), so the views' are picked out by content.
+     * Flushes what was queued for the browser and returns every script whose
+     * source contains the marker, oldest first. Vaadin queues scripts of its
+     * own (titles, focus), so the views' are picked out by content.
      */
-    protected final PendingJavaScriptInvocation browserCall(String marker) {
+    protected final List<PendingJavaScriptInvocation> browserCallsContaining(String marker) {
         MockVaadin.clientRoundtrip();
-        List<PendingJavaScriptInvocation> matching = browserCalls.stream()
+        return browserCalls.stream()
                 .filter(call -> call.getInvocation().getExpression().contains(marker))
                 .toList();
+    }
+
+    /** The same, where exactly one is expected. */
+    protected final PendingJavaScriptInvocation browserCall(String marker) {
+        List<PendingJavaScriptInvocation> matching = browserCallsContaining(marker);
         if (matching.size() != 1) {
             throw new AssertionError("Expected exactly one script containing '" + marker + "', found "
                     + matching.size());

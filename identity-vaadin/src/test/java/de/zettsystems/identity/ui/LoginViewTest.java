@@ -24,8 +24,24 @@ class LoginViewTest extends AbstractViewTest {
 
     private final FakeRegistrationService registrationService = new FakeRegistrationService();
 
+    private static final IdentityProperties WITH_PASSKEYS = IdentityProperties.defaults()
+            .withPasskeys(PasskeySettings.defaults().enabled(true));
+
     private LoginView showLoginView(IdentityProperties properties) {
         return show(new LoginView(registrationService, properties, MESSAGES));
+    }
+
+    /**
+     * The queued ceremony of one kind. Both run the same script, so they are
+     * told apart by the mode in {@code $3}: empty for the button, "conditional"
+     * for the offer in the username field.
+     */
+    private PendingJavaScriptInvocation passkeyCall(String mode) {
+        List<PendingJavaScriptInvocation> matching = browserCallsContaining("navigator.credentials.get").stream()
+                .filter(call -> mode.equals(call.getInvocation().getParameters().get(3)))
+                .toList();
+        assertThat(matching).as("ceremonies in mode '%s'", mode).hasSize(1);
+        return matching.getFirst();
     }
 
     @Test
@@ -128,7 +144,7 @@ class LoginViewTest extends AbstractViewTest {
 
         _click(_get(view, Button.class, spec -> spec.withId(LoginView.PASSKEY_BUTTON_ID)));
 
-        PendingJavaScriptInvocation call = browserCall("navigator.credentials.get");
+        PendingJavaScriptInvocation call = passkeyCall("");
         // Vaadin appends the element itself as the last parameter ($this).
         assertThat(call.getInvocation().getParameters().subList(0, 3))
                 .as("context path, CSRF header, CSRF token -- none of them in a test")
@@ -171,6 +187,70 @@ class LoginViewTest extends AbstractViewTest {
 
         assertThat(notificationTexts()).containsExactly(
                 "Die Anmeldung mit diesem Passkey hat nicht geklappt. Bitte melde dich mit deinem Passwort an.");
+    }
+
+    /**
+     * The offer starts with the page, not with a click -- that is the whole
+     * point: whoever has a passkey is one touch away instead of three.
+     */
+    @Test
+    void theOfferStartsWithTheViewAndOnlyWhenPasskeysAreOn() {
+        showLoginView(WITH_PASSKEYS);
+
+        assertThat(passkeyCall("conditional")).as("queued without anyone clicking").isNotNull();
+
+        showLoginView(IdentityProperties.defaults());
+        assertThat(browserCallsContaining("navigator.credentials.get"))
+                .as("switched off, nothing is offered")
+                .hasSize(1);
+    }
+
+    /**
+     * An offer nobody took up says nothing. The script resolves quietly for
+     * every such outcome -- no conditional support, no passkey on the device,
+     * the password chosen instead -- because a message for something that was
+     * never asked for is noise on a page everybody sees.
+     */
+    @Test
+    void anOfferNobodyTookUpSaysNothing() {
+        showLoginView(WITH_PASSKEYS);
+
+        browserResolves(passkeyCall("conditional"), PasskeyScripts.QUIET);
+
+        assertThat(notificationTexts()).isEmpty();
+    }
+
+    /** A passkey the person really chose still speaks when the server turns it down. */
+    @Test
+    void aChosenPasskeyThatFailsIsStillNamed() {
+        showLoginView(WITH_PASSKEYS);
+
+        browserRejects(passkeyCall("conditional"), "disabled");
+
+        assertThat(notificationTexts())
+                .containsExactly("Dieses Konto ist gesperrt. Bitte wende dich an die Administration.");
+    }
+
+    /**
+     * The button has to end a waiting offer first: a browser turns down a
+     * second {@code navigator.credentials.get} while one is pending, so
+     * without this the button would fail for exactly the people the offer did
+     * not reach.
+     */
+    @Test
+    void theButtonEndsAWaitingOfferBeforeItAsks() {
+        LoginView view = showLoginView(WITH_PASSKEYS);
+
+        _click(_get(view, Button.class, spec -> spec.withId(LoginView.PASSKEY_BUTTON_ID)));
+
+        // The ceremony script mentions the controller too (it parks it), so
+        // the abort is the one script that does NOT run a ceremony.
+        List<PendingJavaScriptInvocation> aborts = browserCallsContaining("__zsPasskeyConditional").stream()
+                .filter(call -> !call.getInvocation().getExpression().contains("navigator.credentials.get"))
+                .toList();
+
+        assertThat(aborts).as("the waiting offer is ended").hasSize(1);
+        assertThat(passkeyCall("")).as("and the button's own ceremony follows").isNotNull();
     }
 
     /** Spring Security appends {@code ?error} after a failed sign-in. */

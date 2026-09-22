@@ -110,8 +110,12 @@ list is optional, and the auto-configuration takes care of everything else:
    that one adds its `anyRequest()` last by itself. After a passkey sign-in the session
    holds a `PasskeyAuthentication` whose principal is the same
    `IdentityUserDetails` as after a password sign-in.
-   With `identity-vaadin`, the sign-in page gains a button "Sign in with
-   passkey" and the view `IdentityRoutes.PASSKEYS` (`passkeys`) lets a
+   With `identity-vaadin`, the sign-in page offers the passkey in its
+   username field as soon as the browser has one for the domain (WebAuthn
+   conditional mediation, since 0.13.0 -- nothing to configure, and a browser
+   that cannot do it simply shows nothing), keeps the button "Sign in with
+   passkey" for everyone the offer does not reach, and the view
+   `IdentityRoutes.PASSKEYS` (`passkeys`) lets a
    signed-in account add, list and remove its passkeys -- link it from the
    application's settings; it is the one view that lives inside the
    application's `@Layout`. `PasskeyService#countFor(userId)` /

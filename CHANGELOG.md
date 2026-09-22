@@ -5,6 +5,34 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 0.13.0 - 2026-09-22
+
+### Added
+- **The sign-in page offers the passkey by itself** (WebAuthn conditional
+  mediation). Asked for by `terminplanung-halle` on the day passkeys went
+  live there: three steps -- open, tap "Sign in with passkey", choose, then
+  the fingerprint -- felt sluggish next to what other apps do. Now the
+  browser shows what it has for this domain right in the username field, and
+  whoever has a passkey is one touch away. Nothing to configure, and nothing
+  changes on the server: same endpoints, same filter chain, same ceremony --
+  only the browser's part of it is different.
+  - **It offers, it does not ask.** Deliberately not the ceremony on page
+    load: that would push a system prompt at everyone who opens the page,
+    including whoever wants the password or is only passing through. So every
+    outcome in which nobody took the offer up ends quietly -- no browser
+    support, no conditional mediation, no passkey on the device, the offer
+    ignored, the password chosen instead. Only a passkey the person really
+    picked can still report a failure, and then with the same text as before.
+  - **The button stays.** It is the way in for an older browser, for one
+    without conditional mediation, and for anyone whose passkey the offer does
+    not turn up. Pressing it ends a waiting offer first: a browser turns down a
+    second `navigator.credentials.get` while one is pending, so without that
+    the button would fail for exactly the people who need it.
+  - Reaching the username field needs no trickery: `vaadin-login-form` renders
+    its form into its own light DOM, and `autocomplete` is delegated to the
+    native input, so the field can be told it takes passkeys without touching
+    a shadow root (checked against `@vaadin/login` 25.2.6).
+
 ## 0.12.1 - 2026-09-22
 
 ### Fixed

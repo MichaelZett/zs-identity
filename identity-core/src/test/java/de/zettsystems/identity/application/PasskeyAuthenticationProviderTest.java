@@ -40,8 +40,9 @@ class PasskeyAuthenticationProviderTest {
             .id(Bytes.random()).name("anna@example.com").displayName("Anna").build();
 
     private static WebAuthnAuthenticationRequestToken request() {
+        RelyingPartyAuthenticationRequest webAuthnRequest = mock(RelyingPartyAuthenticationRequest.class);
         WebAuthnAuthenticationRequestToken token = mock(WebAuthnAuthenticationRequestToken.class);
-        when(token.getWebAuthnRequest()).thenReturn(mock(RelyingPartyAuthenticationRequest.class));
+        when(token.getWebAuthnRequest()).thenReturn(webAuthnRequest);
         return token;
     }
 

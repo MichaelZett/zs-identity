@@ -1,5 +1,6 @@
 package de.zettsystems.identity.ui;
 
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.login.LoginI18n;
@@ -39,11 +40,13 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
     static final String PASSKEY_BUTTON_ID = "login-passkey-button";
 
     private final LoginForm loginForm = new LoginForm();
+    private final boolean passkeysEnabled;
 
     public LoginView(RegistrationService registrationService, IdentityProperties properties,
                      IdentityMessages messages) {
         super(messages, properties, "login");
         centerOnPage();
+        this.passkeysEnabled = properties.passkeys().enabled();
 
         loginForm.setAction(IdentityRoutes.LOGIN);
         loginForm.setI18n(loginI18n(texts()));
@@ -58,7 +61,7 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
 
         // Passkeys are an option per person, never a requirement: the button
         // sits next to the form, the form stays as it is.
-        if (properties.passkeys().enabled()) {
+        if (passkeysEnabled) {
             column.add(fullWidth(passkeyButton()));
         }
         // The link only appears when self-registration is switched on.
@@ -76,6 +79,27 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
     @Override
     public String getPageTitle() {
         return text("identity.login.pageTitle");
+    }
+
+    /**
+     * Starts the quiet half of the passkey sign-in: the browser offers what
+     * it has for this site in the username field, and whoever wants it is one
+     * touch away instead of three. The button stays -- for an older browser,
+     * for one without conditional mediation, and for anyone whose passkey the
+     * offer does not turn up.
+     *
+     * <p>Here and not in the constructor: the script talks to the form as it
+     * stands in the page. A rejection lands in the same handler as the
+     * button's; everything nobody acted on resolves quietly and shows
+     * nothing.
+     */
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+        if (passkeysEnabled) {
+            PasskeyScripts.authenticateConditionally(loginForm)
+                    .then(String.class, result -> { }, this::onPasskeyError);
+        }
     }
 
     /**
@@ -117,8 +141,17 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
      * failures come back here.
      */
     private Button passkeyButton() {
-        return secondaryButton("identity.login.passkey", PASSKEY_BUTTON_ID,
-                event -> PasskeyScripts.authenticate(this).then(String.class, result -> { }, this::onPasskeyError));
+        return secondaryButton("identity.login.passkey", PASSKEY_BUTTON_ID, event -> startPasskeySignIn());
+    }
+
+    /**
+     * The button wins over the offer: a conditional request that is still
+     * waiting is ended first, because a browser turns down a second
+     * {@code navigator.credentials.get} while one is pending.
+     */
+    private void startPasskeySignIn() {
+        PasskeyScripts.abortConditional(loginForm);
+        PasskeyScripts.authenticate(this).then(String.class, result -> { }, this::onPasskeyError);
     }
 
     /** Package-visible so that the test can play the browser's answer. */
