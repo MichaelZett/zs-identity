@@ -9,6 +9,7 @@ plugins {
     id 'net.ltgt.nullaway' version "${nullawayGradleVersion}" apply false
     id 'com.github.spotbugs' version "${spotbugsGradleVersion}" apply false
     id 'io.github.ben-manes.versions' version "${benmanesVersion}" apply false
+    id 'com.vanniktech.maven.publish' version "${vanniktechPublishVersion}" apply false
     id 'org.sonarqube' version "${sonarVersion}"
     id 'org.openrewrite.rewrite' version "${rewriteGradleVersion}"
 }
@@ -125,10 +126,18 @@ ext.coverageExclusions = [
         '**/domain/**',
 ]
 
+// The artifact ids alone ("identity-core") read thinly in the Central Portal
+// and in search results; the POM carries a name worth reading.
+ext.pomNames = [
+        'identity-core'  : 'ZS Identity Core',
+        'identity-vaadin': 'ZS Identity Vaadin',
+]
+
 subprojects {
     apply plugin: 'java-library'
     apply plugin: 'jacoco'
-    apply plugin: 'maven-publish'
+    apply plugin: 'signing'
+    apply plugin: 'com.vanniktech.maven.publish'
     apply plugin: 'com.github.spotbugs'
     apply plugin: 'net.ltgt.errorprone'
     apply plugin: 'net.ltgt.nullaway'
@@ -141,8 +150,6 @@ subprojects {
         toolchain {
             languageVersion = JavaLanguageVersion.of("${javaVersion}")
         }
-        withSourcesJar()
-        withJavadocJar()
     }
 
     // Automatic-Module-Name instead of module-info.java: the building block
@@ -301,21 +308,68 @@ subprojects {
         dependsOn tasks.named('jacocoTestCoverageVerification')
     }
 
-    // Publishing: GitHub Packages (CI, releases) and mavenLocal
+    // Publishing: Maven Central from 1.0.0 on, GitHub Packages alongside for
+    // the applications that already depend on it, and mavenLocal
     // (./gradlew publishToMavenLocal for local iteration with an application).
-    // Credentials: gpr.user/gpr.key in ~/.gradle/gradle.properties, or
-    // GITHUB_ACTOR/GITHUB_TOKEN in CI.
-    publishing {
-        publications {
-            maven(MavenPublication) {
-                from components.java
-                pom {
-                    name = project.name
-                    description = 'Reusable identity building block for Spring Boot applications'
-                    url = 'https://github.com/MichaelZett/zs-identity'
+    //
+    // The publish plugin builds the publication, the sources and javadoc jars
+    // and the signatures; Central rejects a bundle without any of them. The
+    // setup is copied from zettsystems-recipes, which publishes the same way.
+    //
+    // Credentials: mavenCentralUsername/mavenCentralPassword (the portal's
+    // publisher token) and gpr.user/gpr.key in ~/.gradle/gradle.properties, or
+    // the ORG_GRADLE_PROJECT_* and GITHUB_* variables in CI.
+    //
+    // Locally the GPG agent holds the key; CI hands the key in through
+    // `signingInMemoryKey`, which the publish plugin wires up on its own.
+    if (!project.hasProperty('signingInMemoryKey')) {
+        signing {
+            useGpgCmd()
+        }
+    }
+
+    mavenPublishing {
+        // Uploads to the Central Portal (https://central.sonatype.com). The
+        // bundle is only validated, never released automatically -- release it
+        // by hand in the portal: a version on Central can never be removed or
+        // replaced.
+        publishToMavenCentral()
+        signAllPublications()
+
+        pom {
+            name = rootProject.ext.pomNames[project.name]
+            description = project.description
+            url = 'https://github.com/MichaelZett/zs-identity'
+            inceptionYear = '2026'
+            licenses {
+                license {
+                    name = 'The Apache License, Version 2.0'
+                    url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                    distribution = 'repo'
                 }
             }
+            developers {
+                developer {
+                    id = 'michaelzett'
+                    name = 'Michael Zoeller'
+                    email = 'michael2.zoeller@gmail.com'
+                    organization = 'ZettSystems'
+                    organizationUrl = 'https://zettsystems.de/'
+                }
+            }
+            scm {
+                url = 'https://github.com/MichaelZett/zs-identity'
+                connection = 'scm:git:https://github.com/MichaelZett/zs-identity.git'
+                developerConnection = 'scm:git:ssh://git@github.com/MichaelZett/zs-identity.git'
+            }
+            issueManagement {
+                system = 'GitHub'
+                url = 'https://github.com/MichaelZett/zs-identity/issues'
+            }
         }
+    }
+
+    publishing {
         repositories {
             maven {
                 name = 'GitHubPackages'

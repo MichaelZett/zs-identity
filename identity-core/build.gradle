@@ -2,6 +2,9 @@
 // password reset, roles and permissions. Deliberately WITHOUT a Vaadin
 // dependency, so that it stays usable in a pure REST application as well; the
 // views live in :identity-vaadin.
+description = 'Identity building block for Spring Boot: accounts, registration, sign-in, ' +
+        'password reset, passkeys and scoped roles -- without Vaadin.'
+
 dependencies {
     api 'org.springframework.boot:spring-boot-starter-security'
     api 'org.springframework.boot:spring-boot-starter-data-jpa'

@@ -5,6 +5,17 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## Unreleased
+
+### Changed
+- **Ready for Maven Central.** The build now publishes through
+  `com.vanniktech.maven.publish`: the POM carries a readable name per module,
+  a description, the licence, the developer, SCM and the issue tracker, and
+  every release artefact is signed. From 1.0.0 on the release uploads to
+  Maven Central as well; until then everything stays on GitHub Packages as
+  before, and nothing changes for an application that depends on it.
+  - Release artefacts on GitHub Packages carry `.asc` signatures from now on.
+
 ## 0.14.1 - 2026-09-25
 
 ### Fixed

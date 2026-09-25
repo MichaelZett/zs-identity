@@ -3,6 +3,9 @@
 // stays free of Vaadin. No Vaadin Gradle plugin here -- the frontend build runs
 // in the embedding application, which collects the views through
 // vaadin.allowed-packages.
+description = 'Vaadin views for the zs-identity building block: sign-in, registration, ' +
+        'verification, password reset and passkeys.'
+
 dependencies {
     api platform("com.vaadin:vaadin-bom:${vaadinVersion}")
     api project(':identity-core')

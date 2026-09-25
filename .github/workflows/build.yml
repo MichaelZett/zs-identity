@@ -72,6 +72,12 @@ jobs:
   # creates the tag and the GitHub release v<version>, and then raises the
   # version to the next patch SNAPSHOT. SNAPSHOTs are never published -- the
   # applications depend on release versions only.
+  #
+  # From 1.0.0 on it uploads to Maven Central first. The upload only creates a
+  # deployment in the Central Portal; releasing it is a click there, by hand,
+  # because a version on Central can never be removed or replaced. Before
+  # 1.0.0 the step stays out: 0.x may still break, and on Central it would
+  # stay forever.
   release:
     runs-on: ubuntu-latest
     needs: [build]
@@ -81,6 +87,12 @@ jobs:
     permissions:
       contents: write
       packages: write
+    # Every release version is signed, the one for GitHub Packages as well --
+    # the publish plugin signs all publications. Only this job sees the key: it
+    # runs on a push to main, never for a pull request.
+    env:
+      ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+      ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -102,6 +114,13 @@ jobs:
           java-version: '25'
 
       - uses: gradle/actions/setup-gradle@v6
+
+      - name: Upload to Maven Central (from 1.0.0 on)
+        if: ${{ !startsWith(needs.build.outputs.version, '0.') }}
+        run: ./gradlew publishToMavenCentral --no-daemon
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
       - name: Publish to GitHub Packages
         run: ./gradlew publishAllPublicationsToGitHubPackagesRepository --no-daemon
