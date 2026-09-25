@@ -5,6 +5,23 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 0.14.1 - 2026-09-25
+
+### Fixed
+- **The footer links on the sign-in page look like links, not like grey
+  boxes.** `LUMO_TERTIARY_INLINE` does not take the surface off a button in
+  Vaadin 25; it comes from the custom properties `--vaadin-button-background`,
+  `--vaadin-button-border-color`, `--vaadin-button-padding` and
+  `--vaadin-button-height`, which the links now set (transparent, `0`,
+  `auto`). Seen independently in two applications. This removes a decoration
+  and chooses no colour: size and colour stay with the application through
+  `identity-view__footer-link`.
+- **No stray `·` at the end of a line on a narrow screen.** The separator
+  between the footer links stayed behind once the second link wrapped (around
+  390 px). It is gone; the gap of the row separates the links at any width.
+  The CSS hook `identity-view__footer-separator` goes with it -- a rule that
+  targeted it now matches nothing, which is harmless.
+
 ## 0.14.0 - 2026-09-22
 
 ### Changed

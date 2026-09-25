@@ -362,7 +362,7 @@ every view carries `identity-view` and an identifier of its own
 `--resend-verification`, `--reset-password`, `--change-password`,
 `--claim-account`, `--confirm-email`, `--passkeys`); sign-in additionally has
 `identity-view__column` inside plus `identity-view__footer`,
-`identity-view__footer-link` and `identity-view__footer-separator` for the
+`identity-view__footer-link` for the
 quiet line of ways out below the buttons, and the passkey list has
 `identity-view__passkey-row`, `__passkey`, `__passkey-label` and
 `__passkey-dates` per entry. Classes of your own reach every view through

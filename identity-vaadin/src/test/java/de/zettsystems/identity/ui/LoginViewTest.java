@@ -296,6 +296,24 @@ class LoginViewTest extends AbstractViewTest {
                 .isFalse();
     }
 
+    /**
+     * Found in two applications independently after 0.14.0: the tertiary
+     * variant leaves Vaadin 25's grey box in place, and a separator stayed
+     * behind at the end of the line once the second link wrapped.
+     */
+    @Test
+    void theFooterLinksLookLikeLinksAndNeedNoSeparator() {
+        LoginView view = showLoginView(IdentityProperties.defaults());
+
+        Button forgot = _get(view, Button.class, spec -> spec.withId(LoginView.FORGOT_PASSWORD_LINK_ID));
+        IdentityFormView.FOOTER_LINK_STYLE.forEach((property, value) ->
+                assertThat(forgot.getStyle().get(property)).as(property).isEqualTo(value));
+        Div footer = _get(view, Div.class, spec -> spec.withClasses(IdentityFormView.VIEW_CLASS + "__footer"));
+        assertThat(footer.getChildren())
+                .as("nothing but the links -- the gap separates them")
+                .allMatch(child -> child.getElement().getClassList().contains(IdentityFormView.FOOTER_LINK_CLASS));
+    }
+
     /** Spring Security appends {@code ?error} after a failed sign-in. */
     @Test
     void theErrorParameterSwitchesTheFormIntoItsErrorState() {

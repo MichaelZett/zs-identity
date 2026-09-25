@@ -10,7 +10,6 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
-import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.BoxSizing;
@@ -26,6 +25,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -89,8 +89,20 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
     private static final String[] FOOTER_CLASSES = {LumoUtility.Display.FLEX, LumoUtility.FlexWrap.WRAP,
             LumoUtility.JustifyContent.CENTER, LumoUtility.AlignItems.CENTER, LumoUtility.Gap.SMALL};
     private static final String[] QUIET_CLASSES = {LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY};
-    /** Between two footer links; punctuation, not a text to translate. */
-    private static final String FOOTER_SEPARATOR = "·";
+    /**
+     * What takes the box off a footer link. {@code LUMO_TERTIARY_INLINE} does
+     * not do it in Vaadin 25: the grey surface comes from these custom
+     * properties, not from the host element, so every application would write
+     * the same CSS again. Removing a decoration is not choosing a colour --
+     * colour and size stay with the application through
+     * {@link #FOOTER_LINK_CLASS}. Same reasoning as the form width in
+     * {@code LoginView#alignedWithColumn}.
+     */
+    static final Map<String, String> FOOTER_LINK_STYLE = Map.of(
+            "--vaadin-button-background", "transparent",
+            "--vaadin-button-border-color", "transparent",
+            "--vaadin-button-padding", "0",
+            "--vaadin-button-height", "auto");
 
     /** The message keys that every view handles in the same way. */
     private static final Set<String> COMMON_KEYS = Set.of(
@@ -252,14 +264,16 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
      * The quiet line at the foot of a view: the ways out that are needed
      * rarely and then at once.
      *
-     * <p>Links, not buttons, and deliberately so. They lead somewhere, they
-     * do not act, so an {@code <a>} is what belongs there -- it opens in a new
-     * tab, it reads as a link to a screen reader, and it stays out of the
-     * rule that every <em>button</em> fills the column
-     * ({@code IdentityViewLayoutTest}), which is what keeps the footer from
-     * becoming a third row of full-width boxes.
+     * <p>They look like links, not like buttons: they lead somewhere and do
+     * not act, and they are the one exception to the rule that every button
+     * fills the column ({@code IdentityViewLayoutTest}), which is what keeps
+     * the footer from becoming a third row of full-width boxes. Why they are
+     * still buttons underneath is on {@link #footerLink}.
      *
-     * <p>They separate themselves and wrap on a narrow screen. Hiding them
+     * <p>They wrap on a narrow screen, and the gap is all that separates
+     * them: a separator character stayed behind at the end of the first line
+     * once the second link wrapped (0.14.0), and without a stylesheet of our
+     * own there is no media query to hide it. Hiding them
      * behind a disclosure was considered and rejected: someone who has
      * forgotten their password is stuck until they find this.
      */
@@ -267,15 +281,7 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
         Div row = new Div();
         row.addClassName(VIEW_CLASS + "__footer");
         row.addClassNames(FOOTER_CLASSES);
-        for (int i = 0; i < links.length; i++) {
-            if (i > 0) {
-                Span separator = new Span(FOOTER_SEPARATOR);
-                separator.addClassName(VIEW_CLASS + "__footer-separator");
-                separator.addClassNames(QUIET_CLASSES);
-                row.add(separator);
-            }
-            row.add(links[i]);
-        }
+        row.add(links);
         return row;
     }
 
@@ -296,6 +302,7 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
         link.addThemeVariants(FOOTER_VARIANTS);
         link.addClassName(FOOTER_LINK_CLASS);
         link.addClassNames(QUIET_CLASSES);
+        FOOTER_LINK_STYLE.forEach(link.getStyle()::set);
         return link;
     }
 
