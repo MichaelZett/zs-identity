@@ -1,8 +1,8 @@
 # zs-identity
 
 A reusable identity building block for Spring Boot applications: user accounts,
-self-registration with email verification, sign-in, password reset, roles and
-permissions.
+self-registration with email verification, sign-in with password or passkey,
+password reset, and roles that can be global or scoped to a tenant.
 
 | Artifact                          | Contents                                                      |
 |-----------------------------------|---------------------------------------------------------------|
@@ -14,27 +14,21 @@ Stack: Java 25, Spring Boot 4.1, Spring Data JPA, Spring Security, Vaadin 25
 
 ## Embedding it
 
+The artefacts are on Maven Central, so no extra repository and no credentials
+are needed:
+
 ```groovy
 repositories {
     mavenCentral()
-    maven {
-        name = 'GitHubPackages'
-        url = uri('https://maven.pkg.github.com/MichaelZett/zs-identity')
-        credentials {
-            username = project.findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR')
-            password = project.findProperty('gpr.key') ?: System.getenv('GITHUB_TOKEN')
-        }
-    }
 }
 
 dependencies {
-    implementation "de.zettsystems:identity-core:${identityVersion}"
-    implementation "de.zettsystems:identity-vaadin:${identityVersion}"   // optional
+    implementation 'de.zettsystems:identity-core:1.0.0'
+    implementation 'de.zettsystems:identity-vaadin:1.0.0'   // optional
 }
 ```
 
-`gpr.user`/`gpr.key` (a personal access token with `read:packages`) belong in
-`~/.gradle/gradle.properties`, never in the project.
+Versions before 1.0.0 were published to GitHub Packages only.
 
 After that the application has to do three things (1 to 3); the rest of the
 list is optional, and the auto-configuration takes care of everything else:
@@ -471,10 +465,12 @@ WebAuthn knows an account by), `auth_role`, `auth_role_authority`,
 `auth_token`, `auth_passkey` (since V1_6; one row per registered passkey,
 hanging off `auth_user` with `ON DELETE CASCADE`).
 
-The comments inside the migration scripts are German. They are the one place
-that was left untranslated on purpose: Flyway checksums the whole file, so
-editing a migration that has already been applied would make every existing
-installation fail validation.
+A fresh database takes the baseline `B1_6__identity_schema.sql`: the whole
+schema in one script. An existing installation never sees it and applies only
+the `V` scripts above its version, which is why they stay in the artefact.
+Their comments are German -- the one place left untranslated on purpose,
+because Flyway checksums the whole file and editing an applied migration would
+make every existing installation fail validation.
 
 ## The name model
 
@@ -494,9 +490,11 @@ objects exclusively through the account id (`UserAccountDto.id()`,
 ```
 
 Releasing: name the section in `CHANGELOG.md`, set the version in
-`gradle.properties` without `-SNAPSHOT` and push to `main`. CI publishes to
-GitHub Packages, creates the tag and the GitHub release `v<version>`, and then
-raises the version to the next patch `-SNAPSHOT` itself. SNAPSHOTs are not
+`gradle.properties` without `-SNAPSHOT` and push to `main`. CI uploads to Maven
+Central (the deployment is released by hand in the Central Portal, because a
+version there can never be replaced) and to GitHub Packages, creates the tag
+and the GitHub release `v<version>`, and then raises the version to the next
+patch `-SNAPSHOT` itself. SNAPSHOTs are not
 published; applications depend on release versions only (local iteration goes
 through `publishToMavenLocal`). For a minor or major jump, set the version by
 hand before the release.

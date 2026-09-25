@@ -85,8 +85,11 @@ To try a change against your own application without publishing:
   block's own schema `identity` with a Flyway history of its own — keep the
   **V1_x** numbering, write them schema-less (Flyway sets the search path),
   and never reference an application's tables. Never edit a migration that
-  has been released; add a new one. The `INCREMENT BY` of a sequence must
-  match the `allocationSize` of its `@SequenceGenerator`.
+  has been released -- that includes the baseline `B1_6` -- add a new one
+  (`V1_7` and up). A fresh database runs the baseline, an existing one the V
+  scripts above its version; `IdentityMigrationsIT` checks that both arrive
+  at the same schema. The `INCREMENT BY` of a sequence must match the
+  `allocationSize` of its `@SequenceGenerator`.
 - **No hard-coded user-facing text.** Everything goes through
   `IdentityMessages` and the bundles under
   `de/zettsystems/identity/messages/`: `core*` in `identity-core`, `ui*` in

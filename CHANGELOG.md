@@ -5,16 +5,28 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
-## Unreleased
+## 1.0.0 - 2026-09-25
+
+The first release on **Maven Central** (`de.zettsystems:identity-core`,
+`de.zettsystems:identity-vaadin`), and the point from which SemVer is a
+promise: the public API -- the services, the records in `values`, the
+properties under `zs.identity`, the routes and CSS hooks -- only breaks with a
+major version. Upgrading from 0.14.x needs no change in an application.
 
 ### Changed
-- **Ready for Maven Central.** The build now publishes through
+- **Published to Maven Central.** No extra repository and no credentials are
+  needed any more; `mavenCentral()` is enough. The build publishes through
   `com.vanniktech.maven.publish`: the POM carries a readable name per module,
   a description, the licence, the developer, SCM and the issue tracker, and
-  every release artefact is signed. From 1.0.0 on the release uploads to
-  Maven Central as well; until then everything stays on GitHub Packages as
-  before, and nothing changes for an application that depends on it.
+  every release artefact is signed. GitHub Packages keeps receiving each
+  release alongside, so an application can switch over at its own pace.
   - Release artefacts on GitHub Packages carry `.asc` signatures from now on.
+- **A fresh database takes one baseline script instead of six**
+  (`B1_6__identity_schema.sql`, commented in English). Existing installations
+  never run it and keep applying the `V` scripts above their version, which
+  therefore stay in the artefact; a test checks that the baseline and the
+  chain produce the same schema. From here on the scripts are only ever
+  added to, never merged again.
 
 ### Security
 - **The passkey sign-in follows only a same-origin target after sign-in.**

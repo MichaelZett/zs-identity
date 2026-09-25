@@ -10,6 +10,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import javax.sql.DataSource;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -32,6 +33,13 @@ class IdentityMigrationsIT {
             .withPassword("app")
             .withReuse(true);
     private static final AtomicInteger DATABASES = new AtomicInteger();
+    /**
+     * Makes Flyway ignore the baseline, so that the V chain runs: baseline
+     * scripts get a prefix nobody uses. A setting of Flyway's baseline
+     * extension, not of the fluent API.
+     */
+    private static final Map<String, String> CHAIN_ONLY =
+            Map.of("flyway.baselineMigrationPrefix", "NOT_A_BASELINE_");
 
     private static final List<String> TABLES =
             List.of("auth_user", "auth_role", "auth_role_authority", "auth_user_role", "auth_token", "auth_passkey");
@@ -40,18 +48,52 @@ class IdentityMigrationsIT {
         POSTGRES.start();
     }
 
+    /** Since 1.0.0 a fresh database takes the baseline, one script instead of six. */
     @Test
-    void aFreshDatabaseGetsTheSchemaAndAllMigrations() {
+    void aFreshDatabaseGetsTheSchemaThroughTheBaseline() {
         DataSource dataSource = freshDatabase();
 
         MigrateResult first = new IdentityMigrations().migrate(dataSource);
         MigrateResult second = new IdentityMigrations().migrate(dataSource);
 
-        assertThat(first.migrationsExecuted).isEqualTo(6);
+        assertThat(first.migrationsExecuted).isEqualTo(1);
         assertThat(second.migrationsExecuted).as("the second run finds nothing to do").isZero();
         assertThat(tablesIn(dataSource, "identity")).containsExactlyInAnyOrderElementsOf(withHistory(TABLES));
         assertThat(tablesIn(dataSource, "public")).isEmpty();
-        assertThat(versionsIn(dataSource, "identity", "flyway_schema_history"))
+        assertThat(versionsIn(dataSource, "identity", "flyway_schema_history")).containsExactly("1.6");
+    }
+
+    /**
+     * The baseline has to be exactly what the V chain arrives at -- columns
+     * and their order, types, defaults, constraints, indexes, sequences --
+     * or fresh installations and upgraded ones drift apart for good.
+     */
+    @Test
+    void theBaselineIsExactlyWhatTheChainArrivesAt() {
+        DataSource viaBaseline = freshDatabase();
+        new IdentityMigrations().migrate(viaBaseline);
+        DataSource viaChain = freshDatabase();
+        Flyway.configure()
+                .dataSource(viaChain)
+                .locations(IdentityMigrations.LOCATION)
+                .schemas("identity")
+                .defaultSchema("identity")
+                .createSchemas(true)
+                .configuration(CHAIN_ONLY)
+                .load()
+                .migrate();
+
+        assertThat(versionsIn(viaChain, "identity", "flyway_schema_history"))
+                .as("the chain really ran")
+                .containsExactly("1.1", "1.2", "1.3", "1.4", "1.5", "1.6");
+        assertThat(schemaOf(viaBaseline)).isEqualTo(schemaOf(viaChain));
+
+        // Every installation from before 1.0.0 looks like viaChain. Its first
+        // start with the baseline on the classpath must neither run anything
+        // nor fail Flyway's validation.
+        MigrateResult upgrade = new IdentityMigrations().migrate(viaChain);
+        assertThat(upgrade.migrationsExecuted).isZero();
+        assertThat(versionsIn(viaChain, "identity", "flyway_schema_history"))
                 .containsExactly("1.1", "1.2", "1.3", "1.4", "1.5", "1.6");
     }
 
@@ -143,13 +185,16 @@ class IdentityMigrationsIT {
     /**
      * Builds the pre-0.8.0 layout the honest way: the scripts run through
      * Flyway into {@code public} with the application's history, exactly as
-     * the old auto-configuration did it.
+     * the old auto-configuration did it -- through the V chain, because the
+     * baseline did not exist then. Left to itself, Flyway would take the
+     * baseline and build 1.6 whatever the target.
      */
     private static void legacyLayout(DataSource dataSource, String upTo) {
         Flyway.configure()
                 .dataSource(dataSource)
                 .locations(IdentityMigrations.LOCATION)
                 .target(upTo)
+                .configuration(CHAIN_ONLY)
                 .load()
                 .migrate();
     }
@@ -181,6 +226,31 @@ class IdentityMigrationsIT {
         return new JdbcTemplate(dataSource).queryForList(
                 "select column_name from information_schema.columns where table_schema = ? and table_name = ?",
                 String.class, schema, table);
+    }
+
+    /** Everything about the identity schema a migration can change, as comparable lines. */
+    private static List<String> schemaOf(DataSource dataSource) {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        Stream<String> columns = jdbc.queryForList("""
+                select concat_ws(' | ', table_name, ordinal_position, column_name, data_type,
+                                 character_maximum_length, datetime_precision, is_nullable, column_default)
+                from information_schema.columns
+                where table_schema = 'identity' and table_name <> 'flyway_schema_history'
+                """, String.class).stream();
+        Stream<String> constraints = jdbc.queryForList("""
+                select concat_ws(' | ', c.conrelid::regclass::text, c.conname, pg_get_constraintdef(c.oid))
+                from pg_constraint c join pg_namespace n on n.oid = c.connamespace
+                where n.nspname = 'identity' and c.conrelid::regclass::text not like '%flyway_schema_history'
+                """, String.class).stream();
+        Stream<String> indexes = jdbc.queryForList("""
+                select concat_ws(' | ', indexname, indexdef) from pg_indexes
+                where schemaname = 'identity' and tablename <> 'flyway_schema_history'
+                """, String.class).stream();
+        Stream<String> sequences = jdbc.queryForList("""
+                select concat_ws(' | ', sequence_name, start_value, increment) from information_schema.sequences
+                where sequence_schema = 'identity'
+                """, String.class).stream();
+        return Stream.of(columns, constraints, indexes, sequences).flatMap(lines -> lines).sorted().toList();
     }
 
     private static List<String> versionsIn(DataSource dataSource, String schema, String table) {
