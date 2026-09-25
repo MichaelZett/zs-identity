@@ -1,5 +1,10 @@
 # zs-identity
 
+[![Build](https://github.com/MichaelZett/zs-identity/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/MichaelZett/zs-identity/actions/workflows/build.yml?query=branch%3Amain)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=MichaelZett_zs-identity&metric=alert_status)](https://sonarcloud.io/project/overview?id=MichaelZett_zs-identity)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=MichaelZett_zs-identity&metric=coverage)](https://sonarcloud.io/component_measures?id=MichaelZett_zs-identity&metric=coverage)
+[![Maven Central](https://img.shields.io/maven-central/v/de.zettsystems/identity-core)](https://central.sonatype.com/namespace/de.zettsystems)
+
 A reusable identity building block for Spring Boot applications: user accounts,
 self-registration with email verification, sign-in with password or passkey,
 password reset, and roles that can be global or scoped to a tenant.

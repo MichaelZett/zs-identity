@@ -60,12 +60,27 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
 
+      # Counts, failures and durations on the run's summary page, every run.
+      # annotate_only keeps it off the Checks API, so contents: read suffices.
+      - name: Summarise test results
+        if: always()
+        uses: mikepenz/action-junit-report@a9170d5795813c01ab4901ffb045b52bab4ab09d  # v6.5.0
+        with:
+          report_paths: '**/build/test-results/test/TEST-*.xml'
+          annotate_only: true
+          detailed_summary: true
+          include_time_in_summary: true
+
+      # The HTML reports of every run, but only for a few days: they are only
+      # worth opening while the run is recent.
       - name: Upload test reports
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: '**/build/reports/tests/'
+          retention-days: 3
+          if-no-files-found: ignore
 
   # Release path as in terminplanung-halle: if gradle.properties on main holds
   # a version without -SNAPSHOT, the pipeline publishes to GitHub Packages,
