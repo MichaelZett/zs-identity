@@ -140,6 +140,45 @@ list is optional, and the auto-configuration takes care of everything else:
    domain is final, and check registration and sign-in on a real phone under
    HTTPS (`localhost` counts as secure for WebAuthn, but Face ID needs the
    device).
+9. **Protection against password guessing** (since 1.1.0): on without a line
+   of configuration. After three wrong passwords in a row the account is
+   locked for 15 minutes, every further lock twice as long up to 24 hours;
+   and from the first failure every sign-in waits before its password is
+   checked (1 s, 2 s, 4 s, up to 8 s), counted per sign-in name and per
+   client address, so that trying one password on many addresses is slowed
+   down too. The delay is kept in memory, bounded, and at most
+   `max-delayed-requests` sign-ins wait at a time; the next one is turned
+   down unchecked rather than parked on a thread.
+   - **No account enumeration.** Unknown address, locked account and wrong
+     password end in the same failure with the same message after the same
+     time -- a locked account even with the *right* password, so that the
+     answer never says a guess was correct.
+   - **Never permanent.** A lock runs out by itself, and **"Forgot password"
+     lifts it**: the link in the mail proves ownership. So does any new
+     password, `UserAccountService#unlock(userId)` for an administrator, and
+     a successful sign-in with a **passkey**. Failed passkey sign-ins are not
+     counted -- there is nothing to guess -- and a locked account may still
+     sign in with one: the lock is there to stop guessing at the password,
+     not to keep out someone who proves possession more strongly than the
+     reset mail does. `UserAccountDto.lockedUntil()` / `lockedAt(now)` show
+     the lock; it is separate from `setEnabled(false)`.
+   - **The owner is told** by mail (`notify-by-mail`), since the sign-in page
+     says the same for every failure. An application with its own
+     `IdentityMailSender` implements `sendAccountTemporarilyLocked(..)` for
+     it; until then no notice goes out, and the lock works all the same.
+     Each lock is also published as `AccountTemporarilyLocked` and logged as
+     a WARN line with account id and client address.
+   - **How it gets in.** The building block declares an
+     `AuthenticationProvider` bean, which Spring Security puts into its
+     global `AuthenticationManager` in place of the `DaoAuthenticationProvider`
+     it would otherwise build from the `UserDetailsService`; every form login
+     uses it. It steps back when the application declares an
+     `AuthenticationProvider` of its own.
+   - **Behind a reverse proxy** the client address is the proxy's unless
+     Spring reads the forwarded headers
+     (`server.forward-headers-strategy: native` or `framework`). Without that
+     every client shares one address and one delay. A rate limit on the
+     sign-in path at the proxy remains a good idea on top.
 
 ## Configuration (`zs.identity.*`)
 
@@ -164,6 +203,14 @@ list is optional, and the auto-configuration takes care of everything else:
 | `passkeys.rp-name`            | `Application`            | the name the authenticator shows when a passkey is created |
 | `passkeys.allowed-origins`    | `http://localhost:8080`  | origins the browser may sign in from, with scheme and port; each must belong to `rp-id` or a subdomain of it |
 | `passkeys.login-button`       | `true`                   | show the button "Sign in with passkey"; switch off where the offer in the username field is enough -- but it is the only way in for a browser without conditional mediation |
+| `login-protection.enabled`    | `true`                   | temporary lock and delay against password guessing (see step 9) |
+| `login-protection.max-attempts` | `3`                    | wrong passwords in a row that lock the account |
+| `login-protection.lock-duration` | `15m`                 | length of the first lock; each further one lasts twice as long |
+| `login-protection.max-lock-duration` | `24h`             | longest lock; failures older than this are forgotten |
+| `login-protection.delay`      | `1s`                     | wait before the password is checked after the first failure, doubling with each further one; `0` switches the delay off |
+| `login-protection.max-delay`  | `8s`                     | longest wait |
+| `login-protection.max-delayed-requests` | `50`           | sign-ins that may wait at the same time; beyond that they are turned down unchecked |
+| `login-protection.notify-by-mail` | `true`               | mail the account when it is locked |
 
 **Mail delivery is optional** (since 0.7.0). `spring-boot-starter-mail` only
 hangs `compileOnly` off the building block -- whoever wants to send mails takes
@@ -320,6 +367,12 @@ implementing the sealed `IdentityAccountEvent`):
 | `EmailChanged`    | an address is put on an account (`inviteToClaim`) | `userId`, `previousEmail`, `email` |
 | `AccountLocked`   | `setEnabled(id, false)` | `userId`, `email` |
 | `AccountDeleted`  | `deleteAccount` | `userId`, `email` |
+
+`AccountTemporarilyLocked` (since 1.1.0; `userId`, `email`, `lockedUntil`,
+`clientAddress`) is published too, when too many wrong passwords lock an
+account for a while, but it is deliberately not one of these shapes and
+touches no remember-me token: anybody who knows an address can cause it, and
+it must not sign the owner out everywhere.
 
 They are published **inside** the transaction that makes the change. Listen
 with `@TransactionalEventListener` if you must not act on a change that is

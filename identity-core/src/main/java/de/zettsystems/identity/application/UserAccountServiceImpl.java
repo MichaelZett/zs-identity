@@ -220,6 +220,14 @@ class UserAccountServiceImpl implements UserAccountService {
 
     @Override
     @Transactional
+    public UserAccountDto unlock(Long userId) {
+        UserAccount user = requireUser(userId);
+        user.clearFailedLogins();
+        return UserAccountMapper.toDto(user);
+    }
+
+    @Override
+    @Transactional
     public void changePassword(Long userId, String newRawPassword) {
         requireLongEnough(newRawPassword);
         UserAccount user = requireUser(userId);

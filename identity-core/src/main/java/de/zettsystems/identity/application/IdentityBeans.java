@@ -13,6 +13,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -207,6 +209,48 @@ public class IdentityBeans {
         PublicKeyCredentialUserEntityRepository identityPasskeyUserEntityRepository(
                 UserAccountRepository userRepository) {
             return new JpaPublicKeyCredentialUserEntityRepository(userRepository);
+        }
+    }
+
+    /**
+     * The protection against password guessing (see
+     * {@link LoginProtectionAuthenticationProvider}), on unless
+     * {@code zs.identity.login-protection.enabled=false}.
+     *
+     * <p>The provider steps back when the application declares an
+     * {@link AuthenticationProvider} of its own: Spring Security takes a
+     * provider bean only when there is exactly one, and with two it would
+     * quietly take neither -- which would change the sign-in of an
+     * application that worked before. Such an application wires the
+     * protection into its own provider or goes without it.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnProperty(name = "zs.identity.login-protection.enabled", havingValue = "true",
+            matchIfMissing = true)
+    static class LoginProtection {
+
+        @Bean
+        @ConditionalOnMissingBean
+        LoginThrottle loginThrottle(IdentityProperties properties, Clock clock) {
+            return new LoginThrottle(properties.loginProtection(), clock);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        LoginAttempts loginAttempts(UserAccountRepository userRepository, IdentityProperties properties,
+                                    IdentityMailSender mailSender, ApplicationEventPublisher events, Clock clock) {
+            return new LoginAttempts(userRepository, properties, mailSender, events, clock,
+                    command -> Thread.ofVirtual().name("identity-lock-notice").start(command));
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(AuthenticationProvider.class)
+        LoginProtectionAuthenticationProvider loginProtectionAuthenticationProvider(
+                UserDetailsService userDetailsService, PasswordEncoder passwordEncoder,
+                LoginThrottle throttle, LoginAttempts attempts) {
+            DaoAuthenticationProvider passwordCheck = new DaoAuthenticationProvider(userDetailsService);
+            passwordCheck.setPasswordEncoder(passwordEncoder);
+            return new LoginProtectionAuthenticationProvider(passwordCheck, throttle, attempts);
         }
     }
 

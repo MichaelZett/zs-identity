@@ -14,5 +14,11 @@ public enum IdentityMailType {
     /** Carries the link for setting a new password. */
     PASSWORD_RESET,
     /** Invites someone to claim an account: confirm the address, set a first password. */
-    INVITATION
+    INVITATION,
+    /**
+     * Tells the owner that the account is locked for a while after too many
+     * wrong passwords, and carries the link to "forgot password", which
+     * lifts the lock (since 1.1.0).
+     */
+    ACCOUNT_TEMPORARILY_LOCKED
 }
