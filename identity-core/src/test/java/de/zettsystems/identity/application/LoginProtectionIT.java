@@ -106,6 +106,17 @@ class LoginProtectionIT {
             return new LoginThrottle(properties.loginProtection(), clock, waits.list::add);
         }
 
+        /**
+         * Sends the lock notice on the calling thread, so that the test sees
+         * it the moment the sign-in returns instead of polling for it.
+         */
+        @Bean
+        LoginAttempts directLoginAttempts(UserAccountRepository userRepository, IdentityProperties properties,
+                                          IdentityMailSender mailSender, ApplicationEventPublisher events,
+                                          Clock clock) {
+            return new LoginAttempts(userRepository, properties, mailSender, events, clock, Runnable::run);
+        }
+
         @Bean
         Waits waits() {
             return new Waits();
@@ -162,7 +173,7 @@ class LoginProtectionIT {
     @Autowired
     private LockEvents lockEvents;
 
-    private final Map<MockHttpServletResponse, MockHttpServletRequest> requests = new IdentityHashMap<>();
+    private final Map<MockHttpServletResponse, MockHttpServletRequest> sentRequests = new IdentityHashMap<>();
     private RecordingMailSender mails;
     private MutableTestClock testClock;
     private List<Duration> waits;
@@ -204,8 +215,9 @@ class LoginProtectionIT {
             assertThat(event.userId()).isEqualTo(anna.id());
             assertThat(event.clientAddress()).isEqualTo("127.0.0.1");
         });
-        assertThat(awaitMailTo(EMAIL).kind()).isEqualTo(RecordingMailSender.Kind.ACCOUNT_TEMPORARILY_LOCKED);
-        assertThat(awaitMailTo(EMAIL).url()).isEqualTo("http://localhost:8080/password/forgot");
+        RecordingMailSender.SentMail notice = mails.lastMailTo(EMAIL).orElseThrow();
+        assertThat(notice.kind()).isEqualTo(RecordingMailSender.Kind.ACCOUNT_TEMPORARILY_LOCKED);
+        assertThat(notice.url()).isEqualTo("http://localhost:8080/password/forgot");
     }
 
     @Test
@@ -323,12 +335,12 @@ class LoginProtectionIT {
         } finally {
             SecurityContextHolder.clearContext();
         }
-        requests.put(response, request);
+        sentRequests.put(response, request);
         return response;
     }
 
     private AuthenticationException lastException(MockHttpServletResponse response) {
-        MockHttpServletRequest request = requests.get(response);
+        MockHttpServletRequest request = sentRequests.get(response);
         Object exception = request.getSession().getAttribute(WebAttributes.AUTHENTICATION_EXCEPTION);
         assertThat(exception).isInstanceOf(AuthenticationException.class);
         return (AuthenticationException) exception;
@@ -337,17 +349,5 @@ class LoginProtectionIT {
     private void assertRefused(MockHttpServletResponse response) {
         assertThat(response.getStatus()).isEqualTo(302);
         assertThat(response.getRedirectedUrl()).isEqualTo("/login?error");
-    }
-
-    /** The notice goes out from a thread of its own, so the test waits for it a little. */
-    private RecordingMailSender.SentMail awaitMailTo(String email) throws InterruptedException {
-        for (int i = 0; i < 100; i++) {
-            var mail = mails.lastMailTo(email);
-            if (mail.isPresent()) {
-                return mail.get();
-            }
-            Thread.sleep(50);
-        }
-        throw new AssertionError("No mail to " + email);
     }
 }

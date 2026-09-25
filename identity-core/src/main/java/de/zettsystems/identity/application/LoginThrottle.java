@@ -62,7 +62,7 @@ final class LoginThrottle {
     }
 
     LoginThrottle(LoginProtectionSettings settings, Clock clock) {
-        this(settings, clock, duration -> Thread.sleep(duration));
+        this(settings, clock, Thread::sleep);
     }
 
     /**
@@ -83,7 +83,7 @@ final class LoginThrottle {
         try {
             sleeper.sleep(delay);
             return true;
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return false;
         } finally {
