@@ -16,6 +16,17 @@ Notable changes to zs-identity. The format follows
   before, and nothing changes for an application that depends on it.
   - Release artefacts on GitHub Packages carry `.asc` signatures from now on.
 
+### Security
+- **The passkey sign-in follows only a same-origin target after sign-in.**
+  The page to go to comes from the server's answer; the script now ignores
+  anything outside the current origin and goes to the context path instead.
+  Spring's saved request is always one of ours, so nothing changes in normal
+  use -- it closes the door an open redirect would come through (found by
+  SonarQube Cloud, `jssecurity:S6105`).
+- The passkey scripts reject with `Error` objects instead of bare strings.
+  The view reads the code inside the message as before, so an application
+  sees no difference.
+
 ## 0.14.1 - 2026-09-25
 
 ### Fixed

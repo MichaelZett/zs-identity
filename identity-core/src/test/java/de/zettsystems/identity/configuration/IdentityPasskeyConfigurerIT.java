@@ -119,7 +119,7 @@ class IdentityPasskeyConfigurerIT {
     }
 
     @Autowired
-    private WebApplicationContext context;
+    private WebApplicationContext webContext;
     @Autowired
     private FilterChainProxy filterChain;
     @Autowired
@@ -254,7 +254,7 @@ class IdentityPasskeyConfigurerIT {
      * own token repository.
      */
     private MockHttpServletRequest post(String path) {
-        MockHttpServletRequest request = new MockHttpServletRequest(context.getServletContext(), "POST", path);
+        MockHttpServletRequest request = new MockHttpServletRequest(webContext.getServletContext(), "POST", path);
         return csrf().postProcessRequest(request);
     }
 

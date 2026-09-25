@@ -438,7 +438,20 @@ sonar {
         // @ComponentScan"), so the number says nothing about how complex the
         // class is. Scoped to the services; a real method with eight
         // parameters is still reported everywhere else.
-        property 'sonar.issue.ignore.multicriteria', 's1948,s2160,s110,s107'
+        //
+        // Three more that only SonarQube Cloud raises:
+        // - plsql:* reads the Flyway scripts as Oracle PL/SQL. They are
+        //   PostgreSQL ("VARCHAR2" does not exist there), the UPDATE without
+        //   WHERE in V1_2 is a deliberate backfill of every row, and a script
+        //   that ran once may never change again (Flyway's checksum).
+        // - javascript:S7785 wants top-level await in the passkey scripts. They
+        //   run as the body of a function through executeJs, where top-level
+        //   await is a syntax error; `return run(this)` is the only form.
+        // - java:S2077 on IdentityMigrations: the SQL is assembled from schema
+        //   and table names, which cannot be bound as parameters. They are
+        //   quoted with doubled quotes (`qualified`), every value is bound.
+        //   Scoped to this one class; dynamic SQL anywhere else still counts.
+        property 'sonar.issue.ignore.multicriteria', 's1948,s2160,s110,s107,plsql,s7785,s2077'
         property 'sonar.issue.ignore.multicriteria.s2160.ruleKey', 'java:S2160'
         property 'sonar.issue.ignore.multicriteria.s2160.resourceKey', '**/domain/**/*.java'
         property 'sonar.issue.ignore.multicriteria.s1948.ruleKey', 'java:S1948'
@@ -447,5 +460,11 @@ sonar {
         property 'sonar.issue.ignore.multicriteria.s110.resourceKey', '**/ui/**/*.java'
         property 'sonar.issue.ignore.multicriteria.s107.ruleKey', 'java:S107'
         property 'sonar.issue.ignore.multicriteria.s107.resourceKey', '**/application/**/*.java'
+        property 'sonar.issue.ignore.multicriteria.plsql.ruleKey', 'plsql:*'
+        property 'sonar.issue.ignore.multicriteria.plsql.resourceKey', '**/db/identity/*.sql'
+        property 'sonar.issue.ignore.multicriteria.s7785.ruleKey', 'javascript:S7785'
+        property 'sonar.issue.ignore.multicriteria.s7785.resourceKey', '**/ui/passkey-*.js'
+        property 'sonar.issue.ignore.multicriteria.s2077.ruleKey', 'java:S2077'
+        property 'sonar.issue.ignore.multicriteria.s2077.resourceKey', '**/configuration/IdentityMigrations.java'
     }
 }

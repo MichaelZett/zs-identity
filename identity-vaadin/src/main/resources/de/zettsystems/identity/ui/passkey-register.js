@@ -4,9 +4,10 @@
 // header name and value of Spring Security's CSRF token (empty when CSRF is
 // off), $3 the label the person gave the passkey. The returned promise
 // resolves with "ok" once the server has stored the passkey, and rejects
-// with one word that the view turns into a text: "unsupported", "cancelled"
-// or "failed". "failed" carries the HTTP status when a request was turned
-// down ("failed HTTP 400"); the view logs that and still reads the word.
+// with an Error whose message is one word that the view turns into a text:
+// "unsupported", "cancelled" or "failed". "failed" carries the HTTP status
+// when a request was turned down ("failed HTTP 400"); the view logs that and
+// still reads the word.
 //
 // The wire format is the one Spring Security's WebAuthn filters expect (see
 // spring-security-webauthn.js in spring-security-web).
@@ -17,15 +18,15 @@ const label = $3;
 
 const base64url = {
   encode(buffer) {
-    const base64 = window.btoa(String.fromCharCode(...new Uint8Array(buffer)));
-    return base64.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const base64 = window.btoa(String.fromCodePoint(...new Uint8Array(buffer)));
+    return base64.replaceAll('=', '').replaceAll('+', '-').replaceAll('/', '_');
   },
   decode(text) {
-    const base64 = text.replace(/-/g, '+').replace(/_/g, '/');
+    const base64 = text.replaceAll('-', '+').replaceAll('_', '/');
     const binary = window.atob(base64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+      bytes[i] = binary.codePointAt(i);
     }
     return bytes.buffer;
   }
@@ -45,7 +46,7 @@ function httpError(status) {
 // looks for the code INSIDE the message (PasskeyScripts.errorCode), so only
 // digits are ever appended -- never text that might hold another code.
 function failed(e) {
-  return e && e.status ? 'failed HTTP ' + e.status : 'failed';
+  return new Error(e?.status ? 'failed HTTP ' + e.status : 'failed');
 }
 
 function headers() {
@@ -111,14 +112,14 @@ async function store(credential) {
     throw httpError(answer.status);
   }
   const json = await answer.json();
-  if (!json || !json.success) {
+  if (!json?.success) {
     throw new Error('Unexpected answer ' + JSON.stringify(json));
   }
 }
 
 async function run() {
   if (!window.PublicKeyCredential || !navigator.credentials) {
-    throw 'unsupported';
+    throw new Error('unsupported');
   }
   let options;
   try {
@@ -131,11 +132,11 @@ async function run() {
   try {
     credential = await askAuthenticator(options);
   } catch (e) {
-    const cancelled = e && (e.name === 'NotAllowedError' || e.name === 'AbortError');
+    const cancelled = e?.name === 'NotAllowedError' || e?.name === 'AbortError';
     if (!cancelled) {
       console.warn('Passkey registration: authenticator failed', e);
     }
-    throw cancelled ? 'cancelled' : 'failed';
+    throw new Error(cancelled ? 'cancelled' : 'failed');
   }
   try {
     await store(credential);
