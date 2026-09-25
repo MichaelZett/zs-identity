@@ -47,8 +47,12 @@ jobs:
       # Manual instead of autobuild: autobuild guesses at the build and would
       # run the tests as well, which start PostgreSQL through Testcontainers.
       # CodeQL only needs the compiled classes.
+      #
+      # Without the build cache: CodeQL reads the code by watching javac, and a
+      # push that leaves the sources alone (README, workflow) would otherwise
+      # take every class from the cache -- no javac, nothing seen, the run fails.
       - name: Compile
-        run: ./gradlew compileJava compileTestJava --no-daemon
+        run: ./gradlew compileJava compileTestJava --no-daemon --no-build-cache
 
       - name: Analyze
         uses: github/codeql-action/analyze@v4
