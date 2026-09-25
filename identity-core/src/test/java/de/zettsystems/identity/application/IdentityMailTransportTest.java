@@ -7,6 +7,7 @@ import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.UserAccountDto;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,6 +57,36 @@ class IdentityMailTransportTest {
                 .as("the HTML part escapes what the text part carries verbatim")
                 .contains("href=\"http://example.com/claim?token=c&amp;x=&lt;y&gt;\"");
         assertThat(mail.text()).as("the invitation names its longer validity").contains("7");
+    }
+
+    @Test
+    void theLockNoticeNamesTheDurationAndLeadsToForgotPassword() {
+        testee.sendAccountTemporarilyLocked(USER, "http://example.com/password/forgot", Duration.ofMinutes(30));
+
+        IdentityMail mail = transport.mails.getFirst();
+        assertThat(mail.type()).isEqualTo(IdentityMailType.ACCOUNT_TEMPORARILY_LOCKED);
+        assertThat(mail.subject()).isEqualTo("Dein Zugang ist vorübergehend gesperrt");
+        assertThat(mail.text()).contains("Anna").contains("30 Minuten").contains("http://example.com/password/forgot");
+        assertThat(mail.html()).contains("href=\"http://example.com/password/forgot\"");
+    }
+
+    /** An application's own sender predating 1.1.0 keeps compiling and simply sends no notice. */
+    @Test
+    void aSenderOfItsOwnSendsNoLockNoticeUnlessItWantsTo() {
+        IdentityMailSender own = new IdentityMailSender() {
+            @Override
+            public void sendEmailVerification(UserAccountDto user, String confirmationUrl) {
+                throw new AssertionError("not called");
+            }
+
+            @Override
+            public void sendPasswordReset(UserAccountDto user, String resetUrl) {
+                throw new AssertionError("not called");
+            }
+        };
+
+        assertThatCode(() -> own.sendAccountTemporarilyLocked(USER, "http://example.com/x", Duration.ofMinutes(15)))
+                .doesNotThrowAnyException();
     }
 
     @Test

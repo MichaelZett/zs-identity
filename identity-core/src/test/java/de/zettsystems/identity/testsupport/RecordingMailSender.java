@@ -3,9 +3,10 @@ package de.zettsystems.identity.testsupport;
 import de.zettsystems.identity.application.IdentityMailSender;
 import de.zettsystems.identity.values.UserAccountDto;
 
-import java.util.ArrayList;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Remembers the mails that were sent instead of delivering them.
@@ -23,10 +24,12 @@ public class RecordingMailSender implements IdentityMailSender {
     public enum Kind {
         EMAIL_VERIFICATION,
         PASSWORD_RESET,
-        INVITATION
+        INVITATION,
+        ACCOUNT_TEMPORARILY_LOCKED
     }
 
-    private final List<SentMail> sent = new ArrayList<>();
+    // Thread-safe: the lock notice is sent from a thread of its own.
+    private final List<SentMail> sent = new CopyOnWriteArrayList<>();
 
     @Override
     public void sendEmailVerification(UserAccountDto user, String confirmationUrl) {
@@ -41,6 +44,11 @@ public class RecordingMailSender implements IdentityMailSender {
     @Override
     public void sendInvitation(UserAccountDto user, String invitationUrl) {
         sent.add(new SentMail(Kind.INVITATION, user.email(), invitationUrl));
+    }
+
+    @Override
+    public void sendAccountTemporarilyLocked(UserAccountDto user, String forgotPasswordUrl, Duration lockDuration) {
+        sent.add(new SentMail(Kind.ACCOUNT_TEMPORARILY_LOCKED, user.email(), forgotPasswordUrl));
     }
 
     public List<SentMail> sentMails() {

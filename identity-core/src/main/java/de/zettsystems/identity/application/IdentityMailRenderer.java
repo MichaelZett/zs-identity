@@ -34,18 +34,27 @@ final class IdentityMailRenderer {
     }
 
     IdentityMail render(IdentityMailType type, UserAccountDto user, String url) {
+        Duration linkValidity = type == IdentityMailType.INVITATION
+                ? properties.invitationValidity()
+                : properties.tokenValidity();
+        return render(type, user, url, linkValidity);
+    }
+
+    /**
+     * @param duration what the third placeholder says: how long the link is
+     *                 valid, or for the lock notice how long the lock lasts
+     */
+    IdentityMail render(IdentityMailType type, UserAccountDto user, String url, Duration duration) {
         Locale locale = user.localeOr(properties.locale());
         String prefix = switch (type) {
             case EMAIL_VERIFICATION -> "identity.mail.verification.";
             case PASSWORD_RESET -> "identity.mail.reset.";
             case INVITATION -> "identity.mail.invitation.";
+            case ACCOUNT_TEMPORARILY_LOCKED -> "identity.mail.locked.";
         };
-        Duration linkValidity = type == IdentityMailType.INVITATION
-                ? properties.invitationValidity()
-                : properties.tokenValidity();
 
         String subject = messages.get(prefix + "subject", locale);
-        String validity = humanReadableValidity(locale, linkValidity);
+        String validity = humanReadableValidity(locale, duration);
         String text = messages.get(prefix + "body", locale, user.displayName(), url, validity);
         // The placeholders are escaped before being inserted: MessageFormat
         // knows no HTML, and a display name must not break out of the markup.

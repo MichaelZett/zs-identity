@@ -1,9 +1,11 @@
 package de.zettsystems.identity.domain;
 
 import de.zettsystems.identity.values.AccountName;
+import de.zettsystems.identity.values.LoginProtectionSettings;
 import de.zettsystems.identity.values.Scope;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Set;
@@ -231,6 +233,84 @@ class UserAccountTest {
         user.changePassword("neuer-hash");
 
         assertThat(user.getPasswordHash()).isEqualTo("neuer-hash");
+    }
+
+    @Test
+    void theThirdWrongPasswordLocksTheAccountForTheLockDuration() {
+        UserAccount user = newAccount("a@b.c");
+        LoginProtectionSettings settings = LoginProtectionSettings.defaults();
+
+        assertThat(user.recordFailedLogin(CREATED, settings)).isNull();
+        assertThat(user.recordFailedLogin(CREATED.plusSeconds(1), settings)).isNull();
+        Instant third = CREATED.plusSeconds(2);
+
+        assertThat(user.recordFailedLogin(third, settings)).isEqualTo(third.plus(Duration.ofMinutes(15)));
+        assertThat(user.isLockedAt(third.plus(Duration.ofMinutes(14)))).isTrue();
+        assertThat(user.isLockedAt(third.plus(Duration.ofMinutes(15)))).as("runs out by itself").isFalse();
+    }
+
+    /** Otherwise whoever knows the address could keep the owner out for good. */
+    @Test
+    void nothingIsCountedWhileTheLockIsInForce() {
+        UserAccount user = lockedOnce(LoginProtectionSettings.defaults());
+
+        assertThat(user.recordFailedLogin(CREATED.plus(Duration.ofMinutes(5)), LoginProtectionSettings.defaults()))
+                .isNull();
+
+        assertThat(user.getFailedLoginCount()).isEqualTo(3);
+        assertThat(user.getLockedUntil()).isEqualTo(CREATED.plus(Duration.ofMinutes(15)));
+    }
+
+    @Test
+    void everyFurtherLockLastsTwiceAsLongUpToTheMaximum() {
+        LoginProtectionSettings settings = new LoginProtectionSettings(true, 3, Duration.ofMinutes(15),
+                Duration.ofMinutes(45), Duration.ZERO, Duration.ZERO, 1, false);
+        UserAccount user = lockedOnce(settings);
+        Instant afterFirst = CREATED.plus(Duration.ofMinutes(16));
+
+        user.recordFailedLogin(afterFirst, settings);
+        user.recordFailedLogin(afterFirst, settings);
+        assertThat(user.recordFailedLogin(afterFirst, settings)).isEqualTo(afterFirst.plus(Duration.ofMinutes(30)));
+
+        Instant afterSecond = afterFirst.plus(Duration.ofMinutes(31));
+        user.recordFailedLogin(afterSecond, settings);
+        user.recordFailedLogin(afterSecond, settings);
+        assertThat(user.recordFailedLogin(afterSecond, settings))
+                .as("60 minutes, capped at the maximum of 45")
+                .isEqualTo(afterSecond.plus(Duration.ofMinutes(45)));
+    }
+
+    @Test
+    void failuresOlderThanTheLongestLockAreForgotten() {
+        UserAccount user = newAccount("a@b.c");
+        LoginProtectionSettings settings = LoginProtectionSettings.defaults();
+        user.recordFailedLogin(CREATED, settings);
+        user.recordFailedLogin(CREATED, settings);
+
+        Instant nextDay = CREATED.plus(Duration.ofHours(25));
+        assertThat(user.recordFailedLogin(nextDay, settings)).as("a fresh start, not the third in a row").isNull();
+        assertThat(user.getFailedLoginCount()).isEqualTo(1);
+    }
+
+    /** Reset, invitation and change all end here, and each proves the account is in the right hands. */
+    @Test
+    void aNewPasswordLiftsTheLock() {
+        UserAccount user = lockedOnce(LoginProtectionSettings.defaults());
+
+        user.changePassword("neuer-hash");
+
+        assertThat(user.isLockedAt(CREATED)).isFalse();
+        assertThat(user.getFailedLoginCount()).isZero();
+        assertThat(user.getLastFailedLoginAt()).isNull();
+    }
+
+    private static UserAccount lockedOnce(LoginProtectionSettings settings) {
+        UserAccount user = newAccount("a@b.c");
+        for (int i = 0; i < settings.maxAttempts(); i++) {
+            user.recordFailedLogin(CREATED, settings);
+        }
+        assertThat(user.isLockedAt(CREATED)).isTrue();
+        return user;
     }
 
     @Test
