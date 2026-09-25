@@ -1,7 +1,10 @@
 # Keeps the GitHub Actions in the workflows up to date -- the counterpart of
-# `./gradlew dependencyUpdates` for the libraries. With floating major tags
-# (@v7), Dependabot reports exactly the major jumps; minor and patch arrive
-# through the tag by themselves. All bumps collected in one weekly PR.
+# `./gradlew dependencyUpdates` for the libraries. GitHub's own actions run on
+# floating major tags (@v7): Dependabot reports exactly the major jumps, minor
+# and patch arrive through the tag by themselves. Third-party actions are
+# pinned to a commit SHA with the version as a comment, because a tag can be
+# moved by whoever owns it; for those Dependabot proposes every release and
+# rewrites SHA and comment together. All bumps collected in one weekly PR.
 version: 2
 updates:
   - package-ecosystem: "github-actions"

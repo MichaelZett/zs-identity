@@ -1,6 +1,5 @@
 package de.zettsystems.identity.ui;
 
-import com.github.mvysny.kaributesting.v10.LoginFormKt;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.internal.PendingJavaScriptInvocation;
 import com.vaadin.flow.component.html.Div;
@@ -309,8 +308,9 @@ class LoginViewTest extends AbstractViewTest {
         IdentityFormView.FOOTER_LINK_STYLE.forEach((property, value) ->
                 assertThat(forgot.getStyle().get(property)).as(property).isEqualTo(value));
         Div footer = _get(view, Div.class, spec -> spec.withClasses(IdentityFormView.VIEW_CLASS + "__footer"));
-        assertThat(footer.getChildren())
-                .as("nothing but the links -- the gap separates them")
+        assertThat(footer.getChildren().toList())
+                .as("nothing but the two links -- the gap separates them")
+                .hasSize(2)
                 .allMatch(child -> child.getElement().getClassList().contains(IdentityFormView.FOOTER_LINK_CLASS));
     }
 
