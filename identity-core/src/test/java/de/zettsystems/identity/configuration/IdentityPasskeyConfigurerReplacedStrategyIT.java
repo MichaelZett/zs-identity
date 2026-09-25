@@ -30,11 +30,13 @@ import org.springframework.security.web.webauthn.registration.PublicKeyCredentia
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.context.WebApplicationContext;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 /**
  * The chain of {@link IdentityPasskeyConfigurerIT}, but with the
@@ -145,6 +147,8 @@ class IdentityPasskeyConfigurerReplacedStrategyIT {
     private UserDetailsService userDetailsService;
     @Autowired
     private SecurityContextHolderStrategy applicationStrategy;
+    @Autowired
+    private WebApplicationContext webContext;
 
     private UserAccountDto anna;
 
@@ -191,7 +195,10 @@ class IdentityPasskeyConfigurerReplacedStrategyIT {
 
     private MockHttpServletResponse call(String path, Authentication authentication)
             throws ServletException, java.io.IOException {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", path);
+        // With a CSRF token, as in IdentityPasskeyConfigurerIT: the chain is the
+        // same, and without one the answer would be a 403 from the CsrfFilter.
+        MockHttpServletRequest request = csrf().postProcessRequest(
+                new MockHttpServletRequest(webContext.getServletContext(), "POST", path));
         SecurityContext context = new SecurityContextImpl(authentication);
         request.getSession(true).setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
                 context);

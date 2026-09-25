@@ -27,7 +27,6 @@ import org.springframework.security.authentication.RememberMeAuthenticationToken
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -43,6 +42,7 @@ import org.springframework.security.web.webauthn.registration.WebAuthnRegistrati
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.context.WebApplicationContext;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.io.IOException;
@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 /**
  * The passkey endpoints in a real filter chain: who may call what, and the
@@ -89,8 +90,9 @@ class IdentityPasskeyConfigurerIT {
     /**
      * An application's chain the way the README shows it: own rules first,
      * the passkeys, a form login with remember-me, and {@code anyRequest()}
-     * last -- the place a Vaadin configurer would put it. CSRF is off here
-     * because it is the application's concern, not the configurer's.
+     * last -- the place a Vaadin configurer would put it. CSRF stays on, as
+     * in any real application: the sign-in scripts send the token, so every
+     * request here carries one too (see {@link #post}).
      */
     @SpringBootApplication
     static class PasskeyApplication {
@@ -107,8 +109,7 @@ class IdentityPasskeyConfigurerIT {
 
         @Bean
         SecurityFilterChain securityFilterChain(HttpSecurity http) {
-            http.csrf(AbstractHttpConfigurer::disable)
-                    .authorizeHttpRequests(requests -> requests.requestMatchers("/public/**").permitAll())
+            http.authorizeHttpRequests(requests -> requests.requestMatchers("/public/**").permitAll())
                     .with(IdentityPasskeyConfigurer.passkeys(), Customizer.withDefaults())
                     .formLogin(login -> login.loginPage("/login").permitAll())
                     .rememberMe(rememberMe -> rememberMe.key("test-key").alwaysRemember(true))
@@ -117,6 +118,8 @@ class IdentityPasskeyConfigurerIT {
         }
     }
 
+    @Autowired
+    private WebApplicationContext context;
     @Autowired
     private FilterChainProxy filterChain;
     @Autowired
@@ -162,7 +165,7 @@ class IdentityPasskeyConfigurerIT {
     void registeringNeedsASignIn() throws Exception {
         MockHttpServletResponse response = call(post(IdentityPaths.PASSKEY_REGISTRATION_OPTIONS), null);
 
-        assertThat(response.getStatus()).as("sent to the sign-in, not answered").isNotEqualTo(200);
+        assertSentToSignIn(response);
     }
 
     /** The point of {@code fullyAuthenticated()}: the cookie alone is not enough to add a passkey. */
@@ -173,7 +176,7 @@ class IdentityPasskeyConfigurerIT {
 
         MockHttpServletResponse response = call(post(IdentityPaths.PASSKEY_REGISTRATION_OPTIONS), rememberMe);
 
-        assertThat(response.getStatus()).isNotEqualTo(200);
+        assertSentToSignIn(response);
         assertThat(userEntities.findByUsername(anna.email())).as("nothing was set up").isNull();
     }
 
@@ -243,8 +246,26 @@ class IdentityPasskeyConfigurerIT {
         return response;
     }
 
-    private static MockHttpServletRequest post(String path) {
-        return new MockHttpServletRequest("POST", path);
+    /**
+     * A POST with a valid CSRF token. Without one every POST would end in 403
+     * before it reaches the passkey filters -- and the tests that expect a
+     * refusal would then pass for the wrong reason. The request lives in the
+     * application's servlet context so that {@code csrf()} finds the chain's
+     * own token repository.
+     */
+    private MockHttpServletRequest post(String path) {
+        MockHttpServletRequest request = new MockHttpServletRequest(context.getServletContext(), "POST", path);
+        return csrf().postProcessRequest(request);
+    }
+
+    /**
+     * Sent to the sign-in -- precisely that, not merely "not 200": a 403 from
+     * a missing CSRF token is also not 200, and a refusal test would then
+     * pass without the rule it is about ever being asked.
+     */
+    private static void assertSentToSignIn(MockHttpServletResponse response) {
+        assertThat(response.getStatus()).as("redirected, not answered").isEqualTo(302);
+        assertThat(response.getRedirectedUrl()).endsWith("/login");
     }
 
     private static String body(MockHttpServletResponse response) throws IOException {
