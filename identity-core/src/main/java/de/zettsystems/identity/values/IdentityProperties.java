@@ -47,6 +47,9 @@ import java.util.Locale;
  *                                 migrations run (see {@link MigrationSettings})
  * @param passkeys                 sign-in with passkeys, off unless switched
  *                                 on (see {@link PasskeySettings})
+ * @param loginProtection          temporary lock and delay against password
+ *                                 guessing, on unless switched off (see
+ *                                 {@link LoginProtectionSettings})
  */
 @ConfigurationProperties(prefix = "zs.identity")
 public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationEnabled,
@@ -62,7 +65,23 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                                  @DefaultValue("de") Locale locale,
                                  @DefaultValue UiSettings ui,
                                  @DefaultValue MigrationSettings migrations,
-                                 @DefaultValue PasskeySettings passkeys) {
+                                 @DefaultValue PasskeySettings passkeys,
+                                 @DefaultValue LoginProtectionSettings loginProtection) {
+
+    /**
+     * The shape before 1.1.0, kept so that applications and tests that build
+     * the record by hand keep compiling. The protection against password
+     * guessing is on, as it is for an application that configures nothing.
+     */
+    public IdentityProperties(boolean selfRegistrationEnabled, boolean emailVerificationRequired,
+                              Duration tokenValidity, Duration invitationValidity, int passwordMinLength,
+                              String fromAddress, String fromName, String baseUrl, String defaultRoleCode,
+                              NameMode nameMode, Locale locale, UiSettings ui, MigrationSettings migrations,
+                              PasskeySettings passkeys) {
+        this(selfRegistrationEnabled, emailVerificationRequired, tokenValidity, invitationValidity,
+                passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode, nameMode, locale, ui,
+                migrations, passkeys, LoginProtectionSettings.defaults());
+    }
 
     /**
      * The shape before 0.11.0, kept so that applications and tests that build
@@ -74,7 +93,7 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                               NameMode nameMode, Locale locale, UiSettings ui, MigrationSettings migrations) {
         this(selfRegistrationEnabled, emailVerificationRequired, tokenValidity, invitationValidity,
                 passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode, nameMode, locale, ui,
-                migrations, PasskeySettings.defaults());
+                migrations, PasskeySettings.defaults(), LoginProtectionSettings.defaults());
     }
 
     /**
@@ -87,7 +106,7 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                               NameMode nameMode, Locale locale, UiSettings ui) {
         this(selfRegistrationEnabled, emailVerificationRequired, tokenValidity, invitationValidity,
                 passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode, nameMode, locale, ui,
-                MigrationSettings.defaults(), PasskeySettings.defaults());
+                MigrationSettings.defaults(), PasskeySettings.defaults(), LoginProtectionSettings.defaults());
     }
 
     @ConstructorBinding
@@ -123,34 +142,42 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
     public IdentityProperties withLocale(Locale newLocale) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, newLocale, ui, migrations, passkeys);
+                nameMode, newLocale, ui, migrations, passkeys, loginProtection);
     }
 
     /** The same settings with a different appearance; see {@link #withLocale(Locale)}. */
     public IdentityProperties withUi(UiSettings newUi) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, newUi, migrations, passkeys);
+                nameMode, locale, newUi, migrations, passkeys, loginProtection);
     }
 
     /** The same settings with the migrations run differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withMigrations(MigrationSettings newMigrations) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, newMigrations, passkeys);
+                nameMode, locale, ui, newMigrations, passkeys, loginProtection);
     }
 
     /** The same settings with passkeys set up differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withPasskeys(PasskeySettings newPasskeys) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, migrations, newPasskeys);
+                nameMode, locale, ui, migrations, newPasskeys, loginProtection);
+    }
+
+    /** The same settings with the protection against guessing set up differently; see {@link #withLocale(Locale)}. */
+    public IdentityProperties withLoginProtection(LoginProtectionSettings newLoginProtection) {
+        return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
+                invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
+                nameMode, locale, ui, migrations, passkeys, newLoginProtection);
     }
 
     /** Defaults for tests that build the record by hand. */
     public static IdentityProperties defaults() {
         return new IdentityProperties(true, true, Duration.ofHours(24), Duration.ofDays(7), 12,
                 "noreply@localhost", "Application", "http://localhost:8080", "USER", NameMode.FULL_NAME,
-                Locale.GERMAN, UiSettings.defaults(), MigrationSettings.defaults(), PasskeySettings.defaults());
+                Locale.GERMAN, UiSettings.defaults(), MigrationSettings.defaults(), PasskeySettings.defaults(),
+                LoginProtectionSettings.defaults());
     }
 }

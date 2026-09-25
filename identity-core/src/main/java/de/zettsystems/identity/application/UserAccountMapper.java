@@ -35,6 +35,7 @@ final class UserAccountMapper {
                 roleAssignments,
                 user.isMustChangePassword(),
                 user.getLocale(),
-                user.isClaimed());
+                user.isClaimed(),
+                user.getLockedUntil());
     }
 }

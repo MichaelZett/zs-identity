@@ -7,6 +7,8 @@ import de.zettsystems.identity.values.UserAccountDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
+
 /**
  * The default {@link IdentityMailSender}: renders through
  * {@link IdentityMailRenderer} and hands the result to an
@@ -44,8 +46,17 @@ final class TransportingIdentityMailSender implements IdentityMailSender {
         send(IdentityMailType.INVITATION, user, invitationUrl);
     }
 
+    @Override
+    public void sendAccountTemporarilyLocked(UserAccountDto user, String forgotPasswordUrl, Duration lockDuration) {
+        deliver(IdentityMailType.ACCOUNT_TEMPORARILY_LOCKED, user,
+                renderer.render(IdentityMailType.ACCOUNT_TEMPORARILY_LOCKED, user, forgotPasswordUrl, lockDuration));
+    }
+
     private void send(IdentityMailType type, UserAccountDto user, String url) {
-        IdentityMail mail = renderer.render(type, user, url);
+        deliver(type, user, renderer.render(type, user, url));
+    }
+
+    private void deliver(IdentityMailType type, UserAccountDto user, IdentityMail mail) {
         try {
             transport.send(mail, user);
         } catch (RuntimeException e) {

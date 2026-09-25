@@ -56,11 +56,11 @@ class IdentityMigrationsIT {
         MigrateResult first = new IdentityMigrations().migrate(dataSource);
         MigrateResult second = new IdentityMigrations().migrate(dataSource);
 
-        assertThat(first.migrationsExecuted).isEqualTo(1);
+        assertThat(first.migrationsExecuted).as("the baseline B1_6 and V1_7 on top").isEqualTo(2);
         assertThat(second.migrationsExecuted).as("the second run finds nothing to do").isZero();
         assertThat(tablesIn(dataSource, "identity")).containsExactlyInAnyOrderElementsOf(withHistory(TABLES));
         assertThat(tablesIn(dataSource, "public")).isEmpty();
-        assertThat(versionsIn(dataSource, "identity", "flyway_schema_history")).containsExactly("1.6");
+        assertThat(versionsIn(dataSource, "identity", "flyway_schema_history")).containsExactly("1.6", "1.7");
     }
 
     /**
@@ -85,7 +85,7 @@ class IdentityMigrationsIT {
 
         assertThat(versionsIn(viaChain, "identity", "flyway_schema_history"))
                 .as("the chain really ran")
-                .containsExactly("1.1", "1.2", "1.3", "1.4", "1.5", "1.6");
+                .containsExactly("1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7");
         assertThat(schemaOf(viaBaseline)).isEqualTo(schemaOf(viaChain));
 
         // Every installation from before 1.0.0 looks like viaChain. Its first
@@ -94,7 +94,7 @@ class IdentityMigrationsIT {
         MigrateResult upgrade = new IdentityMigrations().migrate(viaChain);
         assertThat(upgrade.migrationsExecuted).isZero();
         assertThat(versionsIn(viaChain, "identity", "flyway_schema_history"))
-                .containsExactly("1.1", "1.2", "1.3", "1.4", "1.5", "1.6");
+                .containsExactly("1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7");
     }
 
     /**
@@ -120,7 +120,7 @@ class IdentityMigrationsIT {
         MigrateResult moved = new IdentityMigrations().migrate(dataSource, "public", "flyway_schema_history");
         MigrateResult again = new IdentityMigrations().migrate(dataSource, "public", "flyway_schema_history");
 
-        assertThat(moved.migrationsExecuted).as("1.5 is the baseline; 1.6 (passkeys) is applied on top").isEqualTo(1);
+        assertThat(moved.migrationsExecuted).as("1.5 is the baseline; 1.6 and 1.7 are applied on top").isEqualTo(2);
         assertThat(again.migrationsExecuted).isZero();
         assertThat(tablesIn(dataSource, "identity")).containsExactlyInAnyOrderElementsOf(withHistory(TABLES));
         assertThat(tablesIn(dataSource, "public"))
@@ -133,13 +133,13 @@ class IdentityMigrationsIT {
                 .isEqualTo("Anna");
         assertThat(versionsIn(dataSource, "identity", "flyway_schema_history"))
                 .as("our history starts with the baseline at the version the tables have")
-                .containsExactly("1.5", "1.6");
+                .containsExactly("1.5", "1.6", "1.7");
         assertThat(versionsIn(dataSource, "public", "flyway_schema_history"))
                 .as("the application's history keeps its own rows and loses ours")
                 .containsExactly("2.1");
     }
 
-    /** An installation that stopped at 1.3 gets 1.4 to 1.6 after the move. */
+    /** An installation that stopped at 1.3 gets 1.4 to 1.7 after the move. */
     @Test
     void anOlderInstallationGetsTheRemainingMigrationsAfterTheMove() {
         DataSource dataSource = freshDatabase();
@@ -147,9 +147,9 @@ class IdentityMigrationsIT {
 
         MigrateResult moved = new IdentityMigrations().migrate(dataSource, "public", "flyway_schema_history");
 
-        assertThat(moved.migrationsExecuted).isEqualTo(3);
+        assertThat(moved.migrationsExecuted).isEqualTo(4);
         assertThat(versionsIn(dataSource, "identity", "flyway_schema_history"))
-                .containsExactly("1.3", "1.4", "1.5", "1.6");
+                .containsExactly("1.3", "1.4", "1.5", "1.6", "1.7");
         assertThat(columnsOf(dataSource, "identity", "auth_user")).contains("locale");
         assertThat(columnsOf(dataSource, "identity", "auth_user_role")).contains("scope_type", "scope_id");
     }

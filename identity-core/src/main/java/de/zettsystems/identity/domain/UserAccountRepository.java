@@ -1,7 +1,11 @@
 package de.zettsystems.identity.domain;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -19,6 +23,15 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
     Optional<UserAccount> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    /**
+     * The account for counting a failed sign-in, with the row locked until the
+     * transaction ends. Guesses arrive in parallel; with the optimistic lock
+     * alone the second of two would fail instead of counting.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from UserAccount u where u.email = :email")
+    Optional<UserAccount> findForUpdateByEmail(@Param("email") String email);
 
     /** The account behind a WebAuthn user handle; the sign-in with a passkey ends here. */
     Optional<UserAccount> findByPasskeyUserHandle(String passkeyUserHandle);
