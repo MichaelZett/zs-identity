@@ -38,6 +38,11 @@ import java.util.stream.Collectors;
  *                ({@code InvitationService#resendInvitation}). Deliberately
  *                not "has a password": with external providers there will be
  *                claimed accounts without one.
+ * @param lockedUntil end of a temporary lock after too many wrong passwords
+ *                    (since 1.1.0); {@code null} when the account was never
+ *                    locked or has been unlocked since. A time in the past
+ *                    means the lock has run out -- {@link #lockedAt(Instant)}
+ *                    saves the comparison. Not the same as {@link #enabled()}.
  */
 public record UserAccountDto(Long id,
                              @Nullable String email,
@@ -48,7 +53,8 @@ public record UserAccountDto(Long id,
                              Set<ScopedRole> roleAssignments,
                              boolean mustChangePassword,
                              @Nullable Locale locale,
-                             boolean claimed) {
+                             boolean claimed,
+                             @Nullable Instant lockedUntil) {
 
     public UserAccountDto {
         Objects.requireNonNull(id, "id");
@@ -56,6 +62,18 @@ public record UserAccountDto(Long id,
         Objects.requireNonNull(createdAt, "createdAt");
         Objects.requireNonNull(roleAssignments, "roleAssignments");
         roleAssignments = Set.copyOf(roleAssignments);
+    }
+
+    /**
+     * The shape before 1.1.0, without {@code lockedUntil}. It stays so that
+     * applications building the record by hand (common in tests) do not
+     * break; the account is then not locked.
+     */
+    public UserAccountDto(Long id, @Nullable String email, AccountName name, boolean enabled,
+                          boolean emailVerified, Instant createdAt, Set<ScopedRole> roleAssignments,
+                          boolean mustChangePassword, @Nullable Locale locale, boolean claimed) {
+        this(id, email, name, enabled, emailVerified, createdAt, roleAssignments, mustChangePassword,
+                locale, claimed, null);
     }
 
     /**
@@ -114,6 +132,15 @@ public record UserAccountDto(Long id,
     public String lastName() {
         String lastName = name.lastName();
         return lastName != null ? lastName : "";
+    }
+
+    /**
+     * Whether a temporary lock is in force at this moment: a sign-in with
+     * the password would be refused, even with the right one.
+     */
+    public boolean lockedAt(Instant now) {
+        Objects.requireNonNull(now, "now");
+        return lockedUntil != null && lockedUntil.isAfter(now);
     }
 
     /** Managed = created by the application, without credentials of its own. */

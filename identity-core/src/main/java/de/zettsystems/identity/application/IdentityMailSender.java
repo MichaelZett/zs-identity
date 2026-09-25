@@ -1,5 +1,7 @@
 package de.zettsystems.identity.application;
 
+import java.time.Duration;
+
 import de.zettsystems.identity.values.UserAccountDto;
 
 /**
@@ -49,5 +51,26 @@ public interface IdentityMailSender {
         throw new UnsupportedOperationException(
                 getClass().getName() + " does not implement sendInvitation(..) - "
                         + "implement it to use InvitationService");
+    }
+
+    /**
+     * Tells the owner that the account is locked for a while after too many
+     * wrong passwords -- the sign-in page shows the same message for every
+     * failure, on purpose, so this is how the owner learns why the right
+     * password is refused and how to get in again.
+     *
+     * <p>A {@code default} method that sends nothing: unlike an invitation,
+     * nobody waits for this mail, and the lock works whether it arrives or
+     * not. An application's own sender implements it when it wants the
+     * notice; {@code zs.identity.login-protection.notify-by-mail=false}
+     * switches it off for the default one.
+     *
+     * @param forgotPasswordUrl complete address of the "forgot password" page;
+     *                          a new password lifts the lock at once
+     * @param lockDuration      how long the lock lasts if nothing is done
+     * @since 1.1.0
+     */
+    default void sendAccountTemporarilyLocked(UserAccountDto user, String forgotPasswordUrl, Duration lockDuration) {
+        // Nothing, see above.
     }
 }

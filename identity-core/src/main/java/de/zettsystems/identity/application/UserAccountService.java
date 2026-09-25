@@ -144,6 +144,26 @@ public interface UserAccountService {
     UserAccountDto setEnabled(Long userId, boolean enabled);
 
     /**
+     * Lifts a temporary lock after too many wrong passwords and forgets the
+     * failures, for an administrator who has spoken to the owner. The lock
+     * runs out by itself too, and "forgot password" lifts it as well; this
+     * is for when neither can wait. Unrelated to {@link #setEnabled}: an
+     * account disabled there stays disabled.
+     *
+     * <p>Deliberately a {@code default} method that fails rather than an
+     * abstract one: an application's own {@code UserAccountService} must not
+     * stop compiling because of this addition.
+     *
+     * @throws IdentityException if the account does not exist
+     * @throws UnsupportedOperationException as long as a custom service does not
+     *                                       override it
+     * @since 1.1.0
+     */
+    default UserAccountDto unlock(Long userId) {
+        throw new UnsupportedOperationException(getClass().getName() + " does not implement unlock(..)");
+    }
+
+    /**
      * Sets a new password. At the same time it clears a pending
      * {@code mustChangePassword} and refreshes the running session when this is
      * the signed-in account.

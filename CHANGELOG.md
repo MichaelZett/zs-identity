@@ -5,6 +5,38 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## Unreleased
+
+### Added
+- **Protection against password guessing** (#2), on by default
+  (`zs.identity.login-protection.*`). Three wrong passwords in a row lock the
+  account for 15 minutes, every further lock twice as long up to 24 hours;
+  from the first failure each sign-in waits before its password is checked
+  (1 s doubling up to 8 s), per sign-in name and per client address, in
+  memory and bounded, with a cap on how many may wait at once. Unknown
+  address, locked account and wrong password give the same answer after the
+  same time. A lock is never permanent: it runs out, and "forgot password",
+  any new password, `UserAccountService#unlock(userId)` and a passkey
+  sign-in lift it. A locked account may still sign in with a passkey, and
+  failed passkey sign-ins are not counted.
+  - The building block now declares an `AuthenticationProvider` bean that
+    wraps Spring's `DaoAuthenticationProvider`; it steps back when the
+    application declares one of its own.
+  - `UserAccountDto.lockedUntil()` and `lockedAt(now)`; the constructor
+    without it stays.
+  - `AccountTemporarilyLocked` event and a WARN log line per lock. Not part
+    of the sealed `IdentityAccountEvent`, so exhaustive switches keep
+    compiling and remember-me tokens stay.
+  - Lock notice mail (`IdentityMailType.ACCOUNT_TEMPORARILY_LOCKED`,
+    `IdentityMailSender#sendAccountTemporarilyLocked`, a `default` method
+    that sends nothing in an application's own sender).
+  - Migration `V1_7` adds `failed_login_count`, `last_failed_login_at` and
+    `locked_until` to `auth_user`.
+
+### Changed
+- The sign-in page's error text mentions the temporary lock and the way out
+  through "Forgot your password?".
+
 ## 1.0.0 - 2026-09-25
 
 The first release on **Maven Central** (`de.zettsystems:identity-core`,

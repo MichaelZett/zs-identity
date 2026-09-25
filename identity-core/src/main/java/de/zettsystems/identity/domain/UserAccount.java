@@ -2,6 +2,7 @@ package de.zettsystems.identity.domain;
 
 import de.zettsystems.identity.values.IdentitySchema;
 import de.zettsystems.identity.values.AccountName;
+import de.zettsystems.identity.values.LoginProtectionSettings;
 import de.zettsystems.identity.values.Scope;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -17,6 +18,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import org.jspecify.annotations.Nullable;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -110,6 +112,21 @@ public class UserAccount extends AbstractAuthEntity {
      */
     @Column(name = "passkey_user_handle", length = 128)
     private @Nullable String passkeyUserHandle;
+
+    /**
+     * Wrong passwords in a row since V1_7 (see {@link #recordFailedLogin}).
+     * Not reset when a lock runs out: the count tells which lock the next
+     * one is, and each lasts twice as long as the one before.
+     */
+    @Column(name = "failed_login_count", nullable = false)
+    private int failedLoginCount;
+
+    @Column(name = "last_failed_login_at")
+    private @Nullable Instant lastFailedLoginAt;
+
+    /** End of a temporary lock; {@code null} or in the past means not locked. */
+    @Column(name = "locked_until")
+    private @Nullable Instant lockedUntil;
 
     // LAZY is mandatory: the EAGER default of JPA fetches the roles one by one
     // for every list of users (N+1).
@@ -280,9 +297,17 @@ public class UserAccount extends AbstractAuthEntity {
         activateAfterEmailVerification();
     }
 
+    /**
+     * Sets a new password. Lifts a temporary lock at the same time: every
+     * route here proves the account is in the right hands -- the link of a
+     * reset or an invitation went to its address, and a change needs a
+     * session -- and the guessing the lock was against is aimed at a
+     * password that no longer exists.
+     */
     public void changePassword(String newPasswordHash) {
         this.passwordHash = Objects.requireNonNull(newPasswordHash, "newPasswordHash");
         this.mustChangePassword = false;
+        clearFailedLogins();
     }
 
     /** Requires a password change at the next sign-in. */
@@ -296,6 +321,53 @@ public class UserAccount extends AbstractAuthEntity {
 
     public void recordLogin(Instant at) {
         this.lastLoginAt = Objects.requireNonNull(at, "at");
+    }
+
+    /** Whether a temporary lock is in force at this moment. */
+    public boolean isLockedAt(Instant now) {
+        return lockedUntil != null && lockedUntil.isAfter(now);
+    }
+
+    /**
+     * Counts a wrong password and locks the account once the count reaches a
+     * multiple of {@code maxAttempts}.
+     *
+     * <p>While a lock is in force nothing is counted: the lock already stops
+     * the guessing, and letting every further attempt lengthen it would hand
+     * whoever knows the address a way to keep the owner out for good.
+     * Failures older than the longest lock are forgotten first, so that a
+     * few typos weeks apart never add up to a long lock.
+     *
+     * @return when the lock that starts with this failure runs out, or
+     *         {@code null} if none starts
+     */
+    public @Nullable Instant recordFailedLogin(Instant now, LoginProtectionSettings settings) {
+        Objects.requireNonNull(now, "now");
+        if (isLockedAt(now)) {
+            return null;
+        }
+        if (lastFailedLoginAt != null && lastFailedLoginAt.plus(settings.maxLockDuration()).isBefore(now)) {
+            failedLoginCount = 0;
+        }
+        failedLoginCount++;
+        lastFailedLoginAt = now;
+        if (failedLoginCount % settings.maxAttempts() != 0) {
+            return null;
+        }
+        Duration duration = settings.lockDurationAfter(failedLoginCount);
+        lockedUntil = now.plus(duration);
+        return lockedUntil;
+    }
+
+    /**
+     * Forgets the wrong passwords and lifts a lock: after a successful
+     * sign-in, a new password, or by hand through
+     * {@code UserAccountService#unlock}.
+     */
+    public void clearFailedLogins() {
+        this.failedLoginCount = 0;
+        this.lastFailedLoginAt = null;
+        this.lockedUntil = null;
     }
 
     /**
