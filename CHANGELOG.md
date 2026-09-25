@@ -5,7 +5,8 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
-## Unreleased
+## 1.1.0 - 2026-09-25
+**Protection against password guessing** implemented
 
 ### Added
 - **Protection against password guessing** (#2), on by default
