@@ -49,6 +49,22 @@ list is optional, and the auto-configuration takes care of everything else:
    `IdentityRoutes.*` in Vaadin applications) with `permitAll()`.
 3. **Make the Vaadin routes visible** (only with `identity-vaadin`): add
    `de.zettsystems.identity` to `vaadin.allowed-packages`.
+
+   Two things that bite when securing an existing Vaadin application for the
+   first time:
+   - **Annotate the layout, not only the views.** Vaadin checks the parent
+     `@Layout` (or `layout =` class) as well. A layout without `@PermitAll`
+     denies every view inside it, even to an administrator; the log says
+     "The view allows broader access than the layout". An ArchUnit rule that
+     every `@Route` class and the layout carry `@PermitAll` or `@RolesAllowed`
+     catches this in the build.
+   - **Keep the application's Vaadin version at or above ours.**
+     `identity-vaadin` declares the Vaadin BOM as an `api` platform, so Gradle
+     raises the application's Vaadin to at least that version. If the
+     application pins a lower one, `bootRun` ends up with two Flow versions on
+     the classpath (`NoSuchMethodError` in `DevModeInitializer`) while tests
+     and the production jar still pass. A newer Vaadin in the application is
+     fine.
 4. **Forced password change** (since 0.3.0, only with `identity-vaadin`):
    `UserAccountService#requirePasswordChange(userId)`, after creating an
    account with an initial password for example. The building block then sends
