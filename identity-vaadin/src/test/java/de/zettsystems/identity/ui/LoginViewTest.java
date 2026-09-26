@@ -3,6 +3,10 @@ package de.zettsystems.identity.ui;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.internal.PendingJavaScriptInvocation;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Paragraph;
+import de.zettsystems.identity.application.ExternalProviders;
+import de.zettsystems.identity.values.ExternalProvider;
+import de.zettsystems.identity.values.IdentityPaths;
 import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -334,5 +338,76 @@ class LoginViewTest extends AbstractViewTest {
         view.beforeEnter(enterEventWith(IdentityRoutes.LOGIN, Map.of()));
 
         assertThat(_get(view, LoginForm.class).isError()).isFalse();
+    }
+
+    private LoginView showWithProviders(ExternalProvider... providers) {
+        List<ExternalProvider> offered = List.of(providers);
+        return show(new LoginView(registrationService, IdentityProperties.defaults(), MESSAGES, () -> offered));
+    }
+
+    @Test
+    void everyOfferedProviderGetsAButtonInItsOrder() {
+        LoginView view = showWithProviders(new ExternalProvider("google", "Google"),
+                new ExternalProvider("github", "GitHub"));
+
+        List<Button> buttons = _find(view, Button.class).stream()
+                .filter(button -> button.getId().orElse("").startsWith(LoginView.EXTERNAL_BUTTON_ID_PREFIX))
+                .toList();
+        assertThat(buttons).extracting(Button::getText).containsExactly("Mit Google anmelden", "Mit GitHub anmelden");
+    }
+
+    @Test
+    void withoutProvidersThereIsNoButton() {
+        LoginView view = show(new LoginView(registrationService, IdentityProperties.defaults(), MESSAGES,
+                ExternalProviders.none()));
+
+        assertThat(_find(view, Button.class, spec -> spec.withId(LoginView.EXTERNAL_BUTTON_ID_PREFIX + "google")))
+                .isEmpty();
+    }
+
+    /** The address belongs to Spring Security, not to a view: a full page load, not the router. */
+    @Test
+    void aProviderButtonLeavesThePageForTheProvider() {
+        LoginView view = showWithProviders(new ExternalProvider("google", "Google"));
+
+        _click(_get(view, Button.class, spec -> spec.withId(LoginView.EXTERNAL_BUTTON_ID_PREFIX + "google")));
+
+        assertThat(browserCall("window.open").getInvocation().getParameters())
+                .contains("oauth2/authorization/google");
+    }
+
+    @Test
+    void aRefusedProviderSignInSaysWhyInsteadOfBlamingThePassword() {
+        LoginView view = showWithProviders(new ExternalProvider("google", "Google"));
+
+        view.beforeEnter(enterEventWith(IdentityRoutes.LOGIN, Map.of("error", List.of(""),
+                IdentityPaths.EXTERNAL_ERROR_PARAMETER, List.of("no-account"))));
+
+        Paragraph reason = _get(view, Paragraph.class, spec -> spec.withId(LoginView.EXTERNAL_ERROR_ID));
+        assertThat(reason.isVisible()).isTrue();
+        assertThat(reason.getText()).contains("noch kein Konto");
+        assertThat(_get(view, LoginForm.class).isError()).as("the form's text is about passwords").isFalse();
+    }
+
+    @Test
+    void anUnknownReasonGetsTheGeneralText() {
+        LoginView view = showWithProviders();
+
+        view.beforeEnter(enterEventWith(IdentityRoutes.LOGIN,
+                Map.of(IdentityPaths.EXTERNAL_ERROR_PARAMETER, List.of("whatever"))));
+
+        assertThat(_get(view, Paragraph.class, spec -> spec.withId(LoginView.EXTERNAL_ERROR_ID)).getText())
+                .contains("hat nicht geklappt");
+    }
+
+    @Test
+    void theReasonStaysHiddenOtherwise() {
+        LoginView view = showWithProviders();
+
+        view.beforeEnter(enterEventWith(IdentityRoutes.LOGIN, Map.of()));
+
+        assertThat(_find(view, Paragraph.class, spec -> spec.withId(LoginView.EXTERNAL_ERROR_ID)))
+                .as("Karibu finds visible components only")
+                .isEmpty();
     }
 }

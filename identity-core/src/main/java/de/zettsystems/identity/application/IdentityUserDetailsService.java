@@ -40,22 +40,35 @@ class IdentityUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) {
         UserAccount user = userRepository.findByEmail(UserAccount.normalizeEmail(username))
                 .orElseThrow(() -> new UsernameNotFoundException("No account for " + username));
+        return toUserDetails(user);
+    }
 
-        // Managed accounts (without an email address) are not found by the
-        // lookup in the first place. Checking the hash is the second line of
-        // defence: an account without a password must never reach Spring
-        // Security.
+    /**
+     * The principal for an account that can sign in.
+     *
+     * <p>Managed accounts (without an email address) are not found by the
+     * lookup in the first place. Asking for a claimed account is the second
+     * line of defence: an open invitation has an address but no way in yet
+     * and must never reach Spring Security. A claimed account without a
+     * password -- one that signs in through an external provider -- is handed
+     * out: remember-me, passkeys and the session refresh all load through
+     * here. The password sign-in turns it down on its own (see
+     * {@code IdentityBeans}), and a {@code DaoAuthenticationProvider} fails
+     * on the missing hash anyway.
+     *
+     * @throws UsernameNotFoundException if the account cannot sign in at all
+     */
+    static IdentityUserDetails toUserDetails(UserAccount user) {
         String email = user.getEmail();
-        String passwordHash = user.getPasswordHash();
-        if (email == null || passwordHash == null) {
-            throw new UsernameNotFoundException("No credentials for " + username);
+        if (email == null || !user.isClaimed()) {
+            throw new UsernameNotFoundException("No credentials for account " + user.getId());
         }
         Long userId = user.getId();
         if (userId == null) {
-            throw new UsernameNotFoundException("Account without ID for " + username);
+            throw new UsernameNotFoundException("Account without ID for " + email);
         }
-        return new IdentityUserDetails(userId, email, user.getDisplayName(), passwordHash, user.isEnabled(),
-                user.isMustChangePassword(), toAuthorities(user));
+        return new IdentityUserDetails(userId, email, user.getDisplayName(), user.getPasswordHash(),
+                user.isEnabled(), user.isMustChangePassword(), toAuthorities(user));
     }
 
     private static Set<GrantedAuthority> toAuthorities(UserAccount user) {

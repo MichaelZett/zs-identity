@@ -44,6 +44,15 @@
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
     </Match>
 
+    <!-- IdentityUserDetails is open for exactly one subclass since 1.2.0
+         (ExternalSignInUser, the principal Spring's OAuth2 sign-in needs) and
+         checks its mandatory fields through requireNonNull like the entities.
+         The finalizer attack needs a finalizer; neither class has one. -->
+    <Match>
+        <Class name="de.zettsystems.identity.application.IdentityUserDetails"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+
     <!-- Mail texts deliberately contain \n and not %n: the line break of a mail
          is laid down by RFC 5322 and must not depend on the operating
          system. -->

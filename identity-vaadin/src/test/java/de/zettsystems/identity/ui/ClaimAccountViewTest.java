@@ -4,7 +4,10 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.textfield.PasswordField;
+import com.vaadin.flow.server.VaadinSession;
+import de.zettsystems.identity.application.ExternalSignInService;
 import de.zettsystems.identity.application.IdentityException;
+import de.zettsystems.identity.values.ExternalProvider;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
 import org.junit.jupiter.api.Test;
@@ -171,5 +174,33 @@ class ClaimAccountViewTest extends AbstractViewTest {
 
         assertThat(_find(view, PasswordField.class)).isEmpty();
         assertThat(_get(view, H2.class).getText()).isEqualTo("Link unvollständig");
+    }
+
+    @Test
+    void theInvitationCanBeRedeemedThroughAProviderWithItsToken() {
+        ClaimAccountView view = show(new ClaimAccountView(invitationService, IdentityProperties.defaults(), MESSAGES,
+                () -> java.util.List.of(new ExternalProvider("google", "Google"))));
+        view.beforeEnter(enterEventWithToken(IdentityRoutes.CLAIM_ACCOUNT, "token-123"));
+
+        Button google = _get(view, Button.class,
+                spec -> spec.withId(ClaimAccountView.EXTERNAL_BUTTON_ID_PREFIX + "google"));
+        assertThat(google.getText()).isEqualTo("Weiter mit Google");
+        _click(google);
+
+        assertThat(browserCall("window.open").getInvocation().getParameters())
+                .as("the token stays out of the address")
+                .contains("oauth2/authorization/google?invitation");
+        assertThat(VaadinSession.getCurrent().getSession()
+                .getAttribute(ExternalSignInService.PENDING_INVITATION_SESSION_ATTRIBUTE))
+                .isEqualTo("token-123");
+        assertThat(_find(view, PasswordField.class)).as("the password stays an option").hasSize(2);
+    }
+
+    @Test
+    void withoutProvidersOnlyThePasswordIsOffered() {
+        ClaimAccountView view = enteredWithToken("token-123");
+
+        assertThat(_find(view, Button.class, spec -> spec.withId(ClaimAccountView.EXTERNAL_BUTTON_ID_PREFIX + "google")))
+                .isEmpty();
     }
 }

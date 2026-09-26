@@ -39,7 +39,16 @@ dependencies {
     // configurer for passkeys is simply not called.
     compileOnly 'org.springframework.security:spring-security-webauthn'
 
+    // compileOnly as well (since 1.2.0): sign-in through external identity
+    // providers (Google, GitHub, a company's Keycloak) needs Spring Security's
+    // OAuth2 client. An application that offers it takes the starter itself;
+    // without it the classes that touch it are never loaded
+    // (@ConditionalOnClass), and the security configurer for it is simply not
+    // called.
+    compileOnly 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+
     testImplementation 'org.springframework.security:spring-security-webauthn'
+    testImplementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
     testImplementation 'org.springframework.boot:spring-boot-starter-mail'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     // For MockHttpServletRequest/-Response: the main code knows the servlet

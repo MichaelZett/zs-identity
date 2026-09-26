@@ -16,6 +16,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import org.hibernate.annotations.BatchSize;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
@@ -24,6 +25,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -44,8 +46,15 @@ import java.util.stream.Collectors;
  * <p>There are also <strong>managed accounts</strong> ({@link #managed}): an
  * application creates them for people who do not (yet) register themselves,
  * without an email address and without a password. They cannot sign in: the
- * sign-in path looks up by email address, and without a password hash the
- * {@code IdentityUserDetailsService} never hands them out either.
+ * sign-in path looks up by email address, and an account that is not
+ * {@linkplain #isClaimed() claimed} is never handed out by the
+ * {@code IdentityUserDetailsService} either.
+ *
+ * <p>Since V1_8 an account may sign in through an <strong>external
+ * provider</strong> instead of, or next to, a password
+ * ({@link #getExternalIdentities()}). An account without a password is then
+ * a regular one: {@link #hasPassword()} and {@link #isClaimed()} tell the two
+ * questions apart.
  */
 @Entity
 @Table(name = "auth_user", schema = IdentitySchema.NAME)
@@ -136,6 +145,23 @@ public class UserAccount extends AbstractAuthEntity {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<RoleAssignment> roleAssignments = new LinkedHashSet<>();
 
+    // LAZY for the same reason; most accounts never have one. BatchSize keeps
+    // a list that does look at them from asking once per row.
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
+    private Set<ExternalIdentity> externalIdentities = new LinkedHashSet<>();
+
+    /**
+     * Whether {@link #externalIdentities} holds at least one, since V1_8.
+     * Kept next to the collection by {@link #linkExternalIdentity} and
+     * {@link #unlinkExternalIdentity}, so that {@link #isClaimed()} -- which
+     * every mapping of an account asks -- never loads the collection: some
+     * paths map an account after a bulk update has cleared the persistence
+     * context, and the collection could not be loaded any more.
+     */
+    @Column(name = "external_sign_in", nullable = false)
+    private boolean externalSignIn;
+
     protected UserAccount() {
         // for JPA
     }
@@ -186,6 +212,21 @@ public class UserAccount extends AbstractAuthEntity {
         this.locale = newLocale == null || "und".equals(newLocale.toLanguageTag()) ? null : newLocale;
     }
 
+    /**
+     * Creates an account on the first sign-in through an external provider:
+     * no password, the address confirmed and the account usable straight
+     * away -- the provider has vouched for the address, which is all a
+     * verification mail would prove.
+     */
+    public static UserAccount external(String email, AccountName name, Instant createdAt) {
+        UserAccount account = new UserAccount();
+        account.email = normalizeEmail(email);
+        account.applyName(name);
+        account.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+        account.activateAfterEmailVerification();
+        return account;
+    }
+
     /** Managed = created by an application, without credentials of its own. */
     public boolean isManaged() {
         return email == null;
@@ -193,12 +234,16 @@ public class UserAccount extends AbstractAuthEntity {
 
     /**
      * Claimed = the account belongs to a person who can sign in with it:
-     * registered, or an invitation redeemed. Today that is exactly "a password
-     * is set"; with sign-in through external providers (issue #1) an account
-     * without a password will count as well, so callers ask this rather than
-     * looking at the password.
+     * registered, an invitation redeemed, or signed in through an external
+     * provider. Callers ask this rather than looking at the password: since
+     * V1_8 there are claimed accounts without one.
      */
     public boolean isClaimed() {
+        return hasPassword() || externalSignIn;
+    }
+
+    /** Whether the account can sign in with a password at all. */
+    public boolean hasPassword() {
         return passwordHash != null;
     }
 
@@ -310,9 +355,91 @@ public class UserAccount extends AbstractAuthEntity {
         clearFailedLogins();
     }
 
-    /** Requires a password change at the next sign-in. */
+    /**
+     * Requires a password change at the next sign-in.
+     *
+     * @throws IllegalStateException if the account has no password: it
+     *                               signs in elsewhere, and a forced change
+     *                               would lock it into a view it cannot
+     *                               leave
+     */
     public void requirePasswordChange() {
+        if (!hasPassword()) {
+            throw new IllegalStateException("Account " + id + " has no password to change");
+        }
         this.mustChangePassword = true;
+    }
+
+    /**
+     * Throws away a password that was set before the address was confirmed.
+     *
+     * <p>The one case: somebody registered here with an address and never
+     * confirmed it, and now its owner arrives through a provider that vouches
+     * for it. Whoever registered may not have been the owner -- registering
+     * with somebody else's address and waiting is exactly how an account is
+     * taken over before its owner ever uses it. The password goes; the owner
+     * can set one of their own through "forgot password".
+     *
+     * @throws IllegalStateException if the address is already confirmed:
+     *                               then the password is the owner's
+     */
+    public void dropUnconfirmedPassword() {
+        if (emailVerified) {
+            throw new IllegalStateException("Account " + id + " has a confirmed address; its password stays");
+        }
+        this.passwordHash = null;
+        this.mustChangePassword = false;
+        clearFailedLogins();
+    }
+
+    /** The identities at external providers, oldest first. */
+    public Set<ExternalIdentity> getExternalIdentities() {
+        return Collections.unmodifiableSet(externalIdentities);
+    }
+
+    /** The identity at this provider, if the account has one there. */
+    public Optional<ExternalIdentity> externalIdentity(String registrationId) {
+        Objects.requireNonNull(registrationId, "registrationId");
+        return externalIdentities.stream()
+                .filter(identity -> identity.getRegistrationId().equals(registrationId))
+                .findFirst();
+    }
+
+    /**
+     * Links an identity at an external provider. The same identity again is
+     * harmless and returns the existing link.
+     *
+     * @throws IllegalStateException if the account already has a different
+     *                               identity at this provider -- at most one
+     *                               per provider, so that unlinking can name
+     *                               it by the provider alone
+     */
+    public ExternalIdentity linkExternalIdentity(String registrationId, String subject, @Nullable String email,
+                                                 Instant at) {
+        Optional<ExternalIdentity> existing = externalIdentity(registrationId);
+        if (existing.isPresent()) {
+            if (existing.get().matches(registrationId, subject)) {
+                return existing.get();
+            }
+            throw new IllegalStateException(
+                    "Account " + id + " already has a different identity at " + registrationId);
+        }
+        ExternalIdentity identity = new ExternalIdentity(this, registrationId, subject, email, at);
+        externalIdentities.add(identity);
+        externalSignIn = true;
+        return identity;
+    }
+
+    /**
+     * Removes the identity at this provider.
+     *
+     * @return whether there was one
+     */
+    public boolean unlinkExternalIdentity(String registrationId) {
+        Objects.requireNonNull(registrationId, "registrationId");
+        boolean removed = externalIdentities.removeIf(identity -> identity.getRegistrationId().equals(registrationId));
+        externalSignIn = !externalIdentities.isEmpty();
+        return removed;
     }
 
     public void rename(AccountName newName) {

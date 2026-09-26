@@ -34,6 +34,24 @@ public interface AuthTokenRepository extends JpaRepository<AuthToken, Long> {
                              @Param("type") AuthTokenType type,
                              @Param("now") Instant now);
 
+    /**
+     * Voids every open token of a user, of any type: once an external
+     * provider has vouched for the address, an older verification, or invitation
+     * link must not lead in any more.
+     *
+     * <p>Without {@code clearAutomatically}, unlike
+     * {@link #invalidateOpenTokens}: the caller goes on working with the
+     * account it has just changed, and clearing would detach it.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            update AuthToken t
+               set t.usedAt = :now
+             where t.user.id = :userId
+               and t.usedAt is null
+            """)
+    int invalidateAllOpenTokens(@Param("userId") Long userId, @Param("now") Instant now);
+
     /** Clears out expired or redeemed tokens. */
     @Modifying
     @Query("delete from AuthToken t where t.expiresAt < :cutoff or t.usedAt is not null")
