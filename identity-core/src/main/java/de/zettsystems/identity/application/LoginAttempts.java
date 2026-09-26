@@ -122,6 +122,6 @@ class LoginAttempts {
      */
     private Optional<UserAccount> account(String username) {
         return userRepository.findForUpdateByEmail(UserAccount.normalizeEmail(username))
-                .filter(UserAccount::isClaimed);
+                .filter(UserAccount::hasPassword);
     }
 }

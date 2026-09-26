@@ -13,9 +13,9 @@
  * navigation and a sign-out button around all of its views; that frame would
  * otherwise wrap the sign-in page as well. The building block only says "no
  * application layout" and does not have to know the application for that.
- * The exception is {@code PasskeyView}: it is reached from inside the
- * application by someone already signed in, and the application's frame is
- * the way back.
+ * The exceptions are {@code PasskeyView} and {@code LinkedAccountsView}: they
+ * are reached from inside the application by someone already signed in, and
+ * the application's frame is the way back.
  */
 @NullMarked
 package de.zettsystems.identity.ui;

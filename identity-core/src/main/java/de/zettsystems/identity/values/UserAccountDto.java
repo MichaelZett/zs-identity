@@ -43,6 +43,12 @@ import java.util.stream.Collectors;
  *                    locked or has been unlocked since. A time in the past
  *                    means the lock has run out -- {@link #lockedAt(Instant)}
  *                    saves the comparison. Not the same as {@link #enabled()}.
+ * @param hasPassword whether the account can sign in with a password (since
+ *                    1.2.0). {@code false} for managed accounts, open
+ *                    invitations and accounts that sign in through an
+ *                    external provider only -- the case an application
+ *                    needs it for: such an account has no password to
+ *                    change or to force a change of.
  */
 public record UserAccountDto(Long id,
                              @Nullable String email,
@@ -54,7 +60,8 @@ public record UserAccountDto(Long id,
                              boolean mustChangePassword,
                              @Nullable Locale locale,
                              boolean claimed,
-                             @Nullable Instant lockedUntil) {
+                             @Nullable Instant lockedUntil,
+                             boolean hasPassword) {
 
     public UserAccountDto {
         Objects.requireNonNull(id, "id");
@@ -62,6 +69,20 @@ public record UserAccountDto(Long id,
         Objects.requireNonNull(createdAt, "createdAt");
         Objects.requireNonNull(roleAssignments, "roleAssignments");
         roleAssignments = Set.copyOf(roleAssignments);
+    }
+
+    /**
+     * The shape before 1.2.0, without {@code hasPassword}. It stays so that
+     * applications building the record by hand (common in tests) do not
+     * break. Before 1.2.0 a claimed account was one with a password, so that
+     * is what it is derived from.
+     */
+    public UserAccountDto(Long id, @Nullable String email, AccountName name, boolean enabled,
+                          boolean emailVerified, Instant createdAt, Set<ScopedRole> roleAssignments,
+                          boolean mustChangePassword, @Nullable Locale locale, boolean claimed,
+                          @Nullable Instant lockedUntil) {
+        this(id, email, name, enabled, emailVerified, createdAt, roleAssignments, mustChangePassword,
+                locale, claimed, lockedUntil, claimed);
     }
 
     /**

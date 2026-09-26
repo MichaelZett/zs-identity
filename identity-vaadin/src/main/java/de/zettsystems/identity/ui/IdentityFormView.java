@@ -18,6 +18,7 @@ import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import de.zettsystems.identity.application.IdentityException;
 import de.zettsystems.identity.application.IdentityMessages;
+import de.zettsystems.identity.values.ExternalProvider;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.UiSettings;
@@ -111,7 +112,10 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
             IdentityMessageKeys.EMAIL_ALREADY_REGISTERED,
             IdentityMessageKeys.SELF_REGISTRATION_DISABLED,
             IdentityMessageKeys.ACCOUNT_ALREADY_CLAIMED,
-            IdentityMessageKeys.PASSKEY_NOT_FOUND);
+            IdentityMessageKeys.PASSKEY_NOT_FOUND,
+            IdentityMessageKeys.ACCOUNT_WITHOUT_PASSWORD,
+            IdentityMessageKeys.EXTERNAL_IDENTITY_NOT_FOUND,
+            IdentityMessageKeys.LAST_SIGN_IN_METHOD);
 
     private final IdentityTexts texts;
     private final UiSettings ui;
@@ -258,6 +262,21 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
     /** A button leading to another route of this building block. */
     protected final Button navigationButton(String key, String route) {
         return new Button(text(key), event -> UI.getCurrent().navigate(route));
+    }
+
+    /**
+     * A button that leaves for an external provider (since 1.2.0), as a full
+     * page load: the address belongs to Spring Security's OAuth2 filters,
+     * not to a view, so the router must not take it.
+     *
+     * @param target where to go, relative like the routes
+     *               ({@code oauth2/authorization/google?link})
+     */
+    protected final Button providerButton(String key, String id, ExternalProvider provider, String target) {
+        Button button = new Button(text(key, provider.name()),
+                event -> event.getSource().getUI().ifPresent(ui -> ui.getPage().setLocation(target)));
+        button.setId(id);
+        return button;
     }
 
     /**

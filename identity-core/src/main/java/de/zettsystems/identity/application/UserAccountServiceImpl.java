@@ -242,6 +242,10 @@ class UserAccountServiceImpl implements UserAccountService {
     @Transactional
     public UserAccountDto requirePasswordChange(Long userId) {
         UserAccount user = requireUser(userId);
+        if (!user.hasPassword()) {
+            throw new IdentityException(IdentityMessageKeys.ACCOUNT_WITHOUT_PASSWORD,
+                    "Account %d signs in through an external provider and has no password".formatted(userId));
+        }
         user.requirePasswordChange();
         authenticationRefresher.refreshAfterCommit(user.getEmail());
         return UserAccountMapper.toDto(user);

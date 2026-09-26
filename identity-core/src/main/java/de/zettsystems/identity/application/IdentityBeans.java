@@ -1,6 +1,7 @@
 package de.zettsystems.identity.application;
 
 import de.zettsystems.identity.domain.AuthTokenRepository;
+import de.zettsystems.identity.domain.ExternalIdentityRepository;
 import de.zettsystems.identity.domain.PasskeyRepository;
 import de.zettsystems.identity.domain.RoleRepository;
 import de.zettsystems.identity.domain.UserAccountRepository;
@@ -9,18 +10,22 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
+import org.springframework.util.ClassUtils;
 
 import java.time.Clock;
 import java.util.List;
@@ -187,6 +192,57 @@ public class IdentityBeans {
     }
 
     /**
+     * The sign-in through external providers (since 1.2.0). Free of OAuth2
+     * types, so it exists whether or not the application brings the client;
+     * {@code IdentityOAuth2Configurer} calls it once the provider's answer is
+     * checked.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @SuppressWarnings("java:S107") // one collaborator per concern, as in the other services
+    ExternalSignInService externalSignInService(UserAccountRepository userRepository,
+                                                ExternalIdentityRepository identityRepository,
+                                                RoleRepository roleRepository,
+                                                AuthTokenIssuer tokenIssuer,
+                                                AuthTokenRepository tokenRepository,
+                                                IdentityProperties properties,
+                                                Clock clock,
+                                                ApplicationEventPublisher events,
+                                                ObjectProvider<LoginThrottle> throttle) {
+        return new ExternalSignInServiceImpl(userRepository, identityRepository, roleRepository, tokenIssuer,
+                tokenRepository, properties, clock, events, throttle);
+    }
+
+    /** What an application shows about linked providers; see {@link #passkeyService}. */
+    @Bean
+    @ConditionalOnMissingBean
+    ExternalIdentityService externalIdentityService(UserAccountRepository userRepository,
+                                                    ExternalIdentityRepository identityRepository,
+                                                    PasskeyRepository passkeyRepository,
+                                                    ApplicationEventPublisher events) {
+        return new ExternalIdentityServiceImpl(userRepository, identityRepository, passkeyRepository, events);
+    }
+
+    /**
+     * The providers the sign-in page offers. The class that reads Spring's
+     * client registrations is only loaded when the OAuth2 client is on the
+     * classpath and the sign-in through providers is switched on; otherwise
+     * there are none, and the page shows no button.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    ExternalProviders externalProviders(IdentityProperties properties, ApplicationContext context) {
+        if (!properties.oauth2().enabled()
+                || !ClassUtils.isPresent(CLIENT_REGISTRATION_REPOSITORY, context.getClassLoader())) {
+            return ExternalProviders.none();
+        }
+        return new ClientRegistrationProviders(properties.oauth2(), context);
+    }
+
+    private static final String CLIENT_REGISTRATION_REPOSITORY =
+            "org.springframework.security.oauth2.client.registration.ClientRegistrationRepository";
+
+    /**
      * The stores Spring Security's WebAuthn filters read and write, backed by
      * the building block's tables. Only with {@code spring-security-webauthn}
      * on the classpath: the interfaces come from there, and a class that
@@ -248,10 +304,29 @@ public class IdentityBeans {
         LoginProtectionAuthenticationProvider loginProtectionAuthenticationProvider(
                 UserDetailsService userDetailsService, PasswordEncoder passwordEncoder,
                 LoginThrottle throttle, LoginAttempts attempts) {
-            DaoAuthenticationProvider passwordCheck = new DaoAuthenticationProvider(userDetailsService);
+            DaoAuthenticationProvider passwordCheck = new DaoAuthenticationProvider(
+                    passwordAccountsOnly(userDetailsService));
             passwordCheck.setPasswordEncoder(passwordEncoder);
             return new LoginProtectionAuthenticationProvider(passwordCheck, throttle, attempts);
         }
+    }
+
+    /**
+     * The accounts the password form may check: those with a password. An
+     * account that signs in through an external provider only is turned
+     * down as if its address were unknown -- the
+     * {@code DaoAuthenticationProvider} then compares against its dummy hash,
+     * so the answer takes as long as for a wrong password, and whoever is
+     * guessing learns nothing about which addresses have an account.
+     */
+    static UserDetailsService passwordAccountsOnly(UserDetailsService userDetailsService) {
+        return username -> {
+            UserDetails user = userDetailsService.loadUserByUsername(username);
+            if (user.getPassword() == null) {
+                throw new UsernameNotFoundException("No password for " + username);
+            }
+            return user;
+        };
     }
 
     @Bean

@@ -175,6 +175,11 @@ public interface UserAccountService {
      * initial passwords handed out by an administrator or for accounts reset by
      * hand. With {@code identity-vaadin}, every route then leads to the
      * change-password view until the password has been changed.
+     *
+     * @throws IdentityException with {@code ACCOUNT_WITHOUT_PASSWORD} if the
+     *                           account signs in through an external provider
+     *                           only (since 1.2.0): it has no password to
+     *                           change, and would be stuck on the view
      */
     UserAccountDto requirePasswordChange(Long userId);
 
