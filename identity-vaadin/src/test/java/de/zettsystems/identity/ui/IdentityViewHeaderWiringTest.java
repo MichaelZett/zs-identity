@@ -3,6 +3,7 @@ package de.zettsystems.identity.ui;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import de.zettsystems.identity.application.ExternalProviders;
 import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.values.IdentityProperties;
@@ -47,6 +48,7 @@ class IdentityViewHeaderWiringTest extends AbstractViewTest {
         context.registerBean(RegistrationService.class, FakeRegistrationService::new);
         context.registerBean(IdentityProperties.class, IdentityProperties::defaults);
         context.registerBean(IdentityMessages.class, IdentityMessages::resourceBundles);
+        context.registerBean(ExternalProviders.class, ExternalProviders::none);
         if (header) {
             context.registerBean(IdentityViewHeader.class, () -> viewName -> {
                 Div logo = new Div("Vereinslogo");

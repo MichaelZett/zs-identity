@@ -12,6 +12,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.router.BeforeEnterObserver;
+import de.zettsystems.identity.values.ExternalProvider;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.UiSettings;
 import org.junit.jupiter.api.Test;
@@ -37,18 +38,22 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>The test runs across <strong>every</strong> anonymously reachable view of
  * the building block: the rules are only rules if no view leaves them out. A
  * new view therefore belongs in {@link #allViews()}. Missing there are only
- * {@code ChangePasswordView} and {@code PasskeyView}, which show nothing at all
- * without a signed-in account; their shape is checked by
- * {@code ChangePasswordViewTest} and {@code PasskeyViewTest}.
+ * {@code ChangePasswordView}, {@code PasskeyView} and
+ * {@code LinkedAccountsView}, which show nothing at all without a signed-in
+ * account; their shape is checked by their own tests.
  */
 class IdentityViewLayoutTest extends AbstractViewTest {
 
     private static final IdentityProperties PROPERTIES = IdentityProperties.defaults();
+    /** A provider button is a button like any other and fills the column too. */
+    private static final ExternalProvider GOOGLE = new ExternalProvider("google", "Google");
 
     /** Every view in the state a person first sees it in. */
     static Stream<Arguments> allViews() {
         return Stream.of(
                 view("login", () -> new LoginView(new FakeRegistrationService(), PROPERTIES, MESSAGES)),
+                view("login", () -> new LoginView(new FakeRegistrationService(), PROPERTIES, MESSAGES,
+                        () -> List.of(GOOGLE))),
                 view("registration", () -> new RegistrationView(new FakeRegistrationService(), PROPERTIES, MESSAGES)),
                 view("forgot-password",
                         () -> new ForgotPasswordView(new FakePasswordResetService(), PROPERTIES, MESSAGES)),
@@ -59,6 +64,10 @@ class IdentityViewLayoutTest extends AbstractViewTest {
                         IdentityRoutes.RESET_PASSWORD)),
                 view("claim-account", () -> entered(
                         new ClaimAccountView(new FakeInvitationService(), PROPERTIES, MESSAGES),
+                        IdentityRoutes.CLAIM_ACCOUNT)),
+                view("claim-account", () -> entered(
+                        new ClaimAccountView(new FakeInvitationService(), PROPERTIES, MESSAGES,
+                                () -> List.of(GOOGLE)),
                         IdentityRoutes.CLAIM_ACCOUNT)),
                 view("confirm-email", () -> entered(
                         new ConfirmEmailView(new FakeRegistrationService(), PROPERTIES, MESSAGES),

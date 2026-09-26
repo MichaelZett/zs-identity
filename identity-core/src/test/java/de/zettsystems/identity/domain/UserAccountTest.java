@@ -314,6 +314,109 @@ class UserAccountTest {
     }
 
     @Test
+    void anAccountFromAProviderHasNoPasswordButIsClaimedAndConfirmed() {
+        UserAccount user = UserAccount.external(" Ida@Example.com ", AccountName.display("Ida"), CREATED);
+        user.linkExternalIdentity("google", "sub-1", "ida@example.com", CREATED);
+
+        assertThat(user.getEmail()).isEqualTo("ida@example.com");
+        assertThat(user.hasPassword()).isFalse();
+        assertThat(user.isClaimed()).as("a linked identity is a way in").isTrue();
+        assertThat(user.isEmailVerified()).isTrue();
+        assertThat(user.isEnabled()).isTrue();
+    }
+
+    @Test
+    void withoutPasswordAndWithoutIdentityAnAccountIsNotClaimed() {
+        UserAccount user = UserAccount.external("ida@example.com", AccountName.display("Ida"), CREATED);
+
+        assertThat(user.isClaimed()).isFalse();
+    }
+
+    @Test
+    void theSameIdentityLinkedTwiceIsOneLink() {
+        UserAccount user = newAccount("a@b.c");
+
+        ExternalIdentity first = user.linkExternalIdentity("google", "sub-1", null, CREATED);
+        ExternalIdentity second = user.linkExternalIdentity("google", "sub-1", "a@b.c", CREATED);
+
+        assertThat(second).isSameAs(first);
+        assertThat(user.getExternalIdentities()).hasSize(1);
+    }
+
+    /** One identity per provider, so that unlinking can name it by the provider alone. */
+    @Test
+    void aSecondIdentityAtTheSameProviderIsRefused() {
+        UserAccount user = newAccount("a@b.c");
+        user.linkExternalIdentity("google", "sub-1", null, CREATED);
+
+        assertThatThrownBy(() -> user.linkExternalIdentity("google", "sub-2", null, CREATED))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void unlinkingRemovesTheIdentityOfThatProviderOnly() {
+        UserAccount user = newAccount("a@b.c");
+        user.linkExternalIdentity("google", "sub-1", null, CREATED);
+        user.linkExternalIdentity("github", "42", null, CREATED);
+
+        assertThat(user.unlinkExternalIdentity("google")).isTrue();
+        assertThat(user.unlinkExternalIdentity("google")).as("gone already").isFalse();
+        assertThat(user.externalIdentity("github")).isPresent();
+    }
+
+    @Test
+    void anUnconfirmedPasswordCanBeDropped() {
+        UserAccount user = newAccount("a@b.c");
+        user.requirePasswordChange();
+
+        user.dropUnconfirmedPassword();
+
+        assertThat(user.hasPassword()).isFalse();
+        assertThat(user.isMustChangePassword()).isFalse();
+    }
+
+    @Test
+    void aConfirmedPasswordStays() {
+        UserAccount user = newAccount("a@b.c");
+        user.activateAfterEmailVerification();
+
+        assertThatThrownBy(user::dropUnconfirmedPassword).isInstanceOf(IllegalStateException.class);
+        assertThat(user.hasPassword()).isTrue();
+    }
+
+    /** A forced change would lock such an account into a view it cannot leave. */
+    @Test
+    void anAccountWithoutPasswordCannotBeForcedToChangeIt() {
+        UserAccount user = UserAccount.external("ida@example.com", AccountName.display("Ida"), CREATED);
+
+        assertThatThrownBy(user::requirePasswordChange).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void identitiesCheckTheirLength() {
+        UserAccount user = newAccount("a@b.c");
+
+        assertThatThrownBy(() -> user.linkExternalIdentity(" ", "sub", null, CREATED))
+                .isInstanceOf(IllegalArgumentException.class);
+        String tooLong = "x".repeat(256);
+        assertThatThrownBy(() -> user.linkExternalIdentity("google", tooLong, null, CREATED))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void anIdentityRemembersItsLastUse() {
+        UserAccount user = newAccount("a@b.c");
+        ExternalIdentity identity = user.linkExternalIdentity("google", "sub-1", "old@b.c", CREATED);
+
+        identity.recordUse("new@b.c", CREATED.plusSeconds(60));
+
+        assertThat(identity.getEmail()).isEqualTo("new@b.c");
+        assertThat(identity.getLastUsedAt()).isEqualTo(CREATED.plusSeconds(60));
+        assertThat(identity.matches("google", "sub-1")).isTrue();
+        assertThat(identity.matches("github", "sub-1")).isFalse();
+    }
+
+    @Test
     void twoUnsavedAccountsAreNeverEqual() {
         // Both have id == null. If they were equal, they would displace each
         // other inside a set.

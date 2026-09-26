@@ -5,6 +5,60 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## Unreleased
+**Sign-in through external identity providers** implemented
+
+### Added
+- **Sign-in through external identity providers** (#1): Google, GitHub, a
+  company's Keycloak or Entra ID, next to the password or instead of it. Off
+  by default; an application takes
+  `spring-boot-starter-security-oauth2-client`, adds
+  `http.with(IdentityOAuth2Configurer.oauth2Login(), ..)` and sets
+  `zs.identity.oauth2.enabled=true`. The providers stay Spring Boot's
+  `spring.security.oauth2.client.*`; `zs.identity.oauth2.*` holds
+  `registrations`, `create-accounts` (defaults to
+  `self-registration-enabled`) and `link-by-email` (on).
+  - Identities are linked by the provider's subject in the new table
+    `identity.auth_external_identity` (migration V1_8), never by address.
+    On the first sign-in only an address the provider vouches for counts
+    (`email_verified`; GitHub's verified primary address from
+    `/user/emails`): it joins an existing account, redeems an open
+    invitation, or creates an account without a password.
+  - Joining an account whose address was never confirmed drops the password
+    set at its registration, and voids its open links: someone may have
+    registered with another person's address to wait for them. Published as
+    `PasswordChanged`.
+  - Invitations can be redeemed through a provider; the account never needs
+    a password. The token waits in the HTTP session during the round trip,
+    never in the address, so that a link with somebody else's invitation
+    cannot tie a stranger's identity to that account.
+  - The session holds Spring's `OAuth2AuthenticationToken` with an
+    `ExternalSignInUser` as principal, which is an `IdentityUserDetails`.
+    A sign-in through a provider records the time and lifts a temporary
+    lock, like a passkey.
+  - `ExternalIdentityService` (list, unlink -- never the last way in),
+    `ExternalProviders` (what the sign-in page offers), events
+    `ExternalIdentityLinked` / `ExternalIdentityUnlinked` (an unlink discards
+    the remember-me tokens). A bean of `ExternalClaimsReader` adapts a
+    provider that answers differently.
+  - Views: a button per provider on the sign-in page and on the invitation
+    view, the reason a provider sign-in was turned down, and the new view
+    `IdentityRoutes.LINKED_ACCOUNTS` to link and unlink providers.
+- `UserAccountDto.hasPassword()`; the constructor without it stays.
+
+### Changed
+- **Accounts without a password are regular ones.** `IdentityUserDetailsService`
+  hands out every claimed account, with `getPassword()` `null` for one that
+  signs in through a provider only; `IdentityUserDetails` is no longer final
+  and takes a `null` password. The password form of the building block turns
+  such an account down like an unknown address, in the same time.
+  `UserAccount#isClaimed()` counts linked identities; `UserAccountDto.claimed()`
+  follows.
+- `UserAccountService#requirePasswordChange` refuses an account without a
+  password (`ACCOUNT_WITHOUT_PASSWORD`).
+- `LoginView` and `ClaimAccountView` take `ExternalProviders` in their
+  Spring constructor; the constructors without it stay.
+
 ## 1.1.0 - 2026-09-25
 **Protection against password guessing** implemented
 

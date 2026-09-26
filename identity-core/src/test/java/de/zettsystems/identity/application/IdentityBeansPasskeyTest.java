@@ -1,6 +1,7 @@
 package de.zettsystems.identity.application;
 
 import de.zettsystems.identity.domain.AuthTokenRepository;
+import de.zettsystems.identity.domain.ExternalIdentityRepository;
 import de.zettsystems.identity.domain.PasskeyRepository;
 import de.zettsystems.identity.domain.RoleRepository;
 import de.zettsystems.identity.domain.UserAccountRepository;
@@ -33,6 +34,7 @@ class IdentityBeansPasskeyTest {
             .withBean(RoleRepository.class, () -> mock(RoleRepository.class))
             .withBean(AuthTokenRepository.class, () -> mock(AuthTokenRepository.class))
             .withBean(PasskeyRepository.class, () -> mock(PasskeyRepository.class))
+            .withBean(ExternalIdentityRepository.class, () -> mock(ExternalIdentityRepository.class))
             .withBean(IdentityMailSender.class, () -> mock(IdentityMailSender.class));
 
     @Test
