@@ -54,6 +54,7 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -85,7 +86,7 @@ class IdentityOAuth2ConfigurerIT {
             .withReuse(true);
 
     /** What the provider's user info answers next; the tests set it. */
-    private static volatile String userInfo = "{}";
+    private static final AtomicReference<String> USER_INFO = new AtomicReference<>("{}");
     private static final HttpServer PROVIDER;
 
     static {
@@ -97,7 +98,7 @@ class IdentityOAuth2ConfigurerIT {
         }
         PROVIDER.createContext("/token", exchange -> json(exchange,
                 "{\"access_token\":\"access\",\"token_type\":\"Bearer\",\"expires_in\":3600}"));
-        PROVIDER.createContext("/user", exchange -> json(exchange, userInfo));
+        PROVIDER.createContext("/user", exchange -> json(exchange, USER_INFO.get()));
         PROVIDER.start();
     }
 
@@ -167,7 +168,7 @@ class IdentityOAuth2ConfigurerIT {
 
     @Test
     void theFirstSignInCreatesAnAccountAndSignsItIn() throws Exception {
-        userInfo = "{\"id\":7,\"email\":\"ida@example.com\",\"email_verified\":true,\"name\":\"Ida Beispiel\"}";
+        USER_INFO.set("{\"id\":7,\"email\":\"ida@example.com\",\"email_verified\":true,\"name\":\"Ida Beispiel\"}");
 
         MockHttpSession session = new MockHttpSession();
         MockHttpServletResponse callback = roundTrip(session, "");
@@ -192,7 +193,7 @@ class IdentityOAuth2ConfigurerIT {
 
     @Test
     void aRefusalGoesBackToTheSignInPageWithTheReason() throws Exception {
-        userInfo = "{\"id\":7,\"email\":\"ida@example.com\",\"email_verified\":false}";
+        USER_INFO.set("{\"id\":7,\"email\":\"ida@example.com\",\"email_verified\":false}");
 
         MockHttpSession session = new MockHttpSession();
         MockHttpServletResponse callback = roundTrip(session, "");
@@ -208,7 +209,7 @@ class IdentityOAuth2ConfigurerIT {
         UserAccountDto account = userAccountService.createAccount("ida@example.com", "ein-langes-passwort",
                 "Ida", "Beispiel", true);
         userAccountService.setEnabled(account.id(), false);
-        userInfo = "{\"id\":7,\"email\":\"ida@example.com\",\"email_verified\":true}";
+        USER_INFO.set("{\"id\":7,\"email\":\"ida@example.com\",\"email_verified\":true}");
 
         MockHttpServletResponse callback = roundTrip(new MockHttpSession(), "");
 
@@ -219,7 +220,7 @@ class IdentityOAuth2ConfigurerIT {
     void anInvitationTravelsThroughTheRoundTrip() throws Exception {
         UserAccountDto invited = invitationService.inviteNewAccount("ida@club.example", "Ida", "Beispiel");
         String token = ((RecordingMailSender) mailSender).tokenFromLastMailTo("ida@club.example");
-        userInfo = "{\"id\":7,\"email\":\"ida.private@example.org\",\"email_verified\":false}";
+        USER_INFO.set("{\"id\":7,\"email\":\"ida.private@example.org\",\"email_verified\":false}");
 
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(ExternalSignInService.PENDING_INVITATION_SESSION_ATTRIBUTE, token);
@@ -241,7 +242,7 @@ class IdentityOAuth2ConfigurerIT {
     void anInvitationInTheAddressIsIgnored() throws Exception {
         UserAccountDto invited = invitationService.inviteNewAccount("ida@club.example", "Ida", "Beispiel");
         String token = ((RecordingMailSender) mailSender).tokenFromLastMailTo("ida@club.example");
-        userInfo = "{\"id\":666,\"email\":\"victim@example.org\",\"email_verified\":false}";
+        USER_INFO.set("{\"id\":666,\"email\":\"victim@example.org\",\"email_verified\":false}");
 
         MockHttpServletResponse callback = roundTrip(new MockHttpSession(),
                 "?" + IdentityPaths.INVITATION_PARAMETER + "=" + token);
@@ -254,7 +255,7 @@ class IdentityOAuth2ConfigurerIT {
     void aFreshlySignedInAccountLinksTheProviderAndComesBackToItsList() throws Exception {
         UserAccountDto account = userAccountService.createAccount("ida@example.com", "ein-langes-passwort",
                 "Ida", "Beispiel", true);
-        userInfo = "{\"id\":42,\"email\":\"somebody.else@example.org\",\"email_verified\":true}";
+        USER_INFO.set("{\"id\":42,\"email\":\"somebody.else@example.org\",\"email_verified\":true}");
         MockHttpSession session = sessionOf(passwordSignIn("ida@example.com"));
 
         MockHttpServletResponse callback = roundTrip(session, "?" + IdentityPaths.LINK_PARAMETER);
@@ -271,7 +272,7 @@ class IdentityOAuth2ConfigurerIT {
     @Test
     void aRememberedSessionCannotLinkAProvider() throws Exception {
         userAccountService.createAccount("ida@example.com", "ein-langes-passwort", "Ida", "Beispiel", true);
-        userInfo = "{\"id\":42,\"email\":\"ida@example.com\",\"email_verified\":true}";
+        USER_INFO.set("{\"id\":42,\"email\":\"ida@example.com\",\"email_verified\":true}");
         IdentityUserDetails user = (IdentityUserDetails) userDetailsService.loadUserByUsername("ida@example.com");
         MockHttpSession session = sessionOf(new RememberMeAuthenticationToken("key", user, user.getAuthorities()));
 

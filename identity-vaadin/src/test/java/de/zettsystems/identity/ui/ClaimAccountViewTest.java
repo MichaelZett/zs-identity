@@ -12,6 +12,7 @@ import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -179,7 +180,7 @@ class ClaimAccountViewTest extends AbstractViewTest {
     @Test
     void theInvitationCanBeRedeemedThroughAProviderWithItsToken() {
         ClaimAccountView view = show(new ClaimAccountView(invitationService, IdentityProperties.defaults(), MESSAGES,
-                () -> java.util.List.of(new ExternalProvider("google", "Google"))));
+                () -> List.of(new ExternalProvider("google", "Google"))));
         view.beforeEnter(enterEventWithToken(IdentityRoutes.CLAIM_ACCOUNT, "token-123"));
 
         Button google = _get(view, Button.class,

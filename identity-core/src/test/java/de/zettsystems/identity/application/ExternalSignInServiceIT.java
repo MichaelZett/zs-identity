@@ -2,6 +2,7 @@ package de.zettsystems.identity.application;
 
 import de.zettsystems.identity.application.ExternalSignInException.Reason;
 import de.zettsystems.identity.domain.AuthTokenRepository;
+import de.zettsystems.identity.domain.AuthTokenType;
 import de.zettsystems.identity.domain.ExternalIdentityRepository;
 import de.zettsystems.identity.domain.RoleRepository;
 import de.zettsystems.identity.domain.UserAccount;
@@ -31,11 +32,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 /**
  * The rules of the sign-in through external providers against a real
@@ -114,7 +117,7 @@ class ExternalSignInServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(account.locale()).isEqualTo(Locale.ENGLISH);
         assertThat(identityService.findAllOf(account.id()))
                 .extracting(ExternalIdentityDto::registrationId, ExternalIdentityDto::email)
-                .containsExactly(org.assertj.core.groups.Tuple.tuple("google", EMAIL));
+                .containsExactly(tuple("google", EMAIL));
         assertThat(identityService.findAllOf(account.id()).getFirst().lastUsedAt()).isNotNull();
     }
 
@@ -182,7 +185,7 @@ class ExternalSignInServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(account.enabled()).isTrue();
         assertThat(devices.seriesOf(EMAIL)).as("PasswordChanged discards the remembered devices").isEmpty();
         assertThatThrownBy(() -> inTransaction(() -> tokenIssuer.redeem(verificationToken,
-                de.zettsystems.identity.domain.AuthTokenType.EMAIL_VERIFICATION)))
+                AuthTokenType.EMAIL_VERIFICATION)))
                 .as("the old verification link leads nowhere any more")
                 .isInstanceOf(IdentityException.class);
     }
@@ -284,7 +287,7 @@ class ExternalSignInServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(identityService.findAllOf(account.id()))
                 .extracting(ExternalIdentityDto::registrationId)
                 .containsExactly("github");
-        assertThat(identityService.accountsWithExternalIdentities(java.util.List.of(account.id(), -1L)))
+        assertThat(identityService.accountsWithExternalIdentities(List.of(account.id(), -1L)))
                 .containsExactly(account.id());
     }
 

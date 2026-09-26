@@ -119,7 +119,7 @@ final class StandardClaimsReader implements ExternalClaimsReader {
             return emails.stream()
                     .filter(entry -> isTrue(entry.get("primary")) && isTrue(entry.get("verified")))
                     .map(entry -> text(entry, "email"))
-                    .filter(email -> email != null)
+                    .filter(Objects::nonNull)
                     .findFirst()
                     .orElse(null);
         } catch (RestClientException e) {

@@ -62,6 +62,15 @@ public final class ExternalSignInException extends AuthenticationException {
         public static Optional<Reason> fromCode(String code) {
             return Arrays.stream(values()).filter(reason -> reason.code().equals(code)).findFirst();
         }
+
+        /**
+         * The reason behind a code from an address, {@link #FAILED} for
+         * anything unknown: the address is the browser's, and a page must not
+         * trust it to name a text that exists.
+         */
+        public static Reason fromCodeOrFailed(String code) {
+            return fromCode(code).orElse(FAILED);
+        }
     }
 
     private final Reason reason;
