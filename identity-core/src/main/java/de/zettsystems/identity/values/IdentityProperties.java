@@ -50,6 +50,9 @@ import java.util.Locale;
  * @param loginProtection          temporary lock and delay against password
  *                                 guessing, on unless switched off (see
  *                                 {@link LoginProtectionSettings})
+ * @param oauth2                   sign-in through external identity providers,
+ *                                 off unless switched on (see
+ *                                 {@link OAuth2Settings})
  */
 @ConfigurationProperties(prefix = "zs.identity")
 public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationEnabled,
@@ -66,7 +69,22 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                                  @DefaultValue UiSettings ui,
                                  @DefaultValue MigrationSettings migrations,
                                  @DefaultValue PasskeySettings passkeys,
-                                 @DefaultValue LoginProtectionSettings loginProtection) {
+                                 @DefaultValue LoginProtectionSettings loginProtection,
+                                 @DefaultValue OAuth2Settings oauth2) {
+
+    /**
+     * The shape before 1.2.0, kept so that applications and tests that build
+     * the record by hand keep compiling. External providers stay off.
+     */
+    public IdentityProperties(boolean selfRegistrationEnabled, boolean emailVerificationRequired,
+                              Duration tokenValidity, Duration invitationValidity, int passwordMinLength,
+                              String fromAddress, String fromName, String baseUrl, String defaultRoleCode,
+                              NameMode nameMode, Locale locale, UiSettings ui, MigrationSettings migrations,
+                              PasskeySettings passkeys, LoginProtectionSettings loginProtection) {
+        this(selfRegistrationEnabled, emailVerificationRequired, tokenValidity, invitationValidity,
+                passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode, nameMode, locale, ui,
+                migrations, passkeys, loginProtection, OAuth2Settings.defaults());
+    }
 
     /**
      * The shape before 1.1.0, kept so that applications and tests that build
@@ -80,7 +98,7 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                               PasskeySettings passkeys) {
         this(selfRegistrationEnabled, emailVerificationRequired, tokenValidity, invitationValidity,
                 passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode, nameMode, locale, ui,
-                migrations, passkeys, LoginProtectionSettings.defaults());
+                migrations, passkeys, LoginProtectionSettings.defaults(), OAuth2Settings.defaults());
     }
 
     /**
@@ -93,7 +111,8 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                               NameMode nameMode, Locale locale, UiSettings ui, MigrationSettings migrations) {
         this(selfRegistrationEnabled, emailVerificationRequired, tokenValidity, invitationValidity,
                 passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode, nameMode, locale, ui,
-                migrations, PasskeySettings.defaults(), LoginProtectionSettings.defaults());
+                migrations, PasskeySettings.defaults(), LoginProtectionSettings.defaults(),
+                OAuth2Settings.defaults());
     }
 
     /**
@@ -106,7 +125,8 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                               NameMode nameMode, Locale locale, UiSettings ui) {
         this(selfRegistrationEnabled, emailVerificationRequired, tokenValidity, invitationValidity,
                 passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode, nameMode, locale, ui,
-                MigrationSettings.defaults(), PasskeySettings.defaults(), LoginProtectionSettings.defaults());
+                MigrationSettings.defaults(), PasskeySettings.defaults(), LoginProtectionSettings.defaults(),
+                OAuth2Settings.defaults());
     }
 
     @ConstructorBinding
@@ -142,35 +162,52 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
     public IdentityProperties withLocale(Locale newLocale) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, newLocale, ui, migrations, passkeys, loginProtection);
+                nameMode, newLocale, ui, migrations, passkeys, loginProtection, oauth2);
     }
 
     /** The same settings with a different appearance; see {@link #withLocale(Locale)}. */
     public IdentityProperties withUi(UiSettings newUi) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, newUi, migrations, passkeys, loginProtection);
+                nameMode, locale, newUi, migrations, passkeys, loginProtection, oauth2);
     }
 
     /** The same settings with the migrations run differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withMigrations(MigrationSettings newMigrations) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, newMigrations, passkeys, loginProtection);
+                nameMode, locale, ui, newMigrations, passkeys, loginProtection, oauth2);
     }
 
     /** The same settings with passkeys set up differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withPasskeys(PasskeySettings newPasskeys) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, migrations, newPasskeys, loginProtection);
+                nameMode, locale, ui, migrations, newPasskeys, loginProtection, oauth2);
     }
 
     /** The same settings with the protection against guessing set up differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withLoginProtection(LoginProtectionSettings newLoginProtection) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, migrations, passkeys, newLoginProtection);
+                nameMode, locale, ui, migrations, passkeys, newLoginProtection, oauth2);
+    }
+
+    /** The same settings with external providers set up differently; see {@link #withLocale(Locale)}. */
+    public IdentityProperties withOAuth2(OAuth2Settings newOAuth2) {
+        return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
+                invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
+                nameMode, locale, ui, migrations, passkeys, loginProtection, newOAuth2);
+    }
+
+    /**
+     * Whether the first sign-in of an unknown person through an external
+     * provider creates an account: {@code zs.identity.oauth2.create-accounts}
+     * where set, otherwise whatever {@code self-registration-enabled} says.
+     */
+    public boolean createsExternalAccounts() {
+        Boolean explicit = oauth2.createAccounts();
+        return explicit != null ? explicit : selfRegistrationEnabled;
     }
 
     /** Defaults for tests that build the record by hand. */
@@ -178,6 +215,6 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
         return new IdentityProperties(true, true, Duration.ofHours(24), Duration.ofDays(7), 12,
                 "noreply@localhost", "Application", "http://localhost:8080", "USER", NameMode.FULL_NAME,
                 Locale.GERMAN, UiSettings.defaults(), MigrationSettings.defaults(), PasskeySettings.defaults(),
-                LoginProtectionSettings.defaults());
+                LoginProtectionSettings.defaults(), OAuth2Settings.defaults());
     }
 }

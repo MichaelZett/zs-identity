@@ -161,7 +161,8 @@ class AutoConfigurationIT {
                 select count(*) from information_schema.tables
                  where table_schema = 'identity'
                    and table_name in ('auth_user', 'auth_role', 'auth_token',
-                                      'auth_user_role', 'auth_role_authority', 'auth_passkey')
+                                      'auth_user_role', 'auth_role_authority', 'auth_passkey',
+                                      'auth_external_identity')
                 """, Integer.class);
         Integer ourHistory = jdbcTemplate.queryForObject(
                 "select count(*) from identity.flyway_schema_history where version is not null", Integer.class);
@@ -174,9 +175,9 @@ class AutoConfigurationIT {
         Integer inTheApplicationsHistory = applicationHistories == 0 ? 0 : jdbcTemplate.queryForObject(
                 "select count(*) from public.flyway_schema_history where script like 'V1\\_%'", Integer.class);
 
-        assertThat(tables).isEqualTo(6);
-        assertThat(ourHistory).as("a fresh database takes the baseline B1_6 and V1_7 on top")
-                .isEqualTo(2);
+        assertThat(tables).isEqualTo(7);
+        assertThat(ourHistory).as("a fresh database takes the baseline B1_6 and V1_7, V1_8 on top")
+                .isEqualTo(3);
         assertThat(inTheApplicationsHistory).as("nothing of ours in the application's history").isZero();
     }
 

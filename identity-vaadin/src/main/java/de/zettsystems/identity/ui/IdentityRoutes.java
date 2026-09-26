@@ -23,6 +23,8 @@ public final class IdentityRoutes {
     public static final String CLAIM_ACCOUNT = IdentityPaths.CLAIM_ACCOUNT;
     /** Manage the passkeys of the signed-in account (since 0.11.0). */
     public static final String PASSKEYS = IdentityPaths.PASSKEYS;
+    /** The external providers linked to the signed-in account (since 1.2.0). */
+    public static final String LINKED_ACCOUNTS = IdentityPaths.LINKED_ACCOUNTS;
 
     /** Name of the token parameter in verification, reset and invitation links. */
     public static final String TOKEN_PARAMETER = IdentityPaths.TOKEN_PARAMETER;

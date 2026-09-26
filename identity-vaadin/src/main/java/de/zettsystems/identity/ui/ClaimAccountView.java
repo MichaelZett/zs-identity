@@ -6,13 +6,19 @@ import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import de.zettsystems.identity.application.ExternalProviders;
+import de.zettsystems.identity.application.ExternalSignInService;
 import de.zettsystems.identity.application.IdentityException;
 import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.InvitationService;
+import de.zettsystems.identity.values.ExternalProvider;
+import de.zettsystems.identity.values.IdentityPaths;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.UserAccountDto;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,12 +30,20 @@ import java.util.Optional;
  * <p>Close to {@code ResetPasswordView}, with one difference: it shows the name
  * of the account being taken over. Whoever was invited did not ask for any of
  * this and should see what it is about.
+ *
+ * <p>Since 1.2.0 the invitation can be redeemed through an external provider
+ * too, instead of setting a password: the buttons above the form carry the
+ * token through the round trip, and the account ends up linked to the
+ * provider without ever having a password.
  */
 @Route(value = IdentityRoutes.CLAIM_ACCOUNT, autoLayout = false)
 @AnonymousAllowed
 public class ClaimAccountView extends IdentityFormView implements BeforeEnterObserver {
 
+    static final String EXTERNAL_BUTTON_ID_PREFIX = "claim-external-button-";
+
     private final InvitationService invitationService;
+    private final ExternalProviders externalProviders;
     private final int passwordMinLength;
 
     private final PasswordField password = new PasswordField();
@@ -37,10 +51,22 @@ public class ClaimAccountView extends IdentityFormView implements BeforeEnterObs
 
     private @Nullable String token;
 
+    /** The shape before 1.2.0, without external providers; kept for applications and tests that build the view. */
     public ClaimAccountView(InvitationService invitationService, IdentityProperties properties,
                             IdentityMessages messages) {
+        this(invitationService, properties, messages, ExternalProviders.none());
+    }
+
+    /**
+     * @param externalProviders the providers the invitation can be redeemed
+     *                          through (since 1.2.0)
+     */
+    @Autowired
+    public ClaimAccountView(InvitationService invitationService, IdentityProperties properties,
+                            IdentityMessages messages, ExternalProviders externalProviders) {
         super(messages, properties, "claim-account");
         this.invitationService = invitationService;
+        this.externalProviders = externalProviders;
         this.passwordMinLength = properties.passwordMinLength();
         password.setLabel(text("identity.claim.password"));
         passwordRepeat.setLabel(text("identity.claim.passwordRepeat"));
@@ -83,7 +109,30 @@ public class ClaimAccountView extends IdentityFormView implements BeforeEnterObs
 
         add(heading("identity.claim.title"));
         add(paragraph("identity.claim.intro", invitee.get().displayName()));
+        List<ExternalProvider> providers = externalProviders.offered();
+        if (!providers.isEmpty()) {
+            for (ExternalProvider provider : providers) {
+                Button button = providerButton("identity.claim.external",
+                        EXTERNAL_BUTTON_ID_PREFIX + provider.registrationId(), provider,
+                        provider.authorizationPath() + "?" + IdentityPaths.INVITATION_PARAMETER);
+                button.addClickListener(e -> rememberInvitation());
+                addFullWidth(button);
+            }
+            add(paragraph("identity.claim.or"));
+        }
         addFullWidth(password, passwordRepeat, submit);
+    }
+
+    /**
+     * The token waits in the session for the round trip through the
+     * provider, not in the address; see
+     * {@link ExternalSignInService#PENDING_INVITATION_SESSION_ATTRIBUTE}.
+     */
+    private void rememberInvitation() {
+        VaadinSession session = VaadinSession.getCurrent();
+        if (token != null && session != null) {
+            session.getSession().setAttribute(ExternalSignInService.PENDING_INVITATION_SESSION_ATTRIBUTE, token);
+        }
     }
 
     private void submit() {

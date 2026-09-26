@@ -4,6 +4,7 @@ import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -11,13 +12,19 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import de.zettsystems.identity.application.ExternalProviders;
+import de.zettsystems.identity.application.ExternalSignInException;
 import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.RegistrationService;
+import de.zettsystems.identity.values.ExternalProvider;
+import de.zettsystems.identity.values.IdentityPaths;
 import de.zettsystems.identity.values.IdentityProperties;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,13 +53,28 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
     static final String REGISTER_BUTTON_ID = "login-register-button";
     static final String FORGOT_PASSWORD_LINK_ID = "login-forgot-password-link";
     static final String RESEND_VERIFICATION_LINK_ID = "login-resend-verification-link";
+    static final String EXTERNAL_BUTTON_ID_PREFIX = "login-external-button-";
+    static final String EXTERNAL_ERROR_ID = "login-external-error";
 
     private final LoginForm loginForm = new LoginForm();
+    private final Paragraph externalError = new Paragraph();
     private final boolean passkeysEnabled;
     private final boolean passkeyButtonShown;
 
+    /** The shape before 1.2.0, without external providers; kept for applications and tests that build the view. */
     public LoginView(RegistrationService registrationService, IdentityProperties properties,
                      IdentityMessages messages) {
+        this(registrationService, properties, messages, ExternalProviders.none());
+    }
+
+    /**
+     * @param externalProviders the providers to offer a button for (since
+     *                          1.2.0); none while
+     *                          {@code zs.identity.oauth2.enabled} is off
+     */
+    @Autowired
+    public LoginView(RegistrationService registrationService, IdentityProperties properties,
+                     IdentityMessages messages, ExternalProviders externalProviders) {
         super(messages, properties, "login");
         centerOnPage();
         this.passkeysEnabled = properties.passkeys().enabled();
@@ -68,6 +90,11 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
         // one limited width, they sit in a column.
         VerticalLayout column = centeredColumn();
         column.add(alignedWithColumn(loginForm));
+        // Why a sign-in through a provider was turned down; the form's own
+        // error box speaks of wrong passwords and would be the wrong text.
+        externalError.setId(EXTERNAL_ERROR_ID);
+        externalError.setVisible(false);
+        column.add(fullWidth(externalError));
 
         // One rank per line, loudest first. Before 0.14.0 all four sat under
         // the submit button in three shapes and equally loud; on a phone that
@@ -79,6 +106,14 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
         // trusts the offer in the username field switches it off.
         if (passkeyButtonShown) {
             column.add(fullWidth(passkeyButton()));
+        }
+        // The providers next to the passkey: another way in for someone who
+        // has an account, framed like one, in the order the application
+        // configured. Only those that exist -- none while switched off.
+        for (ExternalProvider provider : externalProviders.offered()) {
+            column.add(fullWidth(providerButton("identity.login.external",
+                    EXTERNAL_BUTTON_ID_PREFIX + provider.registrationId(), provider,
+                    provider.authorizationPath())));
         }
         // The one thing that carries someone who has no account yet, so it
         // keeps its frame and the full width. Only when self-registration is
@@ -194,8 +229,17 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
+        Map<String, List<String>> parameters = event.getLocation().getQueryParameters().getParameters();
+        List<String> external = parameters.getOrDefault(IdentityPaths.EXTERNAL_ERROR_PARAMETER, List.of());
+        if (!external.isEmpty()) {
+            // A provider turned the sign-in down; the reason decides the text.
+            String reason = ExternalSignInException.Reason.fromCodeOrFailed(external.getFirst()).code();
+            externalError.setText(text("identity.login.external.error." + reason));
+            externalError.setVisible(true);
+            return;
+        }
         // Spring Security appends ?error after a failed sign-in.
-        if (event.getLocation().getQueryParameters().getParameters().containsKey("error")) {
+        if (parameters.containsKey("error")) {
             loginForm.setError(true);
         }
     }

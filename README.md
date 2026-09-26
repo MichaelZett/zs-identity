@@ -6,13 +6,14 @@
 [![Maven Central](https://img.shields.io/maven-central/v/de.zettsystems/identity-core)](https://central.sonatype.com/namespace/de.zettsystems)
 
 A reusable identity building block for Spring Boot applications: user accounts,
-self-registration with email verification, sign-in with password or passkey,
-password reset, and roles that can be global or scoped to a tenant.
+self-registration with email verification, sign-in with password, passkey or
+an external provider (OAuth2/OIDC), password reset, and roles that can be
+global or scoped to a tenant.
 
 | Artifact                          | Contents                                                      |
 |-----------------------------------|---------------------------------------------------------------|
 | `de.zettsystems:identity-core`    | Domain, services, Spring Security integration, auto-configuration, Flyway migrations. No UI. |
-| `de.zettsystems:identity-vaadin`  | Vaadin Flow views: sign-in (password or passkey), registration, verification, forgot/reset password, passkeys. Optional. |
+| `de.zettsystems:identity-vaadin`  | Vaadin Flow views: sign-in (password, passkey or external provider), registration, verification, forgot/reset password, passkeys, linked providers. Optional. |
 
 Stack: Java 25, Spring Boot 4.1, Spring Data JPA, Spring Security, Vaadin 25
 (`identity-vaadin` only), PostgreSQL.
@@ -179,6 +180,81 @@ list is optional, and the auto-configuration takes care of everything else:
      (`server.forward-headers-strategy: native` or `framework`). Without that
      every client shares one address and one delay. A rate limit on the
      sign-in path at the proxy remains a good idea on top.
+10. **Sign-in through external providers** (since 1.2.0): Google, GitHub, a
+    company's Keycloak or Entra ID -- next to the password or instead of it.
+    Like passkeys, three things on the application's side:
+    ```groovy
+    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+    ```
+    ```java
+    http.with(IdentityOAuth2Configurer.oauth2Login(), Customizer.withDefaults());
+    ```
+    ```yaml
+    spring:
+      security:
+        oauth2:
+          client:
+            registration:
+              google:                        # Spring Boot knows Google, GitHub, Facebook, Okta by id
+                client-id: ...
+                client-secret: ...
+                scope: [ openid, email, profile ]
+              github:
+                client-id: ...
+                client-secret: ...
+                scope: [ read:user, user:email ]   # user:email: the verified address comes from /user/emails
+    zs:
+      identity:
+        oauth2:
+          enabled: true                      # false by default; the configurer then does nothing
+          registrations: [ google, github ]  # which ones the sign-in page offers, in this order; default all, by name
+    ```
+    The providers stay Spring Boot's own configuration; `zs.identity.oauth2.*`
+    only holds what the building block decides. The redirect URI to register
+    with a provider is `{base-url}/login/oauth2/code/{registrationId}`.
+    - **Linked by the provider's id, not by the address.** Each account keeps
+      its identities in `identity.auth_external_identity` (registration id
+      and subject, unique). Once linked, the address the provider reports
+      plays no part any more.
+    - **The first sign-in** with an unknown identity: an address counts only
+      if the provider vouches for it (`email_verified` for OpenID Connect,
+      the verified primary address for GitHub). An account with that address
+      is joined (`link-by-email`, on by default); an open invitation for it is
+      redeemed. If the account had a password but its address was **never
+      confirmed**, that password is dropped: someone may have registered with
+      another person's address to wait for them. Without an account, one is
+      created -- without a password, confirmed, with the default role and the
+      provider's name -- if `create-accounts` allows it, which by default
+      follows `self-registration-enabled`. Anything else is turned down with a
+      reason the sign-in page shows (`/login?error&external=no-account`, ...);
+      none of them names an account.
+    - **Invitations**: the redemption view offers "Continue with Google" next
+      to the password; the account is linked to the provider and never needs
+      a password. The token waits in the HTTP session during the round trip
+      (`ExternalSignInService.PENDING_INVITATION_SESSION_ATTRIBUTE`), never in
+      the address: a link with somebody else's invitation in it would
+      otherwise tie the identity of whoever follows it to that account.
+    - **Accounts without a password** are regular ones. `UserAccountDto`
+      tells them apart with `hasPassword()`; `claimed()` counts linked
+      identities too. The password form turns them down as if the address
+      were unknown (same answer, same time), `requirePasswordChange` refuses
+      them, and "Forgot password" still works -- it adds a password. Passkeys,
+      remember-me with a `PersistentTokenRepository` and the session refresh
+      work for them as for anyone. The hash-based `TokenBasedRememberMeServices`
+      does not: its cookie is signed with the password, and there is none.
+    - **The session** holds Spring's `OAuth2AuthenticationToken`; its
+      principal is an `ExternalSignInUser`, which *is* an
+      `IdentityUserDetails` -- roles, scopes and `mustChangePassword` work
+      unchanged -- and carries the provider's attributes. A sign-in through a
+      provider lifts a temporary lock, like a passkey.
+    - **Linking from within the account**: the view
+      `IdentityRoutes.LINKED_ACCOUNTS` (`linked-accounts`) lists the linked
+      providers, links another (needs a fresh sign-in, like adding a passkey)
+      and unlinks one -- never the last way in. `ExternalIdentityService`
+      offers the same to an application's own screens.
+    - **A provider that answers differently** gets a bean of
+      `ExternalClaimsReader`, which turns the provider's answer into the
+      claims the building block decides on.
 
 ## Configuration (`zs.identity.*`)
 
@@ -211,6 +287,10 @@ list is optional, and the auto-configuration takes care of everything else:
 | `login-protection.max-delay`  | `8s`                     | longest wait |
 | `login-protection.max-delayed-requests` | `50`           | sign-ins that may wait at the same time; beyond that they are turned down unchecked |
 | `login-protection.notify-by-mail` | `true`               | mail the account when it is locked |
+| `oauth2.enabled`              | `false`                  | sign-in through external providers; needs the OAuth2 client and `IdentityOAuth2Configurer` in the filter chain (see step 10) |
+| `oauth2.registrations`        | all, by name             | the client registrations the sign-in page offers, in this order |
+| `oauth2.create-accounts`      | = `self-registration-enabled` | whether the first sign-in of an unknown person creates an account |
+| `oauth2.link-by-email`        | `true`                   | whether the first sign-in joins an existing account with the address the provider vouches for |
 
 **Mail delivery is optional** (since 0.7.0). `spring-boot-starter-mail` only
 hangs `compileOnly` off the building block -- whoever wants to send mails takes
@@ -374,6 +454,13 @@ account for a while, but it is deliberately not one of these shapes and
 touches no remember-me token: anybody who knows an address can cause it, and
 it must not sign the owner out everywhere.
 
+`ExternalIdentityLinked` and `ExternalIdentityUnlinked` (since 1.2.0;
+`userId`, `email`, `registrationId`) tell when a provider becomes a way into
+an account or stops being one. They are not among the sealed shapes either;
+an unlink discards the remember-me tokens like a changed password, and a
+password dropped on the first sign-in through a provider (see step 10) is
+published as `PasswordChanged`.
+
 They are published **inside** the transaction that makes the change. Listen
 with `@TransactionalEventListener` if you must not act on a change that is
 rolled back afterwards, and with `@EventListener` if you only want to be told:
@@ -428,12 +515,14 @@ that works everywhere (`IdentityFormView`):
 every view carries `identity-view` and an identifier of its own
 (`identity-view--login`, `--registration`, `--forgot-password`,
 `--resend-verification`, `--reset-password`, `--change-password`,
-`--claim-account`, `--confirm-email`, `--passkeys`); sign-in additionally has
+`--claim-account`, `--confirm-email`, `--passkeys`, `--linked-accounts`); sign-in additionally has
 `identity-view__column` inside plus `identity-view__footer`,
 `identity-view__footer-link` for the
 quiet line of ways out below the buttons, and the passkey list has
 `identity-view__passkey-row`, `__passkey`, `__passkey-label` and
-`__passkey-dates` per entry. Classes of your own reach every view through
+`__passkey-dates` per entry, the list of linked providers
+`identity-view__linked-row`, `__linked`, `__linked-name`, `__linked-email`
+and `__linked-dates`. Classes of your own reach every view through
 `zs.identity.ui.class-names`:
 
 ```yaml

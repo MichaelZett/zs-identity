@@ -42,8 +42,20 @@ import java.util.Set;
  * check too strictly but <strong>not at all</strong>. Without the qualified
  * form, in turn, a link into another tenant could only be checked after
  * switching.
+ *
+ * <h2>Accounts without a password</h2>
+ *
+ * <p>Since 1.2.0 an account that signs in through an external provider only
+ * has no password; {@link #getPassword()} is {@code null} then. The password
+ * sign-in of the building block turns such an account down before the
+ * comparison, exactly like an unknown address.
+ *
+ * <p>Not final since 1.2.0, for the one subclass that carries the account
+ * into Spring's OAuth2 sign-in, which wants its principal to be an
+ * {@code OAuth2User} as well. Everything else goes on asking for
+ * {@code instanceof IdentityUserDetails}.
  */
-public final class IdentityUserDetails implements UserDetails {
+public class IdentityUserDetails implements UserDetails {
 
     // Lives in the HTTP session; without a fixed UID every change to this
     // class breaks a session that is still open.
@@ -53,7 +65,7 @@ public final class IdentityUserDetails implements UserDetails {
     private final Long userId;
     private final String email;
     private final String displayName;
-    private final String passwordHash;
+    private final @Nullable String passwordHash;
     private final boolean enabled;
     private final boolean mustChangePassword;
     /** Qualified: global without a suffix, scoped with {@code @club:17}. */
@@ -69,20 +81,31 @@ public final class IdentityUserDetails implements UserDetails {
      * scope. Which one it should be is decided by the application later
      * ({@link #withActiveScope(Scope)}), not already at sign-in time.
      *
+     * @param passwordHash {@code null} for an account that signs in through an
+     *                     external provider only
      * @param authorities the authorities in qualified form: {@code ROLE_USER}
      *                    when global, {@code ROLE_ADMIN@club:17} when scoped
      */
-    public IdentityUserDetails(Long userId, String email, String displayName, String passwordHash,
+    public IdentityUserDetails(Long userId, String email, String displayName, @Nullable String passwordHash,
                                boolean enabled, boolean mustChangePassword,
                                Collection<? extends GrantedAuthority> authorities) {
         this.userId = Objects.requireNonNull(userId, "userId");
         this.email = Objects.requireNonNull(email, "email");
         this.displayName = Objects.requireNonNull(displayName, "displayName");
-        this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash");
+        this.passwordHash = passwordHash;
         this.enabled = enabled;
         this.mustChangePassword = mustChangePassword;
         this.grantedAuthorities = List.copyOf(authorities);
         this.activeScope = null;
+    }
+
+    /**
+     * A copy of the same account, for a subclass that adds what another part
+     * of Spring Security expects of its principal. The active scope is
+     * copied along.
+     */
+    protected IdentityUserDetails(IdentityUserDetails source) {
+        this(source, source.activeScope);
     }
 
     /** Copy with a different active scope; see {@link #withActiveScope(Scope)}. */
@@ -160,8 +183,9 @@ public final class IdentityUserDetails implements UserDetails {
         return new ArrayList<>(effective);
     }
 
+    /** {@code null} for an account that signs in through an external provider only. */
     @Override
-    public String getPassword() {
+    public @Nullable String getPassword() {
         return passwordHash;
     }
 

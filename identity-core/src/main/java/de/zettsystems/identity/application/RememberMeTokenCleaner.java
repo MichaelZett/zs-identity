@@ -1,6 +1,7 @@
 package de.zettsystems.identity.application;
 
 import de.zettsystems.identity.values.EmailChanged;
+import de.zettsystems.identity.values.ExternalIdentityUnlinked;
 import de.zettsystems.identity.values.IdentityAccountEvent;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -63,6 +64,19 @@ class RememberMeTokenCleaner {
         @Nullable String signInName = event instanceof EmailChanged changed
                 ? changed.previousEmail()
                 : event.email();
+        discardTokens(signInName, event.getClass().getSimpleName());
+    }
+
+    /**
+     * A provider unlinked is a way in gone, like a changed password: a device
+     * that was signed in through it must not stay in through its cookie.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onExternalIdentityUnlinked(ExternalIdentityUnlinked event) {
+        discardTokens(event.email(), event.getClass().getSimpleName());
+    }
+
+    private void discardTokens(@Nullable String signInName, String cause) {
         if (signInName == null) {
             return;
         }
@@ -72,15 +86,13 @@ class RememberMeTokenCleaner {
         }
         try {
             repository.removeUserTokens(signInName);
-            LOG.debug("Discarded the remember-me tokens of {} after {}", signInName,
-                    event.getClass().getSimpleName());
+            LOG.debug("Discarded the remember-me tokens of {} after {}", signInName, cause);
         } catch (RuntimeException e) {
             // The change itself is committed and did succeed. Letting the
             // exception through would present it to the person as a failure,
             // and they would do it again -- see the same reasoning in
             // AuthenticationRefresher.
-            LOG.warn("Could not discard the remember-me tokens of an account after {}",
-                    event.getClass().getSimpleName(), e);
+            LOG.warn("Could not discard the remember-me tokens of an account after {}", cause, e);
         }
     }
 }
