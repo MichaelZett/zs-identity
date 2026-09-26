@@ -170,7 +170,7 @@ class ExternalSignInServiceImpl implements ExternalSignInService {
                 user.dropUnconfirmedPassword();
                 LOG.warn("Account {}: password set before the address was confirmed dropped on the first "
                         + "sign-in through {}", user.getId(), claims.registrationId());
-                events.publishEvent(new PasswordChanged(Objects.requireNonNull(user.getId(), "user.id"),
+                events.publishEvent(new PasswordChanged(idOf(user),
                         user.getEmail()));
             }
             user.activateAfterEmailVerification();
@@ -179,7 +179,7 @@ class ExternalSignInServiceImpl implements ExternalSignInService {
             // Verification and invitation links sent before lead nowhere any
             // more: the provider has settled who owns the address. A reset
             // link the confirmed owner asked for stays untouched.
-            tokenRepository.invalidateAllOpenTokens(Objects.requireNonNull(user.getId(), "user.id"), now);
+            tokenRepository.invalidateAllOpenTokens(idOf(user), now);
         }
         link(user, claims, now);
         return user;
@@ -193,7 +193,7 @@ class ExternalSignInServiceImpl implements ExternalSignInService {
             throw alreadyLinked(claims);
         }
         if (!known) {
-            Long userId = Objects.requireNonNull(user.getId(), "user.id");
+            Long userId = idOf(user);
             LOG.info("Account {} linked to {}", userId, claims.registrationId());
             events.publishEvent(new ExternalIdentityLinked(userId, user.getEmail(), claims.registrationId()));
         }
@@ -218,6 +218,10 @@ class ExternalSignInServiceImpl implements ExternalSignInService {
             loginThrottle.recordSuccess(details.getUsername());
         }
         return details;
+    }
+
+    private static Long idOf(UserAccount user) {
+        return Objects.requireNonNull(user.getId(), "user.id");
     }
 
     private static ExternalSignInException alreadyLinked(ExternalIdentityClaims claims) {

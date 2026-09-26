@@ -36,6 +36,10 @@ public record ExternalIdentityClaims(String registrationId,
                                      @Nullable String fullName,
                                      @Nullable Locale locale) {
 
+    /** The columns are this wide; a provider may know a longer name, and the sign-in must not fail on it. */
+    private static final int NAME_PART_MAX_LENGTH = 128;
+    private static final int DISPLAY_NAME_MAX_LENGTH = 260;
+
     public ExternalIdentityClaims {
         Objects.requireNonNull(registrationId, "registrationId");
         Objects.requireNonNull(subject, "subject");
@@ -76,10 +80,6 @@ public record ExternalIdentityClaims(String registrationId,
         }
         return display(subject);
     }
-
-    /** The columns are this wide; a provider may know a longer name, and the sign-in must not fail on it. */
-    private static final int NAME_PART_MAX_LENGTH = 128;
-    private static final int DISPLAY_NAME_MAX_LENGTH = 260;
 
     private static AccountName display(String name) {
         return AccountName.display(cut(name, DISPLAY_NAME_MAX_LENGTH));

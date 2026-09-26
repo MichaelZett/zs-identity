@@ -118,9 +118,7 @@ public class LinkedAccountsView extends IdentityFormView implements BeforeEnterO
         List<String> linked = parameters.getOrDefault(IdentityPaths.LINKED_PARAMETER, List.of());
         List<String> refused = parameters.getOrDefault(IdentityPaths.EXTERNAL_ERROR_PARAMETER, List.of());
         if (!refused.isEmpty()) {
-            String reason = ExternalSignInException.Reason.fromCode(refused.getFirst())
-                    .orElse(ExternalSignInException.Reason.FAILED)
-                    .code();
+            String reason = ExternalSignInException.Reason.fromCodeOrFailed(refused.getFirst()).code();
             message.setText(text("identity.login.external.error." + reason));
         } else if (!linked.isEmpty()) {
             message.setText(text("identity.linked.linked", nameOf(linked.getFirst(), providers)));

@@ -233,9 +233,7 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
         List<String> external = parameters.getOrDefault(IdentityPaths.EXTERNAL_ERROR_PARAMETER, List.of());
         if (!external.isEmpty()) {
             // A provider turned the sign-in down; the reason decides the text.
-            String reason = ExternalSignInException.Reason.fromCode(external.getFirst())
-                    .orElse(ExternalSignInException.Reason.FAILED)
-                    .code();
+            String reason = ExternalSignInException.Reason.fromCodeOrFailed(external.getFirst()).code();
             externalError.setText(text("identity.login.external.error." + reason));
             externalError.setVisible(true);
             return;
