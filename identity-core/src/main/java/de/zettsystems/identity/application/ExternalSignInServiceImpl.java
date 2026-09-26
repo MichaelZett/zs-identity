@@ -189,7 +189,7 @@ class ExternalSignInServiceImpl implements ExternalSignInService {
         boolean known = user.externalIdentity(claims.registrationId()).isPresent();
         try {
             user.linkExternalIdentity(claims.registrationId(), claims.subject(), claims.email(), now);
-        } catch (IllegalStateException e) {
+        } catch (IllegalStateException _) {
             throw alreadyLinked(claims);
         }
         if (!known) {
@@ -206,7 +206,10 @@ class ExternalSignInServiceImpl implements ExternalSignInService {
      * too.
      */
     private IdentityUserDetails signedIn(UserAccount user, ExternalIdentityClaims claims, Instant now) {
-        IdentityUserDetails details = IdentityUserDetailsService.toUserDetails(user);
+        // Every way here ends in a claimed account with an address; a
+        // failure would be a bug in this class, not a refusal.
+        IdentityUserDetails details = IdentityUserDetailsService.toUserDetails(user)
+                .orElseThrow(() -> new IllegalStateException("Account " + user.getId() + " cannot sign in"));
         if (!details.isEnabled()) {
             throw new ExternalSignInException(Reason.DISABLED, "Account " + user.getId() + " is disabled");
         }

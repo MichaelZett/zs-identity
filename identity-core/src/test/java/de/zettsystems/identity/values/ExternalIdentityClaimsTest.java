@@ -79,7 +79,8 @@ class ExternalIdentityClaimsTest {
         assertThat(settings.linkByEmail()).isTrue();
         assertThat(settings.registrations(List.of("google")).enabled(true).linkByEmail(false))
                 .isEqualTo(new OAuth2Settings(true, List.of("google"), null, false));
-        assertThatThrownBy(() -> settings.registrations(List.of(" ")))
+        List<String> blank = List.of(" ");
+        assertThatThrownBy(() -> settings.registrations(blank))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
