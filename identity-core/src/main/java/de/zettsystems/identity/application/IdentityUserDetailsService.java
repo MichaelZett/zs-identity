@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashSet;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -40,11 +41,13 @@ class IdentityUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) {
         UserAccount user = userRepository.findByEmail(UserAccount.normalizeEmail(username))
                 .orElseThrow(() -> new UsernameNotFoundException("No account for " + username));
-        return toUserDetails(user);
+        return toUserDetails(user)
+                .orElseThrow(() -> new UsernameNotFoundException("No credentials for " + username));
     }
 
     /**
-     * The principal for an account that can sign in.
+     * The principal for an account that can sign in; empty for one that
+     * cannot.
      *
      * <p>Managed accounts (without an email address) are not found by the
      * lookup in the first place. Asking for a claimed account is the second
@@ -56,19 +59,19 @@ class IdentityUserDetailsService implements UserDetailsService {
      * {@code IdentityBeans}), and a {@code DaoAuthenticationProvider} fails
      * on the missing hash anyway.
      *
-     * @throws UsernameNotFoundException if the account cannot sign in at all
+     * <p>Empty rather than throwing: only {@link #loadUserByUsername} turns
+     * "cannot sign in" into Spring's {@code UsernameNotFoundException}, so
+     * that the exception that tells a known address from an unknown one is
+     * raised in exactly one place.
      */
-    static IdentityUserDetails toUserDetails(UserAccount user) {
+    static Optional<IdentityUserDetails> toUserDetails(UserAccount user) {
         String email = user.getEmail();
-        if (email == null || !user.isClaimed()) {
-            throw new UsernameNotFoundException("No credentials for account " + user.getId());
-        }
         Long userId = user.getId();
-        if (userId == null) {
-            throw new UsernameNotFoundException("Account without ID for " + email);
+        if (email == null || userId == null || !user.isClaimed()) {
+            return Optional.empty();
         }
-        return new IdentityUserDetails(userId, email, user.getDisplayName(), user.getPasswordHash(),
-                user.isEnabled(), user.isMustChangePassword(), toAuthorities(user));
+        return Optional.of(new IdentityUserDetails(userId, email, user.getDisplayName(), user.getPasswordHash(),
+                user.isEnabled(), user.isMustChangePassword(), toAuthorities(user)));
     }
 
     private static Set<GrantedAuthority> toAuthorities(UserAccount user) {

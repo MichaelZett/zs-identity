@@ -17,9 +17,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
@@ -305,28 +303,10 @@ public class IdentityBeans {
                 UserDetailsService userDetailsService, PasswordEncoder passwordEncoder,
                 LoginThrottle throttle, LoginAttempts attempts) {
             DaoAuthenticationProvider passwordCheck = new DaoAuthenticationProvider(
-                    passwordAccountsOnly(userDetailsService));
+                    new PasswordAccountsOnly(userDetailsService));
             passwordCheck.setPasswordEncoder(passwordEncoder);
             return new LoginProtectionAuthenticationProvider(passwordCheck, throttle, attempts);
         }
-    }
-
-    /**
-     * The accounts the password form may check: those with a password. An
-     * account that signs in through an external provider only is turned
-     * down as if its address were unknown -- the
-     * {@code DaoAuthenticationProvider} then compares against its dummy hash,
-     * so the answer takes as long as for a wrong password, and whoever is
-     * guessing learns nothing about which addresses have an account.
-     */
-    static UserDetailsService passwordAccountsOnly(UserDetailsService userDetailsService) {
-        return username -> {
-            UserDetails user = userDetailsService.loadUserByUsername(username);
-            if (user.getPassword() == null) {
-                throw new UsernameNotFoundException("No password for " + username);
-            }
-            return user;
-        };
     }
 
     @Bean

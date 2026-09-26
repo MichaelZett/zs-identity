@@ -398,7 +398,8 @@ class UserAccountTest {
 
         assertThatThrownBy(() -> user.linkExternalIdentity(" ", "sub", null, CREATED))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> user.linkExternalIdentity("google", "x".repeat(256), null, CREATED))
+        String tooLong = "x".repeat(256);
+        assertThatThrownBy(() -> user.linkExternalIdentity("google", tooLong, null, CREATED))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

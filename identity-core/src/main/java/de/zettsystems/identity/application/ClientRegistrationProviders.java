@@ -49,37 +49,48 @@ final class ClientRegistrationProviders implements ExternalProviders {
         if (repository == null) {
             return List.of();
         }
+        return settings.registrations().isEmpty() ? all(repository) : named(repository);
+    }
+
+    /** The ones {@code zs.identity.oauth2.registrations} names, in that order. */
+    private List<ExternalProvider> named(ClientRegistrationRepository repository) {
         List<ExternalProvider> providers = new ArrayList<>();
-        if (!settings.registrations().isEmpty()) {
-            for (String registrationId : settings.registrations()) {
-                ClientRegistration registration = repository.findByRegistrationId(registrationId);
-                if (registration == null) {
-                    // A button that leads to an error page is worse than none.
-                    // Said once, not on every page load.
-                    if (reportedMissing.add(registrationId)) {
-                        LOG.warn("zs.identity.oauth2.registrations names {}, which is not configured",
-                                registrationId);
-                    }
-                } else {
-                    providers.add(toProvider(registration));
-                }
+        for (String registrationId : settings.registrations()) {
+            ClientRegistration registration = repository.findByRegistrationId(registrationId);
+            if (registration != null) {
+                providers.add(toProvider(registration));
+            } else if (reportedMissing.add(registrationId)) {
+                // A button that leads to an error page is worse than none.
+                // Said once, not on every page load.
+                LOG.warn("zs.identity.oauth2.registrations names {}, which is not configured", registrationId);
             }
-        } else if (repository instanceof Iterable<?> registrations) {
-            for (Object registration : registrations) {
-                if (registration instanceof ClientRegistration clientRegistration) {
-                    providers.add(toProvider(clientRegistration));
-                }
-            }
-            // Spring's repository keeps them in a hash map; a page whose
-            // buttons change places between restarts would be a puzzle.
-            providers.sort(BY_NAME);
         }
         return List.copyOf(providers);
     }
 
+    /**
+     * Every registration, by name: Spring's repository keeps them in a hash
+     * map, and a page whose buttons change places between restarts would be
+     * a puzzle. A repository that cannot list its registrations offers none.
+     */
+    private static List<ExternalProvider> all(ClientRegistrationRepository repository) {
+        if (!(repository instanceof Iterable<?> registrations)) {
+            return List.of();
+        }
+        List<ExternalProvider> providers = new ArrayList<>();
+        for (Object registration : registrations) {
+            if (registration instanceof ClientRegistration clientRegistration) {
+                providers.add(toProvider(clientRegistration));
+            }
+        }
+        providers.sort(BY_NAME);
+        return List.copyOf(providers);
+    }
+
+    /** Spring sets the client name to the registration id when the configuration has none. */
     private static ExternalProvider toProvider(ClientRegistration registration) {
         String name = registration.getClientName();
         return new ExternalProvider(registration.getRegistrationId(),
-                name == null || name.isBlank() ? registration.getRegistrationId() : name);
+                name.isBlank() ? registration.getRegistrationId() : name);
     }
 }

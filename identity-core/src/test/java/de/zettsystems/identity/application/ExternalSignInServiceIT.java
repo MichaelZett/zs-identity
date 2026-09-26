@@ -11,7 +11,6 @@ import de.zettsystems.identity.testsupport.AbstractIdentityIntegrationTest;
 import de.zettsystems.identity.testsupport.MutableTestClock;
 import de.zettsystems.identity.testsupport.RecordingMailSender;
 import de.zettsystems.identity.testsupport.RecordingTokenRepository;
-import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.ExternalIdentityClaims;
 import de.zettsystems.identity.values.ExternalIdentityDto;
 import de.zettsystems.identity.values.IdentityMessageKeys;
@@ -204,7 +203,8 @@ class ExternalSignInServiceIT extends AbstractIdentityIntegrationTest {
         assertThatThrownBy(() -> invitationService.claim(invitationToken, PASSWORD))
                 .as("the invitation is settled")
                 .isInstanceOf(IdentityException.class);
-        assertThatThrownBy(() -> invitationService.resendInvitation(invited.id()))
+        Long invitedId = invited.id();
+        assertThatThrownBy(() -> invitationService.resendInvitation(invitedId))
                 .isInstanceOf(IdentityException.class)
                 .extracting(e -> ((IdentityException) e).getMessageKey())
                 .isEqualTo(IdentityMessageKeys.ACCOUNT_ALREADY_CLAIMED);
@@ -304,11 +304,12 @@ class ExternalSignInServiceIT extends AbstractIdentityIntegrationTest {
     void theLastWayInCannotBeUnlinked() {
         IdentityUserDetails signedIn = signInService.signIn(claims("google", "sub-1", EMAIL, true), null);
 
-        assertThatThrownBy(() -> identityService.unlink(signedIn.userId(), "google"))
+        Long userId = signedIn.userId();
+        assertThatThrownBy(() -> identityService.unlink(userId, "google"))
                 .isInstanceOf(IdentityException.class)
                 .extracting(e -> ((IdentityException) e).getMessageKey())
                 .isEqualTo(IdentityMessageKeys.LAST_SIGN_IN_METHOD);
-        assertThatThrownBy(() -> identityService.unlink(signedIn.userId(), "github"))
+        assertThatThrownBy(() -> identityService.unlink(userId, "github"))
                 .isInstanceOf(IdentityException.class)
                 .extracting(e -> ((IdentityException) e).getMessageKey())
                 .isEqualTo(IdentityMessageKeys.EXTERNAL_IDENTITY_NOT_FOUND);
@@ -338,7 +339,8 @@ class ExternalSignInServiceIT extends AbstractIdentityIntegrationTest {
 
         UserDetails loaded = userDetailsService.loadUserByUsername(EMAIL);
         assertThat(loaded.getPassword()).isNull();
-        assertThatThrownBy(() -> IdentityBeans.passwordAccountsOnly(userDetailsService).loadUserByUsername(EMAIL))
+        PasswordAccountsOnly passwordForm = new PasswordAccountsOnly(userDetailsService);
+        assertThatThrownBy(() -> passwordForm.loadUserByUsername(EMAIL))
                 .isInstanceOf(UsernameNotFoundException.class);
     }
 
@@ -354,7 +356,8 @@ class ExternalSignInServiceIT extends AbstractIdentityIntegrationTest {
     void anAccountWithoutPasswordCannotBeForcedToChangeIt() {
         IdentityUserDetails signedIn = signInService.signIn(claims("google", "sub-1", EMAIL, true), null);
 
-        assertThatThrownBy(() -> userAccountService.requirePasswordChange(signedIn.userId()))
+        Long userId = signedIn.userId();
+        assertThatThrownBy(() -> userAccountService.requirePasswordChange(userId))
                 .isInstanceOf(IdentityException.class)
                 .extracting(e -> ((IdentityException) e).getMessageKey())
                 .isEqualTo(IdentityMessageKeys.ACCOUNT_WITHOUT_PASSWORD);

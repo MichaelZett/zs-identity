@@ -61,6 +61,8 @@ import java.util.stream.Collectors;
 @Getter
 public class UserAccount extends AbstractAuthEntity {
 
+    private static final String CREATED_AT = "createdAt";
+
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "auth_user_seq")
     @SequenceGenerator(name = "auth_user_seq", sequenceName = "auth_user_seq", schema = IdentitySchema.NAME, allocationSize = 20)
@@ -180,7 +182,7 @@ public class UserAccount extends AbstractAuthEntity {
         this.displayName = name.displayName();
         this.firstName = name.firstName();
         this.lastName = name.lastName();
-        this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+        this.createdAt = Objects.requireNonNull(createdAt, CREATED_AT);
         this.enabled = false;
         this.emailVerified = false;
     }
@@ -193,7 +195,7 @@ public class UserAccount extends AbstractAuthEntity {
     public static UserAccount managed(AccountName name, Instant createdAt) {
         UserAccount account = new UserAccount();
         account.applyName(name);
-        account.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+        account.createdAt = Objects.requireNonNull(createdAt, CREATED_AT);
         account.enabled = true;
         account.emailVerified = false;
         return account;
@@ -222,7 +224,7 @@ public class UserAccount extends AbstractAuthEntity {
         UserAccount account = new UserAccount();
         account.email = normalizeEmail(email);
         account.applyName(name);
-        account.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+        account.createdAt = Objects.requireNonNull(createdAt, CREATED_AT);
         account.activateAfterEmailVerification();
         return account;
     }

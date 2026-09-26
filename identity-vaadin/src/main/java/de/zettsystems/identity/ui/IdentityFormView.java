@@ -274,7 +274,7 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
      */
     protected final Button providerButton(String key, String id, ExternalProvider provider, String target) {
         Button button = new Button(text(key, provider.name()),
-                event -> event.getSource().getUI().ifPresent(ui -> ui.getPage().setLocation(target)));
+                event -> event.getSource().getUI().ifPresent(current -> current.getPage().setLocation(target)));
         button.setId(id);
         return button;
     }
