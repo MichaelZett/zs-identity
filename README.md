@@ -81,7 +81,8 @@ list is optional, and the auto-configuration takes care of everything else:
    offset, limit)` (since 1.3.0): search text, state and role filters, a fixed
    order (last name, first name, id) and the total, all in the database. Like
    `findAll()` it checks no role -- put your own rule in front of it -- and it
-   hands out email addresses. Filters that live in your own database ("without
+   hands out email addresses. `withPending(true)` (since 1.4.0) finds invitation
+   open or confirmation outstanding in one go. Filters that live in your own database ("without
    a group") come in as `userIds` / `excludeUserIds`; an empty `userIds` means
    nobody. Names sort by `zs.identity.search.collation`, which is `C` unless
    you set it -- with German names use `de-DE-x-icu`.

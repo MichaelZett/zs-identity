@@ -5,6 +5,21 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 1.4.0 - 2026-09-30
+
+### Added
+- `AccountQuery.pending` with `withPending(Boolean)`: `true` finds the accounts
+  somebody is still waiting for -- invitation open **or** confirmation
+  outstanding --, `false` everything else, `null` lifts the restriction. It is
+  the one OR in the query; towards the other fields it combines with AND like
+  any of them. An application no longer has to ask twice and hand the united
+  ids in through `userIds`. The component is appended to the record and the
+  seven-argument constructor of 1.3.0 stays, so existing callers compile
+  unchanged.
+
+### Changed
+- Vaadin 25.2.8 -> 25.3.0.
+
 ## 1.3.0 - 2026-09-30
 
 ### Added
