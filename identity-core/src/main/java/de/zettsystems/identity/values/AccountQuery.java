@@ -37,6 +37,12 @@ import java.util.Set;
  *                             {@code null} lifts the restriction.
  * @param excludeUserIds       never these accounts; empty or {@code null}
  *                             excludes nothing
+ * @param pending              {@code true}: only accounts somebody is still
+ *                             waiting for -- {@code invitationOpen}
+ *                             <strong>or</strong> {@code awaitingConfirmation},
+ *                             the one OR in this record; {@code false}:
+ *                             everything else. With the other fields it
+ *                             combines with AND like any of them. Since 1.4.0.
  */
 public record AccountQuery(@Nullable String text,
                            @Nullable Boolean managed,
@@ -44,7 +50,8 @@ public record AccountQuery(@Nullable String text,
                            @Nullable Boolean awaitingConfirmation,
                            @Nullable String roleCode,
                            @Nullable Set<Long> userIds,
-                           @Nullable Set<Long> excludeUserIds) {
+                           @Nullable Set<Long> excludeUserIds,
+                           @Nullable Boolean pending) {
 
     public AccountQuery {
         text = text == null || text.isBlank() ? null : text.strip();
@@ -53,44 +60,61 @@ public record AccountQuery(@Nullable String text,
         excludeUserIds = excludeUserIds == null || excludeUserIds.isEmpty() ? null : Set.copyOf(excludeUserIds);
     }
 
+    /** The shape up to 1.3.x, without {@code pending}. */
+    public AccountQuery(@Nullable String text,
+                        @Nullable Boolean managed,
+                        @Nullable Boolean invitationOpen,
+                        @Nullable Boolean awaitingConfirmation,
+                        @Nullable String roleCode,
+                        @Nullable Set<Long> userIds,
+                        @Nullable Set<Long> excludeUserIds) {
+        this(text, managed, invitationOpen, awaitingConfirmation, roleCode, userIds, excludeUserIds, null);
+    }
+
     /** No restriction at all: every account. */
     public static AccountQuery all() {
-        return new AccountQuery(null, null, null, null, null, null, null);
+        return new AccountQuery(null, null, null, null, null, null, null, null);
     }
 
     public AccountQuery withText(@Nullable String newText) {
         return new AccountQuery(newText, managed, invitationOpen, awaitingConfirmation, roleCode, userIds,
-                excludeUserIds);
+                excludeUserIds, pending);
     }
 
     public AccountQuery withManaged(@Nullable Boolean newManaged) {
         return new AccountQuery(text, newManaged, invitationOpen, awaitingConfirmation, roleCode, userIds,
-                excludeUserIds);
+                excludeUserIds, pending);
     }
 
     public AccountQuery withInvitationOpen(@Nullable Boolean newInvitationOpen) {
         return new AccountQuery(text, managed, newInvitationOpen, awaitingConfirmation, roleCode, userIds,
-                excludeUserIds);
+                excludeUserIds, pending);
     }
 
     public AccountQuery withAwaitingConfirmation(@Nullable Boolean newAwaitingConfirmation) {
         return new AccountQuery(text, managed, invitationOpen, newAwaitingConfirmation, roleCode, userIds,
-                excludeUserIds);
+                excludeUserIds, pending);
     }
 
     public AccountQuery withRoleCode(@Nullable String newRoleCode) {
         return new AccountQuery(text, managed, invitationOpen, awaitingConfirmation, newRoleCode, userIds,
-                excludeUserIds);
+                excludeUserIds, pending);
     }
 
     /** Only these accounts; an empty collection means nobody, see {@link #userIds()}. */
     public AccountQuery withUserIds(@Nullable Collection<Long> newUserIds) {
         return new AccountQuery(text, managed, invitationOpen, awaitingConfirmation, roleCode,
-                newUserIds == null ? null : Set.copyOf(newUserIds), excludeUserIds);
+                newUserIds == null ? null : Set.copyOf(newUserIds), excludeUserIds, pending);
     }
 
     public AccountQuery withExcludeUserIds(@Nullable Collection<Long> newExcludeUserIds) {
         return new AccountQuery(text, managed, invitationOpen, awaitingConfirmation, roleCode, userIds,
-                newExcludeUserIds == null ? null : Set.copyOf(newExcludeUserIds));
+                newExcludeUserIds == null ? null : Set.copyOf(newExcludeUserIds), pending);
+    }
+
+    /** Invitation open or confirmation outstanding, see {@link #pending()}. */
+    public AccountQuery withPending(@Nullable Boolean newPending) {
+        return new AccountQuery(text, managed, invitationOpen, awaitingConfirmation, roleCode, userIds,
+                excludeUserIds, newPending);
     }
 }

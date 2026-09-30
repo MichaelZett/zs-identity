@@ -43,6 +43,9 @@ final class AccountSearch {
     private static final String INVITATION_OPEN = "(u.email is not null and not " + CLAIMED + ")";
     private static final String AWAITING = "(" + CLAIMED + " and u.email is not null"
             + " and not u.enabled and not u.email_verified)";
+    // Built from the two above and not written out again: "pending" and the
+    // single filters must never come to mean different things.
+    private static final String PENDING = "(" + INVITATION_OPEN + " or " + AWAITING + ")";
 
     private final EntityManager entityManager;
     private final SearchSettings settings;
@@ -104,6 +107,7 @@ final class AccountSearch {
         flag(conditions, MANAGED, query.managed());
         flag(conditions, INVITATION_OPEN, query.invitationOpen());
         flag(conditions, AWAITING, query.awaitingConfirmation());
+        flag(conditions, PENDING, query.pending());
         String roleCode = query.roleCode();
         if (roleCode != null) {
             conditions.add("exists (select 1 from " + ROLE_ASSIGNMENTS + " ur join " + ROLES

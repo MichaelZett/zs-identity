@@ -163,6 +163,29 @@ class AccountSearchIT extends AbstractIdentityIntegrationTest {
     }
 
     @Test
+    void pendingIsInvitationOpenOrAwaitingConfirmationAndStillCombinesWithAnd() {
+        UserAccountDto settled = accounts.createAccount("fertig@example.com", PASSWORD, "Fritz", "Fertig", true);
+        UserAccountDto managed = accounts.createManagedAccount("Manuela", "Verwaltet");
+        UserAccountDto invited = invitations.inviteNewAccount("eingeladen@example.com", "Ida", "Eingeladen");
+        UserAccountDto awaiting = registrations.register("wartet@example.com", PASSWORD, "Willi", "Wartet");
+
+        assertThat(ids(AccountQuery.all().withPending(true)))
+                .containsExactlyInAnyOrder(invited.id(), awaiting.id());
+        assertThat(ids(AccountQuery.all().withPending(false)))
+                .containsExactlyInAnyOrder(settled.id(), managed.id());
+        assertThat(accounts.count(AccountQuery.all().withPending(true))).isEqualTo(2);
+        assertThat(accounts.count(AccountQuery.all().withPending(true).withPending(null))).isEqualTo(4);
+
+        // The OR stays inside "pending"; towards the other fields it is AND.
+        assertThat(ids(AccountQuery.all().withPending(false).withManaged(false))).containsExactly(settled.id());
+        assertThat(ids(AccountQuery.all().withPending(true).withManaged(false)))
+                .containsExactlyInAnyOrder(invited.id(), awaiting.id());
+        assertThat(ids(AccountQuery.all().withPending(true).withInvitationOpen(true))).containsExactly(invited.id());
+        assertThat(ids(AccountQuery.all().withPending(true).withText("willi"))).containsExactly(awaiting.id());
+        assertThat(ids(AccountQuery.all().withPending(true).withManaged(true))).isEmpty();
+    }
+
+    @Test
     void theRoleFilterCountsGlobalRolesOnly() {
         UserAccountDto global = accounts.createAccount("global@example.com", PASSWORD, "Gerd", "Global", true);
         UserAccountDto scoped = accounts.createAccount("scoped@example.com", PASSWORD, "Sina", "Scoped", true);

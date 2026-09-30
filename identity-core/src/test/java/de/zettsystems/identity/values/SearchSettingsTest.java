@@ -60,4 +60,17 @@ class SearchSettingsTest {
         assertThat(query.excludeUserIds()).isNull();
         assertThat(AccountQuery.all().withText(" anna ").text()).isEqualTo("anna");
     }
+
+    @Test
+    void theAccountQueryOfOneDotThreeStillBuildsAndKnowsNothingOfPending() {
+        AccountQuery old = new AccountQuery("anna", true, null, null, "ADMIN", Set.of(1L), Set.of(2L));
+
+        assertThat(old.pending()).isNull();
+        assertThat(old.withPending(true))
+                .isEqualTo(new AccountQuery("anna", true, null, null, "ADMIN", Set.of(1L), Set.of(2L), true));
+        // Every other with-method carries it along.
+        AccountQuery changed = old.withPending(true).withText("bert").withManaged(null).withInvitationOpen(false)
+                .withAwaitingConfirmation(false).withRoleCode(null).withUserIds(null).withExcludeUserIds(null);
+        assertThat(changed).isEqualTo(new AccountQuery("bert", null, false, false, null, null, null, true));
+    }
 }
