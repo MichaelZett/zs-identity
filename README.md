@@ -76,7 +76,15 @@ list is optional, and the auto-configuration takes care of everything else:
 5. **Token cleanup run** (since 0.5.0): `TokenCleanupScheduler` runs daily at
    03:15 as soon as the application sets `@EnableScheduling`; it can be turned
    off with `zs.identity.token-cleanup.enabled=false`. Member lists load their
-   accounts in one query with `UserAccountService#findAllById(ids)`.
+   accounts in one query with `UserAccountService#findAllById(ids)`. Lists
+   that must not load every account use `UserAccountService#search(query,
+   offset, limit)` (since 1.3.0): search text, state and role filters, a fixed
+   order (last name, first name, id) and the total, all in the database. Like
+   `findAll()` it checks no role -- put your own rule in front of it -- and it
+   hands out email addresses. Filters that live in your own database ("without
+   a group") come in as `userIds` / `excludeUserIds`; an empty `userIds` means
+   nobody. Names sort by `zs.identity.search.collation`, which is `C` unless
+   you set it -- with German names use `de-DE-x-icu`.
 6. **Deleting an account** (since 0.4.0): `UserAccountService#deleteAccount(userId)`
    removes the account, its role assignments and its tokens for good. Clear up
    the application's own data for that id beforehand -- the building block
@@ -287,6 +295,7 @@ list is optional, and the auto-configuration takes care of everything else:
 | `login-protection.max-delay`  | `8s`                     | longest wait |
 | `login-protection.max-delayed-requests` | `50`           | sign-ins that may wait at the same time; beyond that they are turned down unchecked |
 | `login-protection.notify-by-mail` | `true`               | mail the account when it is locked |
+| `search.collation`            | `C`                      | PostgreSQL collation the account search sorts and compares names with; `de-DE-x-icu` for German names, blank for the database's own |
 | `oauth2.enabled`              | `false`                  | sign-in through external providers; needs the OAuth2 client and `IdentityOAuth2Configurer` in the filter chain (see step 10) |
 | `oauth2.registrations`        | all, by name             | the client registrations the sign-in page offers, in this order |
 | `oauth2.create-accounts`      | = `self-registration-enabled` | whether the first sign-in of an unknown person creates an account |

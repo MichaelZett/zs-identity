@@ -1,6 +1,8 @@
 package de.zettsystems.identity.application;
 
 import de.zettsystems.identity.values.AccountName;
+import de.zettsystems.identity.values.AccountPage;
+import de.zettsystems.identity.values.AccountQuery;
 import de.zettsystems.identity.values.Scope;
 import de.zettsystems.identity.values.UserAccountDto;
 import org.jspecify.annotations.Nullable;
@@ -33,6 +35,49 @@ public interface UserAccountService {
      * absent from the result, and the order is unspecified.
      */
     List<UserAccountDto> findAllById(Collection<Long> ids);
+
+    /**
+     * One page of the accounts that match the query, for lists that must not
+     * load every account: search, filters and the total in the database.
+     *
+     * <p>The order is fixed: last name, first name, id, ignoring case, where a
+     * missing name part falls back to the display name (a managed account
+     * without name parts sorts by its display name, not at the end). How
+     * {@code Ärztin} and {@code Zander} sort depends on the collation
+     * {@code zs.identity.search.collation} names -- {@code C} by default,
+     * {@code de-DE-x-icu} for German names. {@link #findAll()} keeps its own
+     * order (display name) and is not affected.
+     *
+     * <p>Like {@link #findAll()} this checks no role: the application puts its
+     * own access rule in front of it. The result contains <strong>email
+     * addresses</strong>.
+     *
+     * <p>Deliberately a {@code default} method that fails rather than an
+     * abstract one: an application's own {@code UserAccountService} must not
+     * stop compiling because of this addition.
+     *
+     * @param offset how many matches to skip, at least 0
+     * @param limit  how many accounts the page holds at most, at least 1
+     * @throws UnsupportedOperationException as long as a custom service does not
+     *                                       override it
+     */
+    default AccountPage search(AccountQuery query, int offset, int limit) {
+        throw new UnsupportedOperationException(
+                getClass().getName() + " does not implement search(..)");
+    }
+
+    /**
+     * How many accounts match the query, for the same restrictions as
+     * {@link #search}. {@code search} carries the total too; this is for a
+     * count that needs no page.
+     *
+     * @throws UnsupportedOperationException as long as a custom service does not
+     *                                       override it
+     */
+    default long count(AccountQuery query) {
+        throw new UnsupportedOperationException(
+                getClass().getName() + " does not implement count(..)");
+    }
 
     /** Creates an account without self-registration, by an administrator for example. */
     UserAccountDto createAccount(String email, String rawPassword, AccountName name, boolean alreadyVerified);

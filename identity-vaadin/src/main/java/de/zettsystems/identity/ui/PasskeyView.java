@@ -219,7 +219,7 @@ public class PasskeyView extends IdentityFormView implements BeforeEnterObserver
     }
 
     private @Nullable IdentityUserDetails currentUser() {
-        return authenticationContext.getAuthenticatedUser(IdentityUserDetails.class).orElse(null);
+        return IdentityUsers.current(authenticationContext).orElse(null);
     }
 
     /** Whether the session rests on the remember-me cookie alone; package-visible for the test. */

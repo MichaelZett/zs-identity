@@ -6,6 +6,7 @@ import de.zettsystems.identity.domain.PasskeyRepository;
 import de.zettsystems.identity.domain.RoleRepository;
 import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.values.IdentityProperties;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -35,6 +36,7 @@ class IdentityBeansPasskeyTest {
             .withBean(AuthTokenRepository.class, () -> mock(AuthTokenRepository.class))
             .withBean(PasskeyRepository.class, () -> mock(PasskeyRepository.class))
             .withBean(ExternalIdentityRepository.class, () -> mock(ExternalIdentityRepository.class))
+            .withBean(EntityManager.class, () -> mock(EntityManager.class))
             .withBean(IdentityMailSender.class, () -> mock(IdentityMailSender.class));
 
     @Test

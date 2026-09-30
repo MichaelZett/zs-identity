@@ -53,6 +53,8 @@ import java.util.Locale;
  * @param oauth2                   sign-in through external identity providers,
  *                                 off unless switched on (see
  *                                 {@link OAuth2Settings})
+ * @param search                   how the account search sorts and compares
+ *                                 names (see {@link SearchSettings})
  */
 @ConfigurationProperties(prefix = "zs.identity")
 public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationEnabled,
@@ -70,7 +72,23 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                                  @DefaultValue MigrationSettings migrations,
                                  @DefaultValue PasskeySettings passkeys,
                                  @DefaultValue LoginProtectionSettings loginProtection,
-                                 @DefaultValue OAuth2Settings oauth2) {
+                                 @DefaultValue OAuth2Settings oauth2,
+                                 @DefaultValue SearchSettings search) {
+
+    /**
+     * The shape before 1.3.0, kept so that applications and tests that build
+     * the record by hand keep compiling. The search uses its default collation.
+     */
+    public IdentityProperties(boolean selfRegistrationEnabled, boolean emailVerificationRequired,
+                              Duration tokenValidity, Duration invitationValidity, int passwordMinLength,
+                              String fromAddress, String fromName, String baseUrl, String defaultRoleCode,
+                              NameMode nameMode, Locale locale, UiSettings ui, MigrationSettings migrations,
+                              PasskeySettings passkeys, LoginProtectionSettings loginProtection,
+                              OAuth2Settings oauth2) {
+        this(selfRegistrationEnabled, emailVerificationRequired, tokenValidity, invitationValidity,
+                passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode, nameMode, locale, ui,
+                migrations, passkeys, loginProtection, oauth2, SearchSettings.defaults());
+    }
 
     /**
      * The shape before 1.2.0, kept so that applications and tests that build
@@ -162,42 +180,42 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
     public IdentityProperties withLocale(Locale newLocale) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, newLocale, ui, migrations, passkeys, loginProtection, oauth2);
+                nameMode, newLocale, ui, migrations, passkeys, loginProtection, oauth2, search);
     }
 
     /** The same settings with a different appearance; see {@link #withLocale(Locale)}. */
     public IdentityProperties withUi(UiSettings newUi) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, newUi, migrations, passkeys, loginProtection, oauth2);
+                nameMode, locale, newUi, migrations, passkeys, loginProtection, oauth2, search);
     }
 
     /** The same settings with the migrations run differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withMigrations(MigrationSettings newMigrations) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, newMigrations, passkeys, loginProtection, oauth2);
+                nameMode, locale, ui, newMigrations, passkeys, loginProtection, oauth2, search);
     }
 
     /** The same settings with passkeys set up differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withPasskeys(PasskeySettings newPasskeys) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, migrations, newPasskeys, loginProtection, oauth2);
+                nameMode, locale, ui, migrations, newPasskeys, loginProtection, oauth2, search);
     }
 
     /** The same settings with the protection against guessing set up differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withLoginProtection(LoginProtectionSettings newLoginProtection) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, migrations, passkeys, newLoginProtection, oauth2);
+                nameMode, locale, ui, migrations, passkeys, newLoginProtection, oauth2, search);
     }
 
     /** The same settings with external providers set up differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withOAuth2(OAuth2Settings newOAuth2) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, migrations, passkeys, loginProtection, newOAuth2);
+                nameMode, locale, ui, migrations, passkeys, loginProtection, newOAuth2, search);
     }
 
     /**
@@ -216,5 +234,12 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                 "noreply@localhost", "Application", "http://localhost:8080", "USER", NameMode.FULL_NAME,
                 Locale.GERMAN, UiSettings.defaults(), MigrationSettings.defaults(), PasskeySettings.defaults(),
                 LoginProtectionSettings.defaults(), OAuth2Settings.defaults());
+    }
+
+    /** The same settings with the search set up differently; see {@link #withLocale(Locale)}. */
+    public IdentityProperties withSearch(SearchSettings newSearch) {
+        return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
+                invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
+                nameMode, locale, ui, migrations, passkeys, loginProtection, oauth2, newSearch);
     }
 }

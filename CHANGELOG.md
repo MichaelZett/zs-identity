@@ -5,6 +5,44 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 1.3.0 - 2026-09-30
+
+### Added
+- **Paged account search**: `UserAccountService#search(AccountQuery, offset,
+  limit)` returns an `AccountPage(items, total)`, `count(AccountQuery)` the
+  number of matches -- search, filters, sorting and counting in the database
+  instead of `findAll()` and work in the application. `AccountQuery` (all
+  fields optional, combined with AND): `text` (part of display name, first
+  name, last name or email, ignoring case, `%` and `_` literal), `managed`,
+  `invitationOpen`, `awaitingConfirmation`, `roleCode` (global roles only),
+  `userIds` (**empty means nobody**, not everybody) and `excludeUserIds`,
+  for filters that live in the application's own database. The order is
+  fixed: last name, first name, id, with the display name standing in for a
+  missing name part. The roles come with a second statement over the ids of
+  the page, so the number of statements does not grow with the page and
+  Hibernate never cuts a page in memory. Like `findAll()`, it checks no role
+  and hands out email addresses. `findAll()` is unchanged. Both new methods
+  are `default` methods that throw for a custom `UserAccountService`, as
+  `changeLocale` does.
+- `zs.identity.search.collation` (`SearchSettings`): the PostgreSQL collation
+  the search sorts and compares names with. Defaults to `C` (byte order, where
+  `Ärztin` sorts behind `Zander`); applications with German names set
+  `de-DE-x-icu`. Blank means the collation of the database. The name is
+  checked (`[A-Za-z0-9_.@-]+`) because it goes into the statement.
+- `IdentityUsers.current(AuthenticationContext)` in `identity-vaadin`: the
+  signed-in `IdentityUserDetails`, or empty when nobody is signed in or the
+  principal is a foreign one (HTTP Basic, actuator). Vaadin's
+  `getAuthenticatedUser(IdentityUserDetails.class)` throws a
+  `ClassCastException` there instead of answering empty; use this helper
+  in application views.
+
+### Fixed
+- `ChangePasswordView`, `PasskeyView` and `LinkedAccountsView` failed for a
+  principal that is not an `IdentityUserDetails`; they use `IdentityUsers` now.
+- A locked account answered a sign-in with the English "Bad credentials" while
+  a wrong password got the translated text, so the two differed in any other
+  locale. Both come from the same message source now.
+
 ## 1.2.0 - 2026-09-26
 **Sign-in through external identity providers** implemented
 

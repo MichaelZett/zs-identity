@@ -7,6 +7,8 @@ import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.values.AccountDeleted;
 import de.zettsystems.identity.values.AccountLocked;
 import de.zettsystems.identity.values.AccountName;
+import de.zettsystems.identity.values.AccountPage;
+import de.zettsystems.identity.values.AccountQuery;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.PasswordChanged;
@@ -20,9 +22,12 @@ import java.time.Clock;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 class UserAccountServiceImpl implements UserAccountService {
 
@@ -33,6 +38,7 @@ class UserAccountServiceImpl implements UserAccountService {
     private final Clock clock;
     private final AuthenticationRefresher authenticationRefresher;
     private final ApplicationEventPublisher events;
+    private final AccountSearch accountSearch;
 
     UserAccountServiceImpl(UserAccountRepository userRepository,
                            RoleRepository roleRepository,
@@ -40,7 +46,8 @@ class UserAccountServiceImpl implements UserAccountService {
                            IdentityProperties properties,
                            Clock clock,
                            AuthenticationRefresher authenticationRefresher,
-                           ApplicationEventPublisher events) {
+                           ApplicationEventPublisher events,
+                           AccountSearch accountSearch) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordHasher = passwordHasher;
@@ -48,6 +55,7 @@ class UserAccountServiceImpl implements UserAccountService {
         this.clock = clock;
         this.authenticationRefresher = authenticationRefresher;
         this.events = events;
+        this.accountSearch = accountSearch;
     }
 
     @Override
@@ -79,6 +87,37 @@ class UserAccountServiceImpl implements UserAccountService {
         return userRepository.findAllWithRolesByIdIn(ids).stream()
                 .map(UserAccountMapper::toDto)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AccountPage search(AccountQuery query, int offset, int limit) {
+        if (offset < 0 || limit < 1) {
+            throw new IllegalArgumentException(
+                    "offset must be at least 0 and limit at least 1, was %d and %d".formatted(offset, limit));
+        }
+        List<Long> ids = accountSearch.pageOfIds(query, offset, limit);
+        if (ids.isEmpty()) {
+            // Past the last page the total still counts: whoever pages beyond
+            // the end learns where the end is.
+            return new AccountPage(List.of(), offset == 0 ? 0 : accountSearch.count(query));
+        }
+        // Two statements on purpose: the page of ids is cut in the database,
+        // the roles come with the second one. A join over the roles together
+        // with a page cut would make Hibernate cut in memory.
+        Map<Long, UserAccountDto> byId = userRepository.findAllWithRolesByIdIn(ids).stream()
+                .map(UserAccountMapper::toDto)
+                .collect(Collectors.toMap(UserAccountDto::id, Function.identity()));
+        List<UserAccountDto> items = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
+        // A first page that is not full already holds every match.
+        long total = offset == 0 && ids.size() < limit ? ids.size() : accountSearch.count(query);
+        return new AccountPage(items, total);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long count(AccountQuery query) {
+        return accountSearch.count(query);
     }
 
     @Override

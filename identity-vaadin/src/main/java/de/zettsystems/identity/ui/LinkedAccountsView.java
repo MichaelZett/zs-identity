@@ -226,6 +226,6 @@ public class LinkedAccountsView extends IdentityFormView implements BeforeEnterO
     }
 
     private @Nullable IdentityUserDetails currentUser() {
-        return authenticationContext.getAuthenticatedUser(IdentityUserDetails.class).orElse(null);
+        return IdentityUsers.current(authenticationContext).orElse(null);
     }
 }
