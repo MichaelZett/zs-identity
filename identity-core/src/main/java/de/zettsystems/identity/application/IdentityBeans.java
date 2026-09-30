@@ -6,6 +6,7 @@ import de.zettsystems.identity.domain.PasskeyRepository;
 import de.zettsystems.identity.domain.RoleRepository;
 import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.values.IdentityProperties;
+import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -85,9 +86,11 @@ public class IdentityBeans {
                                           IdentityProperties properties,
                                           Clock clock,
                                           AuthenticationRefresher authenticationRefresher,
-                                          ApplicationEventPublisher events) {
+                                          ApplicationEventPublisher events,
+                                          EntityManager entityManager) {
         return new UserAccountServiceImpl(userRepository, roleRepository, passwordHasher,
-                properties, clock, authenticationRefresher, events);
+                properties, clock, authenticationRefresher, events,
+                new AccountSearch(entityManager, properties.search()));
     }
 
     /** The daily token cleanup run; can be switched off through {@code zs.identity.token-cleanup.enabled}. */

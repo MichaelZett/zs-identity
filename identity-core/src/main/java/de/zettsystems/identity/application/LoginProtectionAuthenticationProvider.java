@@ -5,6 +5,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -12,6 +13,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.SpringSecurityMessageSource;
 import org.springframework.security.web.authentication.WebAuthenticationDetails;
 
 /**
@@ -55,8 +57,7 @@ final class LoginProtectionAuthenticationProvider implements AuthenticationProvi
 
     private static final Logger LOG = LoggerFactory.getLogger(LoginProtectionAuthenticationProvider.class);
 
-    /** The text the {@code DaoAuthenticationProvider} uses for a wrong password; ours must not differ. */
-    static final String BAD_CREDENTIALS = "Bad credentials";
+    private static final MessageSourceAccessor MESSAGES = SpringSecurityMessageSource.getAccessor();
 
     private final DaoAuthenticationProvider passwordCheck;
     private final LoginThrottle throttle;
@@ -75,7 +76,7 @@ final class LoginProtectionAuthenticationProvider implements AuthenticationProvi
         String client = clientAddressOf(authentication);
         if (!throttle.awaitTurn(name, client)) {
             LOG.debug("Sign-in for {} from {} turned down: too many sign-ins waiting", name, client);
-            throw new BadCredentialsException(BAD_CREDENTIALS);
+            throw badCredentials();
         }
         Authentication result;
         try {
@@ -88,10 +89,20 @@ final class LoginProtectionAuthenticationProvider implements AuthenticationProvi
             // Counted in memory, so the delay keeps growing; the account
             // itself counts nothing while it is locked.
             throttle.recordFailure(name, client);
-            throw new BadCredentialsException(BAD_CREDENTIALS);
+            throw badCredentials();
         }
         recordSuccess(name);
         return result;
+    }
+
+    /**
+     * The text the {@code DaoAuthenticationProvider} uses for a wrong password,
+     * from the same message source, resolved per call and so in the language of
+     * the request; ours must not differ.
+     */
+    private static BadCredentialsException badCredentials() {
+        return new BadCredentialsException(MESSAGES.getMessage(
+                "AbstractUserDetailsAuthenticationProvider.badCredentials", "Bad credentials"));
     }
 
     @Override
