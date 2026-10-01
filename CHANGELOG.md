@@ -5,6 +5,20 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## Unreleased
+
+### Fixed
+- Loading one account fetched its roles one by one (N+1): `findById`,
+  `rolesOf`, `scopesOf` and every change that answers with a
+  `UserAccountDto` (`grantRole`, `revokeRole`, ...) ran one
+  `select ... from identity.auth_role where id=?` per role, and an
+  application asking for the current account on every request paid that on
+  every page. They load the account with its roles in one statement now.
+  Every other path -- the account behind a token or a passkey handle, an
+  application's own access to the entities -- fetches the missing roles,
+  their authorities and the assignments in one batch each instead of one
+  statement per row (`@BatchSize`).
+
 ## 1.4.0 - 2026-09-30
 
 ### Added

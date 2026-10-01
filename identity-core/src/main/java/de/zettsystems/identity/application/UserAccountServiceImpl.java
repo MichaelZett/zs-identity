@@ -61,7 +61,7 @@ class UserAccountServiceImpl implements UserAccountService {
     @Override
     @Transactional(readOnly = true)
     public Optional<UserAccountDto> findById(Long id) {
-        return userRepository.findById(id).map(UserAccountMapper::toDto);
+        return userRepository.findWithRolesById(id).map(UserAccountMapper::toDto);
     }
 
     @Override
@@ -197,7 +197,7 @@ class UserAccountServiceImpl implements UserAccountService {
     @Override
     @Transactional(readOnly = true)
     public Set<String> rolesOf(Long userId, Scope scope) {
-        return userRepository.findById(userId)
+        return userRepository.findWithRolesById(userId)
                 .map(user -> UserAccountMapper.toDto(user).rolesIn(scope))
                 .orElseGet(Set::of);
     }
@@ -205,7 +205,7 @@ class UserAccountServiceImpl implements UserAccountService {
     @Override
     @Transactional(readOnly = true)
     public Set<Scope> scopesOf(Long userId, String scopeType) {
-        return userRepository.findById(userId)
+        return userRepository.findWithRolesById(userId)
                 .map(user -> UserAccountMapper.toDto(user).scopesOf(scopeType))
                 .orElseGet(Set::of);
     }
@@ -316,7 +316,7 @@ class UserAccountServiceImpl implements UserAccountService {
     }
 
     private UserAccount requireUser(Long userId) {
-        return userRepository.findById(userId)
+        return userRepository.findWithRolesById(userId)
                 .orElseThrow(() -> new IdentityException(IdentityMessageKeys.ACCOUNT_NOT_FOUND,
                         "No account with id %d".formatted(userId)));
     }

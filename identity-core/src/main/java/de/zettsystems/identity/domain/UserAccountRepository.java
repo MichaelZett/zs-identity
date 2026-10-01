@@ -22,6 +22,14 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
             "roleAssignments.role.authorities"})
     Optional<UserAccount> findByEmail(String email);
 
+    /**
+     * One account together with its roles in one statement. Wherever an
+     * account becomes a DTO, this is the lookup by id: the inherited
+     * {@code findById} would fetch the roles one by one afterwards.
+     */
+    @EntityGraph(attributePaths = {"roleAssignments", "roleAssignments.role"})
+    Optional<UserAccount> findWithRolesById(Long id);
+
     boolean existsByEmail(String email);
 
     /**

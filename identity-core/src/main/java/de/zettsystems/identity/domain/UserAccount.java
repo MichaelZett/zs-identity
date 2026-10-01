@@ -144,7 +144,11 @@ public class UserAccount extends AbstractAuthEntity {
     //
     // orphanRemoval: an assignment without an account is nothing. It goes away
     // when the role is revoked, not only on an explicit delete call.
+    //
+    // The read paths pull the assignments in through an entity graph; BatchSize
+    // (here and on Role) is the net for every path without one.
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     private Set<RoleAssignment> roleAssignments = new LinkedHashSet<>();
 
     // LAZY for the same reason; most accounts never have one. BatchSize keeps
