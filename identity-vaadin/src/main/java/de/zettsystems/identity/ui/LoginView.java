@@ -248,10 +248,15 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
      * Package-visible and static so that the test can check the labels:
      * {@code LoginForm.getI18n()} is protected, so the object that was set
      * cannot be read back from outside.
+     *
+     * <p>Starts empty rather than from {@code LoginI18n.createDefault()}
+     * (marked for removal in Vaadin 25.3): a field left unset falls back to
+     * the web component's own default, which is the text {@code createDefault}
+     * used to copy in.
      */
     static LoginI18n loginI18n(IdentityTexts texts) {
-        LoginI18n i18n = LoginI18n.createDefault();
-        LoginI18n.Form form = i18n.getForm();
+        LoginI18n i18n = new LoginI18n();
+        LoginI18n.Form form = new LoginI18n.Form();
         form.setTitle(texts.get("identity.login.title"));
         form.setUsername(texts.get("identity.common.email"));
         form.setPassword(texts.get("identity.common.password"));
@@ -259,7 +264,7 @@ public class LoginView extends IdentityFormView implements BeforeEnterObserver {
         form.setForgotPassword(texts.get("identity.login.forgotPassword"));
         i18n.setForm(form);
 
-        LoginI18n.ErrorMessage error = i18n.getErrorMessage();
+        LoginI18n.ErrorMessage error = new LoginI18n.ErrorMessage();
         error.setTitle(texts.get("identity.login.error.title"));
         error.setMessage(texts.get("identity.login.error.message"));
         i18n.setErrorMessage(error);
