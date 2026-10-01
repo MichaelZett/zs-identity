@@ -5,7 +5,7 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
-## Unreleased
+## 1.4.1 - 2026-10-01
 
 ### Fixed
 - Loading one account fetched its roles one by one (N+1): `findById`,
