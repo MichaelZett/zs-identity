@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import org.hibernate.annotations.BatchSize;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Collections;
@@ -25,9 +26,15 @@ import java.util.Set;
  * <p>Roles are data, not a Java enum: which ones exist is decided by the
  * embedding application through its {@code RoleCatalog}. A hard-wired enum
  * would already be wrong in the second application.
+ *
+ * <p>{@code BatchSize}: an assignment holds its role LAZY, and on a path
+ * without an entity graph Hibernate would fetch every role of an account on
+ * its own. With it, the roles still missing come in one statement, and so do
+ * their authorities.
  */
 @Entity
 @Table(name = "auth_role", schema = IdentitySchema.NAME)
+@BatchSize(size = 50)
 @Getter
 public class Role extends AbstractAuthEntity {
 
@@ -45,6 +52,7 @@ public class Role extends AbstractAuthEntity {
     private String displayNameKey;
 
     @ElementCollection
+    @BatchSize(size = 50)
     @CollectionTable(name = "auth_role_authority", schema = IdentitySchema.NAME,
             joinColumns = @JoinColumn(name = "role_id"))
     @Column(name = "authority", nullable = false, length = 128)

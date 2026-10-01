@@ -173,7 +173,7 @@ class InvitationServiceImpl implements InvitationService {
     }
 
     private UserAccount requireUser(Long userId) {
-        return userRepository.findById(userId)
+        return userRepository.findWithRolesById(userId)
                 .orElseThrow(() -> new IdentityException(IdentityMessageKeys.ACCOUNT_NOT_FOUND,
                         "No account with id %d".formatted(userId)));
     }

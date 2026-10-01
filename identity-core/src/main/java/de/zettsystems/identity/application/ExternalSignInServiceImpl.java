@@ -81,7 +81,7 @@ class ExternalSignInServiceImpl implements ExternalSignInService {
     public IdentityUserDetails link(Long userId, ExternalIdentityClaims claims) {
         Objects.requireNonNull(claims, "claims");
         Instant now = clock.instant();
-        UserAccount user = userRepository.findById(userId)
+        UserAccount user = userRepository.findWithRolesById(userId)
                 .orElseThrow(() -> new ExternalSignInException(Reason.FAILED, "No account with id " + userId));
         Optional<ExternalIdentity> known =
                 identityRepository.findByRegistrationIdAndSubject(claims.registrationId(), claims.subject());
