@@ -88,11 +88,15 @@ jobs:
   # version to the next patch SNAPSHOT. SNAPSHOTs are never published -- the
   # applications depend on release versions only.
   #
-  # From 1.0.0 on it uploads to Maven Central first. The upload only creates a
-  # deployment in the Central Portal; releasing it is a click there, by hand,
-  # because a version on Central can never be removed or replaced. Before
-  # 1.0.0 the step stays out: 0.x may still break, and on Central it would
-  # stay forever.
+  # From 1.0.0 on it publishes to Maven Central first and releases it there
+  # straight away (since 1.5.0; before, the deployment waited for a click in
+  # the Central Portal). The task waits until Central has validated the
+  # deployment and fails the job if it does not pass, so nothing goes out
+  # half-way -- and this job only runs after the full build. A version on
+  # Central can never be removed or replaced, which is why pushing a version
+  # without -SNAPSHOT is the decision; a mistake needs a new patch version.
+  # Before 1.0.0 the step stays out: 0.x may still break, and on Central it
+  # would stay forever.
   release:
     runs-on: ubuntu-latest
     needs: [build]
@@ -130,9 +134,9 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
-      - name: Upload to Maven Central (from 1.0.0 on)
+      - name: Publish and release to Maven Central (from 1.0.0 on)
         if: ${{ !startsWith(needs.build.outputs.version, '0.') }}
-        run: ./gradlew publishToMavenCentral --no-daemon
+        run: ./gradlew publishAndReleaseToMavenCentral --no-daemon
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}

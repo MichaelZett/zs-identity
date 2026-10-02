@@ -741,9 +741,9 @@ objects exclusively through the account id (`UserAccountDto.id()`,
 ```
 
 Releasing: name the section in `CHANGELOG.md`, set the version in
-`gradle.properties` without `-SNAPSHOT` and push to `main`. CI uploads to Maven
-Central (the deployment is released by hand in the Central Portal, because a
-version there can never be replaced) and to GitHub Packages, creates the tag
+`gradle.properties` without `-SNAPSHOT` and push to `main`. CI publishes to Maven
+Central and releases it there straight away -- a version there can never be
+replaced, so pushing it is the decision -- and to GitHub Packages, creates the tag
 and the GitHub release `v<version>`, and then raises the version to the next
 patch `-SNAPSHOT` itself. SNAPSHOTs are not
 published; applications depend on release versions only (local iteration goes

@@ -51,6 +51,9 @@ Notable changes to zs-identity. The format follows
   account.
 - `oauth2.create-accounts`, when not set, creates accounts only with
   `registration-mode: OPEN`: a provider brings no invitation code.
+- Releases go to Maven Central and are released there by the pipeline
+  (`publishAndReleaseToMavenCentral`); no click in the Central Portal any
+  more.
 
 ## 1.4.1 - 2026-10-01
 
