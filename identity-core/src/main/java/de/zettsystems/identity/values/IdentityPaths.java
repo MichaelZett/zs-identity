@@ -36,6 +36,12 @@ public final class IdentityPaths {
     /** Name of the token parameter in verification, reset and invitation links. */
     public static final String TOKEN_PARAMETER = "token";
 
+    /**
+     * Name of the parameter that fills in the invitation code on the
+     * registration form ({@code /register?code=...}), since 1.5.0.
+     */
+    public static final String CODE_PARAMETER = "code";
+
     /*
      * The endpoints of the passkey sign-in, WITH a leading slash: these are
      * not views but the paths Spring Security's WebAuthn filters listen on,

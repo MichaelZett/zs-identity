@@ -1,5 +1,6 @@
 package de.zettsystems.identity.ui;
 
+import de.zettsystems.identity.application.ImpersonatedUsers;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H2;
@@ -155,5 +156,17 @@ class ChangePasswordViewTest extends AbstractViewTest {
         signIn(false);
         UI.getCurrent().navigate("");
         assertThat(currentPath()).isEmpty();
+    }
+
+    /** The person's password is theirs to set, not the administrator's acting as them (since 1.5.0). */
+    @Test
+    void actingAsSomebodyTheFormIsLocked() {
+        SecurityContextHolder.getContext().setAuthentication(ImpersonatedUsers.session(5L));
+
+        ChangePasswordView view = showView();
+
+        assertThat(_get(view, Paragraph.class).getText()).isEqualTo("Du bist gerade als Kai Kind unterwegs. Bis du zu deinem eigenen Konto zurückkehrst, sind die Kontoeinstellungen gesperrt.");
+        assertThat(_find(view, PasswordField.class)).isEmpty();
+        assertThat(_find(view, Button.class)).isEmpty();
     }
 }

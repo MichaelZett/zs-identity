@@ -6,12 +6,16 @@ import de.zettsystems.identity.testsupport.AbstractIdentityIntegrationTest;
 import de.zettsystems.identity.testsupport.MutableTestClock;
 import de.zettsystems.identity.testsupport.RecordingMailSender;
 import de.zettsystems.identity.values.AccountName;
+import de.zettsystems.identity.values.AccountRegistered;
 import de.zettsystems.identity.values.IdentityMessageKeys;
+import de.zettsystems.identity.values.RegistrationMode;
 import de.zettsystems.identity.values.UserAccountDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -20,10 +24,19 @@ import java.util.Locale;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@RecordApplicationEvents
 class RegistrationServiceIT extends AbstractIdentityIntegrationTest {
 
     @Autowired
     private RegistrationService registrationService;
+    @Autowired
+    private InvitationService invitationService;
+    @Autowired
+    private PasswordResetService passwordResetService;
+    @Autowired
+    private UserAccountService userAccountService;
+    @Autowired
+    private ApplicationEvents events;
     @Autowired
     private UserAccountRepository userRepository;
     @Autowired
@@ -198,5 +211,91 @@ class RegistrationServiceIT extends AbstractIdentityIntegrationTest {
         assertThat(mails.sentMails())
                 .as("any feedback would reveal who has an account with us")
                 .isEmpty();
+    }
+
+    @Test
+    void withoutFurtherSettingsAnybodyMayRegister() {
+        assertThat(registrationService.registrationMode()).isEqualTo(RegistrationMode.OPEN);
+    }
+
+    @Test
+    void theRegistrationIsAnnouncedWhenTheAddressIsConfirmedNotWhenTheFormIsSent() {
+        UserAccountDto created = registrationService.register(
+                "karl@example.com", "ein-langes-passwort", "Karl", "Beispiel");
+        assertThat(events.stream(AccountRegistered.class))
+                .as("the account is not usable yet")
+                .isEmpty();
+
+        String token = mails.tokenFromLastMailTo("karl@example.com");
+        registrationService.confirmEmail(token);
+        registrationService.confirmEmail(token);
+
+        assertThat(events.stream(AccountRegistered.class))
+                .as("once, without a code, and not again for the repeated link")
+                .containsExactly(new AccountRegistered(created.id(), "karl@example.com", null));
+        assertThat(userRepository.findByEmail("karl@example.com").orElseThrow().isRegistrationPending()).isFalse();
+    }
+
+    @Test
+    void aPasswordResetProvesTheAddressAndCompletesTheRegistration() {
+        UserAccountDto created = registrationService.register(
+                "lena@example.com", "ein-langes-passwort", "Lena", "Beispiel");
+
+        passwordResetService.requestReset("lena@example.com");
+        passwordResetService.resetPassword(mails.tokenFromLastMailTo("lena@example.com"), "ein-neues-passwort");
+
+        assertThat(events.stream(AccountRegistered.class))
+                .containsExactly(new AccountRegistered(created.id(), "lena@example.com", null));
+    }
+
+    @Test
+    void anAdministratorEnablingThePendingAccountCompletesTheRegistration() {
+        UserAccountDto created = registrationService.register(
+                "malte@example.com", "ein-langes-passwort", "Malte", "Beispiel");
+
+        userAccountService.setEnabled(created.id(), true);
+        userAccountService.setEnabled(created.id(), true);
+
+        assertThat(events.stream(AccountRegistered.class)).hasSize(1);
+    }
+
+    @Test
+    void invitationsAreNotRegistrations() {
+        invitationService.inviteNewAccount("nora@example.com", AccountName.of("Nora", "Beispiel"));
+        invitationService.claim(mails.tokenFromLastMailTo("nora@example.com"), "ein-langes-passwort");
+
+        assertThat(events.stream(AccountRegistered.class)).isEmpty();
+    }
+
+    @Test
+    void anAddressWithAnOpenInvitationIsSentToItsMailInsteadOfGettingASecondAccount() {
+        UserAccountDto managed = userAccountService.createManagedAccount(AccountName.of("Otto", "Beispiel"));
+        invitationService.inviteToClaim(managed.id(), "otto@example.com");
+
+        assertThatThrownBy(() -> registrationService.register(
+                "Otto@Example.com", "ein-langes-passwort", "Otto", "Doppelt"))
+                .isInstanceOf(IdentityException.class)
+                .extracting(e -> ((IdentityException) e).getMessageKey())
+                .isEqualTo(IdentityMessageKeys.INVITATION_PENDING);
+        assertThat(userRepository.findByEmail("otto@example.com").orElseThrow().getId())
+                .as("still the one managed account, not a second one")
+                .isEqualTo(managed.id());
+        assertThat(userRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void aCodeIsCheckedEvenWhereNoneIsNeededAndWithoutAGateNoneIsAdmitted() {
+        AccountName name = AccountName.of("Paula", "Beispiel");
+
+        assertThatThrownBy(() -> registrationService.register(
+                "paula@example.com", "ein-langes-passwort", name, null, "ERFUNDEN"))
+                .isInstanceOf(IdentityException.class)
+                .extracting(e -> ((IdentityException) e).getMessageKey())
+                .isEqualTo(IdentityMessageKeys.INVITATION_CODE_INVALID);
+        assertThat(userRepository.findByEmail("paula@example.com")).isEmpty();
+        assertThat(registrationService.register("paula@example.com", "ein-langes-passwort", name, null, "  ")
+                .email())
+                .as("a blank code is no code")
+                .isEqualTo("paula@example.com");
     }
 }

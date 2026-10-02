@@ -1,5 +1,6 @@
 package de.zettsystems.identity.ui;
 
+import de.zettsystems.identity.application.ImpersonatedUsers;
 import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
@@ -255,5 +256,17 @@ class PasskeyViewTest extends AbstractViewTest {
 
         assertThat(notificationTexts()).containsExactly(
                 "Der Passkey konnte nicht hinzugefügt werden. Bitte versuche es noch einmal.");
+    }
+
+    /** The authenticator in hand is the administrator's (since 1.5.0). */
+    @Test
+    void actingAsSomebodyNoPasskeyCanBeAdded() {
+        install(ImpersonatedUsers.session(5L));
+
+        PasskeyView view = showView(ENABLED);
+
+        assertThat(_get(view, H2.class).getText()).isEqualTo("Passkeys");
+        assertThat(_get(view, Paragraph.class).getText()).isEqualTo("Du bist gerade als Kai Kind unterwegs. Bis du zu deinem eigenen Konto zurückkehrst, sind die Kontoeinstellungen gesperrt.");
+        assertThat(_find(view, Button.class)).isEmpty();
     }
 }

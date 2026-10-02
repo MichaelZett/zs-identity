@@ -101,6 +101,9 @@ public class LinkedAccountsView extends IdentityFormView implements BeforeEnterO
             event.forwardTo(IdentityRoutes.LOGIN);
             return;
         }
+        if (lockedWhileImpersonating(user, "identity.linked.title")) {
+            return;
+        }
         add(heading("identity.linked.title"));
         List<ExternalProvider> providers = properties.oauth2().enabled() ? externalProviders.offered() : List.of();
         if (providers.isEmpty()) {

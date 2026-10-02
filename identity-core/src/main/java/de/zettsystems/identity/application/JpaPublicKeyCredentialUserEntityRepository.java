@@ -49,6 +49,7 @@ class JpaPublicKeyCredentialUserEntityRepository implements PublicKeyCredentialU
     @Override
     @Transactional
     public void save(PublicKeyCredentialUserEntity userEntity) {
+        JpaUserCredentialRepository.refuseWhileImpersonating();
         UserAccount user = users.findByEmail(UserAccount.normalizeEmail(userEntity.getName()))
                 .orElseThrow(() -> new IllegalStateException("No account for the passkey user " + userEntity.getName()));
         user.assignPasskeyUserHandle(userEntity.getId().toBase64UrlString());

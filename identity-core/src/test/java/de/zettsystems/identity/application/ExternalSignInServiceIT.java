@@ -11,6 +11,7 @@ import de.zettsystems.identity.testsupport.AbstractIdentityIntegrationTest;
 import de.zettsystems.identity.testsupport.MutableTestClock;
 import de.zettsystems.identity.testsupport.RecordingMailSender;
 import de.zettsystems.identity.testsupport.RecordingTokenRepository;
+import de.zettsystems.identity.values.AccountRegistered;
 import de.zettsystems.identity.values.ExternalIdentityClaims;
 import de.zettsystems.identity.values.ExternalIdentityDto;
 import de.zettsystems.identity.values.IdentityMessageKeys;
@@ -27,6 +28,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -44,7 +47,11 @@ import static org.assertj.core.api.Assertions.tuple;
  * database: who gets in, into which account, and what happens to the account
  * on the way.
  */
+@RecordApplicationEvents
 class ExternalSignInServiceIT extends AbstractIdentityIntegrationTest {
+
+    @Autowired
+    private ApplicationEvents events;
 
     private static final String EMAIL = "ida@example.com";
     private static final String PASSWORD = "ein-langes-passwort";
@@ -187,6 +194,9 @@ class ExternalSignInServiceIT extends AbstractIdentityIntegrationTest {
                 AuthTokenType.EMAIL_VERIFICATION)))
                 .as("the old verification link leads nowhere any more")
                 .isInstanceOf(IdentityException.class);
+        assertThat(events.stream(AccountRegistered.class))
+                .as("the owner of the address is here: the registration is complete")
+                .containsExactly(new AccountRegistered(account.id(), EMAIL, null));
     }
 
     @Test

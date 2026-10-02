@@ -1,5 +1,6 @@
 package de.zettsystems.identity.ui;
 
+import de.zettsystems.identity.application.ImpersonatedUsers;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
@@ -202,5 +203,17 @@ class LinkedAccountsViewTest extends AbstractViewTest {
 
         assertThat(_get(view, Div.class, spec -> spec.withId(LinkedAccountsView.MESSAGE_ID)).getText())
                 .contains("bereits mit einer anderen Anmeldung verknüpft");
+    }
+
+    /** The provider in hand is the administrator's (since 1.5.0). */
+    @Test
+    void actingAsSomebodyNoProviderCanBeLinked() {
+        install(ImpersonatedUsers.session(5L));
+
+        LinkedAccountsView view = showView(Map.of());
+
+        assertThat(_get(view, H2.class).getText()).isEqualTo("Verknüpfte Konten");
+        assertThat(_get(view, Paragraph.class).getText()).isEqualTo("Du bist gerade als Kai Kind unterwegs. Bis du zu deinem eigenen Konto zurückkehrst, sind die Kontoeinstellungen gesperrt.");
+        assertThat(_find(view, Button.class)).isEmpty();
     }
 }

@@ -3,6 +3,7 @@ package de.zettsystems.identity.ui;
 import de.zettsystems.identity.application.IdentityException;
 import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.values.AccountName;
+import de.zettsystems.identity.values.RegistrationMode;
 import de.zettsystems.identity.values.UserAccountDto;
 import org.jspecify.annotations.Nullable;
 
@@ -24,6 +25,7 @@ class FakeRegistrationService implements RegistrationService {
 
     boolean selfRegistrationEnabled = true;
     boolean emailVerificationRequired = true;
+    RegistrationMode registrationMode = RegistrationMode.OPEN;
 
     /** When set, the next call fails with it. */
     IdentityException failure;
@@ -31,12 +33,18 @@ class FakeRegistrationService implements RegistrationService {
     final List<String> registeredEmails = new ArrayList<>();
     final List<AccountName> registeredNames = new ArrayList<>();
     final List<@Nullable Locale> registeredLocales = new ArrayList<>();
+    final List<@Nullable String> registeredCodes = new ArrayList<>();
     final List<String> confirmedTokens = new ArrayList<>();
     final List<String> resendRequests = new ArrayList<>();
 
     @Override
     public boolean isSelfRegistrationEnabled() {
         return selfRegistrationEnabled;
+    }
+
+    @Override
+    public RegistrationMode registrationMode() {
+        return registrationMode;
     }
 
     @Override
@@ -52,10 +60,17 @@ class FakeRegistrationService implements RegistrationService {
     @Override
     public UserAccountDto register(String email, String rawPassword, AccountName name,
                                    @Nullable Locale locale) {
+        return register(email, rawPassword, name, locale, null);
+    }
+
+    @Override
+    public UserAccountDto register(String email, String rawPassword, AccountName name,
+                                   @Nullable Locale locale, @Nullable String code) {
         throwIfConfigured();
         registeredEmails.add(email);
         registeredNames.add(name);
         registeredLocales.add(locale);
+        registeredCodes.add(code);
         return ACCOUNT;
     }
 

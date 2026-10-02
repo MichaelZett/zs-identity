@@ -100,6 +100,18 @@ class AuthenticationRefresherTest {
         assertThat(currentAuthorities()).contains("ROLE_GROUP_LEADER");
     }
 
+    /** An impersonation is never refreshed into the account its name happens to match (since 1.5.0). */
+    @Test
+    void anImpersonatedSessionIsLeftAlone() {
+        Authentication impersonated = ImpersonatedUsers.session(5L, 1L,
+                UsernamePasswordAuthenticationToken.authenticated(EMAIL, "credentials", List.of()));
+        SecurityContextHolder.getContext().setAuthentication(impersonated);
+
+        testee.refreshAfterCommit(impersonated.getName());
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isSameAs(impersonated);
+    }
+
     @Test
     void aManagedAccountWithoutAddressIsIgnored() {
         signIn(EMAIL);

@@ -5,6 +5,7 @@ import de.zettsystems.identity.application.ExternalSignInException.Reason;
 import de.zettsystems.identity.application.ExternalSignInService;
 import de.zettsystems.identity.application.ExternalSignInUser;
 import de.zettsystems.identity.application.IdentityUserDetails;
+import de.zettsystems.identity.application.ImpersonatedUser;
 import de.zettsystems.identity.values.ExternalIdentityClaims;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.convert.converter.Converter;
@@ -90,6 +91,7 @@ final class ExternalSignInConverter implements Converter<OAuth2LoginAuthenticati
         @Nullable Authentication current = securityContextHolderStrategy.getContext().getAuthentication();
         if (expected == null || current == null
                 || !(current.getPrincipal() instanceof IdentityUserDetails user)
+                || user instanceof ImpersonatedUser
                 || !expected.equals(user.userId())) {
             throw new ExternalSignInException(Reason.REAUTHENTICATION_REQUIRED,
                     "Linking a provider needs a fresh sign-in of the same account");

@@ -74,7 +74,7 @@ class IdentityUserDetailsService implements UserDetailsService {
                 user.isEnabled(), user.isMustChangePassword(), toAuthorities(user)));
     }
 
-    private static Set<GrantedAuthority> toAuthorities(UserAccount user) {
+    static Set<GrantedAuthority> toAuthorities(UserAccount user) {
         Set<GrantedAuthority> authorities = new LinkedHashSet<>();
         for (RoleAssignment assignment : user.getRoleAssignments()) {
             ScopedRole scopedRole = new ScopedRole(assignment.getRole().getCode(), assignment.getScope());

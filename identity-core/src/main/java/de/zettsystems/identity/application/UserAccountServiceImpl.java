@@ -250,6 +250,9 @@ class UserAccountServiceImpl implements UserAccountService {
         UserAccount user = requireUser(userId);
         if (enabled) {
             user.activateWithoutVerification();
+            // Enabling a registration that still waits for its confirmation
+            // completes it: the account is usable from now on.
+            user.completeRegistration().ifPresent(events::publishEvent);
         } else {
             user.disable();
             events.publishEvent(new AccountLocked(userId, user.getEmail()));
@@ -268,6 +271,7 @@ class UserAccountServiceImpl implements UserAccountService {
     @Override
     @Transactional
     public void changePassword(Long userId, String newRawPassword) {
+        ImpersonatedUser.requireNotImpersonated(userId);
         requireLongEnough(newRawPassword);
         UserAccount user = requireUser(userId);
         user.changePassword(passwordHasher.hash(newRawPassword));
@@ -280,6 +284,7 @@ class UserAccountServiceImpl implements UserAccountService {
     @Override
     @Transactional
     public UserAccountDto requirePasswordChange(Long userId) {
+        ImpersonatedUser.requireNotImpersonated(userId);
         UserAccount user = requireUser(userId);
         if (!user.hasPassword()) {
             throw new IdentityException(IdentityMessageKeys.ACCOUNT_WITHOUT_PASSWORD,
@@ -299,6 +304,7 @@ class UserAccountServiceImpl implements UserAccountService {
     @Override
     @Transactional
     public void deleteAccount(Long userId) {
+        ImpersonatedUser.requireNotImpersonated(userId);
         UserAccount user = requireUser(userId);
         // Read before deleting: after the commit neither the row nor the
         // address it signed in under can be looked up any more, and that is

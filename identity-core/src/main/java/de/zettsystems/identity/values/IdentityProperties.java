@@ -12,7 +12,12 @@ import java.util.Locale;
  *
  * @param selfRegistrationEnabled  whether people may register themselves. Off
  *                                 means accounts are created by an
- *                                 administrator only.
+ *                                 administrator only. Since 1.5.0 the older
+ *                                 form of {@code registrationMode}:
+ *                                 {@code false} turns {@link RegistrationMode#OPEN}
+ *                                 into {@link RegistrationMode#CLOSED}, and
+ *                                 after construction it always reads
+ *                                 {@code registrationMode != CLOSED}.
  * @param emailVerificationRequired whether an account becomes usable only once
  *                                 its address is confirmed. Off means enabled
  *                                 immediately, which makes sense only when
@@ -55,6 +60,11 @@ import java.util.Locale;
  *                                 {@link OAuth2Settings})
  * @param search                   how the account search sorts and compares
  *                                 names (see {@link SearchSettings})
+ * @param registrationMode         who may register themselves (see
+ *                                 {@link RegistrationMode}), since 1.5.0.
+ *                                 {@code CODE} together with
+ *                                 {@code self-registration-enabled=false} is
+ *                                 refused as a contradiction.
  */
 @ConfigurationProperties(prefix = "zs.identity")
 public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationEnabled,
@@ -73,7 +83,24 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
                                  @DefaultValue PasskeySettings passkeys,
                                  @DefaultValue LoginProtectionSettings loginProtection,
                                  @DefaultValue OAuth2Settings oauth2,
-                                 @DefaultValue SearchSettings search) {
+                                 @DefaultValue SearchSettings search,
+                                 @DefaultValue("OPEN") RegistrationMode registrationMode) {
+
+    /**
+     * The shape before 1.5.0, kept so that applications and tests that build
+     * the record by hand keep compiling. The mode follows
+     * {@code selfRegistrationEnabled}.
+     */
+    public IdentityProperties(boolean selfRegistrationEnabled, boolean emailVerificationRequired,
+                              Duration tokenValidity, Duration invitationValidity, int passwordMinLength,
+                              String fromAddress, String fromName, String baseUrl, String defaultRoleCode,
+                              NameMode nameMode, Locale locale, UiSettings ui, MigrationSettings migrations,
+                              PasskeySettings passkeys, LoginProtectionSettings loginProtection,
+                              OAuth2Settings oauth2, SearchSettings search) {
+        this(selfRegistrationEnabled, emailVerificationRequired, tokenValidity, invitationValidity,
+                passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode, nameMode, locale, ui,
+                migrations, passkeys, loginProtection, oauth2, search, RegistrationMode.OPEN);
+    }
 
     /**
      * The shape before 1.3.0, kept so that applications and tests that build
@@ -160,6 +187,17 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
             throw new IllegalArgumentException("zs.identity.invitation-validity must be positive");
         }
         baseUrl = stripTrailingSlash(baseUrl);
+        if (!selfRegistrationEnabled) {
+            // The older switch. There is no telling a mode that was left at its
+            // default from one that was set to OPEN, so false wins over OPEN; a
+            // CODE next to it is a contradiction nobody should have to guess at.
+            if (registrationMode == RegistrationMode.CODE) {
+                throw new IllegalArgumentException("zs.identity.registration-mode=CODE contradicts "
+                        + "zs.identity.self-registration-enabled=false; remove the latter");
+            }
+            registrationMode = RegistrationMode.CLOSED;
+        }
+        selfRegistrationEnabled = registrationMode.allowsRegistration();
     }
 
     /** Builds an absolute address for the mails. */
@@ -180,52 +218,60 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
     public IdentityProperties withLocale(Locale newLocale) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, newLocale, ui, migrations, passkeys, loginProtection, oauth2, search);
+                nameMode, newLocale, ui, migrations, passkeys, loginProtection, oauth2, search,
+                registrationMode);
     }
 
     /** The same settings with a different appearance; see {@link #withLocale(Locale)}. */
     public IdentityProperties withUi(UiSettings newUi) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, newUi, migrations, passkeys, loginProtection, oauth2, search);
+                nameMode, locale, newUi, migrations, passkeys, loginProtection, oauth2, search,
+                registrationMode);
     }
 
     /** The same settings with the migrations run differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withMigrations(MigrationSettings newMigrations) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, newMigrations, passkeys, loginProtection, oauth2, search);
+                nameMode, locale, ui, newMigrations, passkeys, loginProtection, oauth2, search,
+                registrationMode);
     }
 
     /** The same settings with passkeys set up differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withPasskeys(PasskeySettings newPasskeys) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, migrations, newPasskeys, loginProtection, oauth2, search);
+                nameMode, locale, ui, migrations, newPasskeys, loginProtection, oauth2, search,
+                registrationMode);
     }
 
     /** The same settings with the protection against guessing set up differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withLoginProtection(LoginProtectionSettings newLoginProtection) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, migrations, passkeys, newLoginProtection, oauth2, search);
+                nameMode, locale, ui, migrations, passkeys, newLoginProtection, oauth2, search,
+                registrationMode);
     }
 
     /** The same settings with external providers set up differently; see {@link #withLocale(Locale)}. */
     public IdentityProperties withOAuth2(OAuth2Settings newOAuth2) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, migrations, passkeys, loginProtection, newOAuth2, search);
+                nameMode, locale, ui, migrations, passkeys, loginProtection, newOAuth2, search,
+                registrationMode);
     }
 
     /**
      * Whether the first sign-in of an unknown person through an external
      * provider creates an account: {@code zs.identity.oauth2.create-accounts}
-     * where set, otherwise whatever {@code self-registration-enabled} says.
+     * where set, otherwise only with {@link RegistrationMode#OPEN}.
      */
     public boolean createsExternalAccounts() {
         Boolean explicit = oauth2.createAccounts();
-        return explicit != null ? explicit : selfRegistrationEnabled;
+        // Not with CODE: a provider brings no invitation code, so creating the
+        // account there would walk around the gate.
+        return explicit != null ? explicit : registrationMode == RegistrationMode.OPEN;
     }
 
     /** Defaults for tests that build the record by hand. */
@@ -240,6 +286,15 @@ public record IdentityProperties(@DefaultValue("true") boolean selfRegistrationE
     public IdentityProperties withSearch(SearchSettings newSearch) {
         return new IdentityProperties(selfRegistrationEnabled, emailVerificationRequired, tokenValidity,
                 invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl, defaultRoleCode,
-                nameMode, locale, ui, migrations, passkeys, loginProtection, oauth2, newSearch);
+                nameMode, locale, ui, migrations, passkeys, loginProtection, oauth2, newSearch,
+                registrationMode);
+    }
+
+    /** The same settings with a different registration mode; see {@link #withLocale(Locale)}. */
+    public IdentityProperties withRegistrationMode(RegistrationMode newRegistrationMode) {
+        return new IdentityProperties(newRegistrationMode.allowsRegistration(), emailVerificationRequired,
+                tokenValidity, invitationValidity, passwordMinLength, fromAddress, fromName, baseUrl,
+                defaultRoleCode, nameMode, locale, ui, migrations, passkeys, loginProtection, oauth2, search,
+                newRegistrationMode);
     }
 }

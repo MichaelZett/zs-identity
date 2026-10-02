@@ -107,6 +107,9 @@ public class PasskeyView extends IdentityFormView implements BeforeEnterObserver
             event.forwardTo(IdentityRoutes.LOGIN);
             return;
         }
+        if (lockedWhileImpersonating(user, "identity.passkeys.title")) {
+            return;
+        }
         add(heading("identity.passkeys.title"));
         if (!properties.passkeys().enabled()) {
             add(paragraph("identity.passkeys.disabled"));

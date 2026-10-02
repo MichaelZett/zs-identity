@@ -10,6 +10,8 @@ import de.zettsystems.identity.values.UserAccountDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.webauthn.api.AuthenticatorTransport;
 import org.springframework.security.web.webauthn.api.Bytes;
 import org.springframework.security.web.webauthn.api.CredentialRecord;
@@ -26,6 +28,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -177,6 +180,32 @@ class PasskeyStoresIT extends AbstractIdentityIntegrationTest {
         userAccountService.deleteAccount(anna.id());
 
         assertThat(passkeyRepository.count()).isZero();
+    }
+
+    /**
+     * Acting as somebody, the authenticator in hand is the administrator's:
+     * no user handle and no credential may come about, while a known
+     * credential still records its use (since 1.5.0).
+     */
+    @Test
+    void noPasskeyComesAboutWhileActingAsSomebody() {
+        Bytes handle = handleFor(anna);
+        CredentialRecord known = credentialRecord(handle, Bytes.random(), "iPhone");
+        credentials.save(known);
+        UserAccountDto managed = userAccountService.createManagedAccount("Kai", "Kind");
+        SecurityContextHolder.getContext().setAuthentication(ImpersonatedUsers.session(managed.id(), anna.id(),
+                UsernamePasswordAuthenticationToken.authenticated("anna@example.com", null, List.of())));
+        try {
+            PublicKeyCredentialUserEntity fresh = userEntity("anna@example.com", Bytes.random());
+            CredentialRecord another = credentialRecord(handle, Bytes.random(), "Laptop");
+
+            assertThatThrownBy(() -> userEntities.save(fresh)).isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> credentials.save(another)).isInstanceOf(IllegalStateException.class);
+            assertDoesNotThrow(() -> credentials.save(known));
+            assertThat(passkeyService.countFor(anna.id())).isEqualTo(1);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     private Bytes handleFor(UserAccountDto account) {

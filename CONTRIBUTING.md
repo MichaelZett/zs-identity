@@ -46,10 +46,17 @@ not be merged, however well it is written.
   itself. A new route on which a password is set, an address assigned or an
   account locked or deleted publishes the matching event — otherwise a cookie
   stays valid at exactly that spot when it should not.
+- **Every route that makes an account usable completes a pending
+  registration** (`UserAccount#completeRegistration`, since 1.5.0), so that
+  `AccountRegistered` comes exactly once; and **every route that changes an
+  account's settings or adds a way into it refuses an impersonated session**
+  (`ImpersonatedUser.requireNotImpersonated`, or an explicit check for
+  `ImpersonatedUser` where the account is looked up by name).
 - **The public API is a contract.** Changing a signature on
   `UserAccountService`, `RegistrationService`, `PasswordResetService`,
   `UserAccountDto`, `AccountName`, `IdentityProperties`, `IdentityRoutes` or
-  `IdentityAccountEvent` and its four records
+  `IdentityAccountEvent` and its four records, and since 1.5.0 `RegistrationGate`,
+  `ImpersonationService`, `ImpersonationPolicy` and their value types,
   breaks every application that depends on it. Extend with `default` methods or
   additional overloads instead; a genuine break needs a major version.
 

@@ -76,6 +76,7 @@ class PasswordResetServiceImpl implements PasswordResetService {
         // the address belongs to this person.
         if (!user.isEmailVerified()) {
             user.activateAfterEmailVerification();
+            user.completeRegistration().ifPresent(events::publishEvent);
         }
     }
 }

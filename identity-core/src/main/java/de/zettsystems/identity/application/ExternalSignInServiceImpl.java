@@ -174,6 +174,9 @@ class ExternalSignInServiceImpl implements ExternalSignInService {
                         user.getEmail()));
             }
             user.activateAfterEmailVerification();
+            // The owner of the address is here now; a registration with it,
+            // and the code that came with it, is theirs.
+            user.completeRegistration().ifPresent(events::publishEvent);
         }
         if (ownerSettledNow) {
             // Verification and invitation links sent before lead nowhere any

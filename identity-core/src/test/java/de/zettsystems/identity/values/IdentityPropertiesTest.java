@@ -134,6 +134,79 @@ class IdentityPropertiesTest {
     }
 
     @Test
+    void registrationIsOpenUnlessSomethingElseIsConfigured() {
+        IdentityProperties bound = bind(Map.of("zs.identity.base-url", "http://example.com"));
+
+        assertThat(bound.registrationMode()).isEqualTo(RegistrationMode.OPEN);
+        assertThat(bound.selfRegistrationEnabled()).isTrue();
+        assertThat(bound.createsExternalAccounts()).isTrue();
+    }
+
+    @Test
+    void theOlderSwitchStillClosesTheRegistration() {
+        IdentityProperties bound = bind(Map.of("zs.identity.self-registration-enabled", "false"));
+
+        assertThat(bound.registrationMode()).isEqualTo(RegistrationMode.CLOSED);
+        assertThat(bound.selfRegistrationEnabled()).isFalse();
+    }
+
+    @Test
+    void theModeDecidesAndTheOlderSwitchFollowsIt() {
+        IdentityProperties code = bind(Map.of("zs.identity.registration-mode", "CODE"));
+        IdentityProperties closed = bind(Map.of("zs.identity.registration-mode", "closed"));
+
+        assertThat(code.registrationMode()).isEqualTo(RegistrationMode.CODE);
+        assertThat(code.selfRegistrationEnabled()).as("the form is offered, with a code field").isTrue();
+        assertThat(closed.registrationMode()).isEqualTo(RegistrationMode.CLOSED);
+        assertThat(closed.selfRegistrationEnabled()).isFalse();
+    }
+
+    @Test
+    void codeNextToTheSwitchedOffOlderSwitchIsAContradiction() {
+        Map<String, String> values = Map.of(
+                "zs.identity.registration-mode", "CODE",
+                "zs.identity.self-registration-enabled", "false");
+
+        assertThatThrownBy(() -> bind(values))
+                .hasRootCauseInstanceOf(IllegalArgumentException.class)
+                .rootCause().hasMessageContaining("registration-mode=CODE");
+    }
+
+    @Test
+    void anExternalProviderCreatesNoAccountsBehindTheGateUnlessExplicitlyAllowed() {
+        IdentityProperties code = IdentityProperties.defaults().withRegistrationMode(RegistrationMode.CODE);
+
+        assertThat(code.createsExternalAccounts())
+                .as("a provider brings no invitation code")
+                .isFalse();
+        assertThat(code.withOAuth2(new OAuth2Settings(false, List.of(), true, true)).createsExternalAccounts())
+                .as("an explicit create-accounts=true still wins")
+                .isTrue();
+    }
+
+    @Test
+    void handBuiltShapesFromBeforeTheModeFollowTheOlderSwitch() {
+        IdentityProperties closed = propertiesWithBaseUrl("http://example.com")
+                .withRegistrationMode(RegistrationMode.CLOSED);
+        IdentityProperties reopened = closed.withRegistrationMode(RegistrationMode.CODE);
+        IdentityProperties legacyClosed = new IdentityProperties(false, true, Duration.ofHours(24),
+                Duration.ofDays(7), 12, "noreply@example.com", "Test", "http://example.com", "USER",
+                NameMode.FULL_NAME, Locale.GERMAN, UiSettings.defaults());
+
+        assertThat(closed.selfRegistrationEnabled()).isFalse();
+        assertThat(reopened.registrationMode()).isEqualTo(RegistrationMode.CODE);
+        assertThat(reopened.withLocale(Locale.ENGLISH).registrationMode())
+                .as("every with... method carries the mode along")
+                .isEqualTo(RegistrationMode.CODE);
+        assertThat(legacyClosed.registrationMode()).isEqualTo(RegistrationMode.CLOSED);
+    }
+
+    private static IdentityProperties bind(Map<String, String> values) {
+        return new Binder(new MapConfigurationPropertySource(values))
+                .bindOrCreate("zs.identity", IdentityProperties.class);
+    }
+
+    @Test
     void passkeySettingsRefuseABlankRelyingPartyOrNoOrigin() {
         List<String> origins = List.of("https://example.com");
         assertThatThrownBy(() -> new PasskeySettings(true, " ", "App", origins))
