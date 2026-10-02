@@ -88,8 +88,11 @@ public class AuthenticationRefresher {
 
     private static boolean isCurrentUser(String email) {
         Authentication current = SecurityContextHolder.getContext().getAuthentication();
+        // An impersonation carries no address; its session is not the one
+        // whose roles changed, whatever its name looks like.
         return current != null
                 && current.isAuthenticated()
+                && !(current.getPrincipal() instanceof ImpersonatedUser)
                 && email.equalsIgnoreCase(current.getName());
     }
 

@@ -5,23 +5,42 @@ import com.vaadin.flow.component.textfield.Autocomplete;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import de.zettsystems.identity.application.IdentityException;
 import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.RegistrationService;
 import de.zettsystems.identity.values.AccountName;
+import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.NameMode;
+import de.zettsystems.identity.values.RegistrationMode;
 
-/** Self-registration. */
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Self-registration. With {@code zs.identity.registration-mode=CODE} the form
+ * asks for an invitation code first; a link like
+ * {@code /register?code=ABC123} fills it in, so that handing out the link is
+ * enough.
+ */
 @Route(value = IdentityRoutes.REGISTER, autoLayout = false)
 @AnonymousAllowed
-public class RegistrationView extends IdentityFormView {
+public class RegistrationView extends IdentityFormView implements BeforeEnterObserver {
+
+    /** The failures that belong to the code field rather than the whole form. */
+    private static final Set<String> CODE_KEYS = Set.of(
+            IdentityMessageKeys.INVITATION_CODE_REQUIRED,
+            IdentityMessageKeys.INVITATION_CODE_INVALID);
 
     private final RegistrationService registrationService;
     private final IdentityProperties properties;
+    private final boolean codeRequired;
 
+    private final TextField code = new TextField();
     private final TextField firstName = new TextField();
     private final TextField lastName = new TextField();
     private final TextField displayName = new TextField();
@@ -34,6 +53,7 @@ public class RegistrationView extends IdentityFormView {
         super(messages, properties, "registration");
         this.registrationService = registrationService;
         this.properties = properties;
+        this.codeRequired = registrationService.registrationMode() == RegistrationMode.CODE;
 
         add(heading("identity.registration.title"));
 
@@ -43,6 +63,11 @@ public class RegistrationView extends IdentityFormView {
             return;
         }
 
+        code.setLabel(text("identity.registration.code"));
+        code.setHelperText(text("identity.registration.codeHelper"));
+        code.setRequiredIndicatorVisible(true);
+        // A code is no credential a password manager should keep or offer.
+        code.setAutocomplete(Autocomplete.OFF);
         firstName.setLabel(text("identity.registration.firstName"));
         lastName.setLabel(text("identity.registration.lastName"));
         displayName.setLabel(text("identity.registration.displayName"));
@@ -73,6 +98,10 @@ public class RegistrationView extends IdentityFormView {
         Button submit = primaryButton("identity.registration.submit", "registration-submit-button",
                 event -> submit());
 
+        // The code first: without it the rest of the form is in vain.
+        if (codeRequired) {
+            addFullWidth(code);
+        }
         // Which name fields appear is decided by the application through
         // zs.identity.name-mode: real name (clubs) or player name (games).
         if (fullNameMode()) {
@@ -89,11 +118,26 @@ public class RegistrationView extends IdentityFormView {
         return text("identity.registration.pageTitle");
     }
 
+    /** Fills in the code from the link, when the form asks for one. */
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        List<String> codes = event.getLocation().getQueryParameters().getParameters()
+                .getOrDefault(IdentityRoutes.CODE_PARAMETER, List.of());
+        if (codeRequired && !codes.isEmpty() && code.isEmpty()) {
+            code.setValue(codes.getFirst().strip());
+        }
+    }
+
     private void submit() {
+        code.setInvalid(false);
+        boolean codeMissing = codeRequired && code.getValue().isBlank();
         boolean nameMissing = fullNameMode()
                 ? firstName.isEmpty() || lastName.isEmpty()
                 : displayName.isEmpty();
-        if (nameMissing || email.isEmpty() || password.isEmpty()) {
+        if (codeMissing || nameMissing || email.isEmpty() || password.isEmpty()) {
+            if (codeMissing) {
+                markCode(text(IdentityMessageKeys.INVITATION_CODE_REQUIRED));
+            }
             warn(text("identity.registration.missingFields"));
             return;
         }
@@ -111,11 +155,20 @@ public class RegistrationView extends IdentityFormView {
             // it is the only thing the person says about it, and when mail is
             // sent later there is no browser left to ask.
             registrationService.register(email.getValue(), password.getValue(), enteredName(),
-                    texts().locale());
+                    texts().locale(), codeRequired ? code.getValue() : null);
             showConfirmation();
         } catch (IdentityException e) {
-            warn(translate(e));
+            if (CODE_KEYS.contains(e.getMessageKey())) {
+                markCode(translate(e));
+            } else {
+                warn(translate(e));
+            }
         }
+    }
+
+    private void markCode(String message) {
+        code.setErrorMessage(message);
+        code.setInvalid(true);
     }
 
     private boolean fullNameMode() {

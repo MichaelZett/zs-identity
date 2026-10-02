@@ -122,6 +122,23 @@ public class IdentityBeans {
         return new ActiveScopeService();
     }
 
+    /**
+     * Acting as a managed account. Without an {@link ImpersonationPolicy} bean
+     * the service exists but turns every attempt down.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    ImpersonationService impersonationService(UserAccountRepository userRepository,
+                                              ObjectProvider<ImpersonationPolicy> policy,
+                                              ApplicationEventPublisher events) {
+        return new ImpersonationServiceImpl(userRepository, policy.getIfAvailable(), events);
+    }
+
+    /**
+     * The {@link RegistrationGate} is optional except with
+     * {@code zs.identity.registration-mode=CODE}; then a missing one stops the
+     * startup here.
+     */
     @Bean
     @ConditionalOnMissingBean
     RegistrationService registrationService(UserAccountRepository userRepository,
@@ -130,9 +147,11 @@ public class IdentityBeans {
                                             IdentityMailSender mailSender,
                                             PasswordHasher passwordHasher,
                                             IdentityProperties properties,
-                                            Clock clock) {
+                                            Clock clock,
+                                            ApplicationEventPublisher events,
+                                            ObjectProvider<RegistrationGate> gate) {
         return new RegistrationServiceImpl(userRepository, roleRepository, tokenIssuer, mailSender,
-                passwordHasher, properties, clock);
+                passwordHasher, properties, clock, events, gate.getIfAvailable());
     }
 
     @Bean

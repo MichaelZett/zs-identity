@@ -11,11 +11,14 @@ import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.NameMode;
+import de.zettsystems.identity.values.RegistrationMode;
 import de.zettsystems.identity.values.UiSettings;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import static com.github.mvysny.kaributesting.v10.LocatorJ._click;
 import static com.github.mvysny.kaributesting.v10.LocatorJ._find;
@@ -218,5 +221,89 @@ class RegistrationViewTest extends AbstractViewTest {
         _click(_get(view, Button.class, spec -> spec.withText("Ich habe schon ein Konto")));
 
         assertThat(currentPath()).isEqualTo(IdentityRoutes.LOGIN);
+    }
+
+    @Test
+    void withoutACodeModeThereIsNoCodeFieldAndNoCodeIsPassedOn() {
+        RegistrationView view = showRegistrationView(propertiesWith(NameMode.DISPLAY_NAME, true));
+        view.beforeEnter(enterEventWith(IdentityRoutes.REGISTER, Map.of("code", List.of("ABC123"))));
+        assertThat(_find(view, TextField.class)).extracting(TextField::getLabel).containsExactly("Anzeigename");
+        _setValue(_get(view, TextField.class), "Anna");
+        fillCredentials(view, "anna@example.com", "sicheres-passwort", "sicheres-passwort");
+
+        submit(view);
+
+        assertThat(registrationService.registeredCodes).containsExactly((String) null);
+    }
+
+    @Test
+    void theCodeModeAsksForTheCodeFirst() {
+        registrationService.registrationMode = RegistrationMode.CODE;
+        RegistrationView view = showRegistrationView(propertiesWith(NameMode.FULL_NAME, true));
+
+        assertThat(_find(view, TextField.class)).extracting(TextField::getLabel)
+                .containsExactly("Einladungscode", "Vorname", "Nachname");
+        assertThat(codeField(view).isRequiredIndicatorVisible()).isTrue();
+    }
+
+    @Test
+    void aLinkFillsInTheCodeAndItReachesTheService() {
+        registrationService.registrationMode = RegistrationMode.CODE;
+        RegistrationView view = showRegistrationView(propertiesWith(NameMode.DISPLAY_NAME, true));
+        view.beforeEnter(enterEventWith(IdentityRoutes.REGISTER, Map.of("code", List.of(" ABC123 "))));
+        _setValue(_get(view, TextField.class, spec -> spec.withLabel("Anzeigename")), "Anna");
+        fillCredentials(view, "anna@example.com", "sicheres-passwort", "sicheres-passwort");
+
+        submit(view);
+
+        assertThat(registrationService.registeredCodes).containsExactly("ABC123");
+        assertThat(_get(view, H2.class).getText()).isEqualTo("Fast geschafft");
+    }
+
+    @Test
+    void aMissingCodeIsMarkedOnItsFieldBeforeTheServiceIsCalled() {
+        registrationService.registrationMode = RegistrationMode.CODE;
+        RegistrationView view = showRegistrationView(propertiesWith(NameMode.DISPLAY_NAME, true));
+        _setValue(_get(view, TextField.class, spec -> spec.withLabel("Anzeigename")), "Anna");
+        fillCredentials(view, "anna@example.com", "sicheres-passwort", "sicheres-passwort");
+
+        submit(view);
+
+        assertThat(codeField(view).isInvalid()).isTrue();
+        assertThat(codeField(view).getErrorMessage()).isEqualTo("Bitte gib deinen Einladungscode ein.");
+        assertThat(registrationService.registeredEmails).isEmpty();
+    }
+
+    @Test
+    void aCodeTheApplicationDoesNotKnowIsMarkedOnItsField() {
+        registrationService.registrationMode = RegistrationMode.CODE;
+        registrationService.failure = new IdentityException(IdentityMessageKeys.INVITATION_CODE_INVALID, "no");
+        RegistrationView view = showRegistrationView(propertiesWith(NameMode.DISPLAY_NAME, true));
+        _setValue(codeField(view), "RATEN");
+        _setValue(_get(view, TextField.class, spec -> spec.withLabel("Anzeigename")), "Anna");
+        fillCredentials(view, "anna@example.com", "sicheres-passwort", "sicheres-passwort");
+
+        submit(view);
+
+        assertThat(codeField(view).isInvalid()).isTrue();
+        assertThat(codeField(view).getErrorMessage()).isEqualTo("Dieser Einladungscode ist nicht gültig.");
+        assertThat(notificationTexts()).isEmpty();
+    }
+
+    @Test
+    void anAddressWithAnOpenInvitationIsPointedToItsMail() {
+        registrationService.failure = new IdentityException(IdentityMessageKeys.INVITATION_PENDING, "invited");
+        RegistrationView view = showRegistrationView(propertiesWith(NameMode.DISPLAY_NAME, true));
+        _setValue(_get(view, TextField.class), "Anna");
+        fillCredentials(view, "anna@example.com", "sicheres-passwort", "sicheres-passwort");
+
+        submit(view);
+
+        assertThat(notificationTexts()).containsExactly(
+                "An diese E-Mail-Adresse ging bereits eine Einladung. Bitte nutze den Link in dieser E-Mail.");
+    }
+
+    private static TextField codeField(RegistrationView view) {
+        return _get(view, TextField.class, spec -> spec.withLabel("Einladungscode"));
     }
 }

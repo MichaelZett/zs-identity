@@ -52,6 +52,7 @@ class InvitationServiceImpl implements InvitationService {
     @Override
     @Transactional
     public UserAccountDto inviteToClaim(Long userId, String email) {
+        ImpersonatedUser.requireNotImpersonated(userId);
         UserAccount user = requireUser(userId);
         if (!user.isManaged()) {
             throw new IdentityException(IdentityMessageKeys.ACCOUNT_ALREADY_CLAIMED,

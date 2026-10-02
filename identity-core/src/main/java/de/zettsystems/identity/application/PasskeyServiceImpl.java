@@ -45,6 +45,7 @@ class PasskeyServiceImpl implements PasskeyService {
     @Override
     @Transactional
     public void delete(Long userId, Long passkeyId) {
+        ImpersonatedUser.requireNotImpersonated(userId);
         Passkey passkey = passkeys.findByIdAndUserId(passkeyId, userId)
                 .orElseThrow(() -> new IdentityException(IdentityMessageKeys.PASSKEY_NOT_FOUND,
                         "Account %d has no passkey with id %d".formatted(userId, passkeyId)));

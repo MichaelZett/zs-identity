@@ -95,7 +95,8 @@ list is optional, and the auto-configuration takes care of everything else:
    `inviteToClaim(userId, email)` for an existing managed account, where the
    `userId` and therefore everything the application attached to it stays
    stable; `inviteNewAccount(email, name)` creates one. With
-   `self-registration-enabled=false` this is the only way in. The view lives in
+   `registration-mode: CLOSED` this is the only way in; invitations work in
+   every mode and never need an invitation code. The view lives in
    `identity-vaadin` under `IdentityRoutes.CLAIM_ACCOUNT`; who may invite is
    decided by the application, and the building block does not check it.
    `resendInvitation(userId)` sends a fresh link as long as the invitation is
@@ -234,7 +235,8 @@ list is optional, and the auto-configuration takes care of everything else:
       another person's address to wait for them. Without an account, one is
       created -- without a password, confirmed, with the default role and the
       provider's name -- if `create-accounts` allows it, which by default
-      follows `self-registration-enabled`. Anything else is turned down with a
+      it does only with `registration-mode: OPEN` (a provider brings no
+      invitation code). Anything else is turned down with a
       reason the sign-in page shows (`/login?error&external=no-account`, ...);
       none of them names an account.
     - **Invitations**: the redemption view offers "Continue with Google" next
@@ -265,11 +267,80 @@ list is optional, and the auto-configuration takes care of everything else:
       `ExternalClaimsReader`, which turns the provider's answer into the
       claims the building block decides on.
 
+11. **Registration only with an invitation code** (since 1.5.0):
+    `zs.identity.registration-mode` is `OPEN` (anybody, the default), `CODE`
+    or `CLOSED` (invitations only). The older `self-registration-enabled:
+    false` still means `CLOSED`; next to `CODE` it is refused as a
+    contradiction. With `CODE` the application declares which codes are valid
+    -- without the bean it does not start:
+    ```java
+    @Bean
+    RegistrationGate invitationCodes(CodeRepository codes) {
+        return code -> codes.findActive(code).isPresent();
+    }
+    ```
+    The registration view then asks for the code first; a link like
+    `/register?code=ABC123` fills it in (`IdentityRoutes.CODE_PARAMETER`).
+    An unknown code is marked on its field before any account exists, and it
+    is checked before the address, so nobody without a code learns which
+    addresses have an account. What a code means -- a group, a status, a
+    required date of birth -- stays with the application: it gets the code
+    back with **`AccountRegistered(userId, email, code)`** once the account
+    is usable. That is when the address is confirmed (or right away without
+    `email-verification-required`; a password reset through the mailed link,
+    a provider vouching for the address or an administrator enabling the
+    account count as well) -- never when the form is sent, so an abandoned
+    registration leaves nothing behind in the application. Until then the
+    code waits on the account (`auth_user.registration_code`) and is
+    forgotten once handed over. The event comes for every self-registration,
+    with `code = null` in `OPEN`; not for invitations, accounts an
+    administrator creates or accounts a provider creates. A code given in
+    `OPEN` is checked all the same, so a code that reaches the event has
+    always passed the gate.
+
+    Somebody registering with an address an invitation was sent to gets no
+    second account but `INVITATION_PENDING` ("an invitation was sent to this
+    address, use its link") -- with `CODE` once the code has passed.
+12. **Acting as a managed account** (since 1.5.0): during a pilot an
+    administrator uses the application as somebody who does not sign in yet,
+    and invites them later. `ImpersonationService#start(targetUserId)`
+    switches the session, `stop()` gives it back, `current()` returns
+    `Impersonation(actorUserId, targetUserId, targetDisplayName)` for a bar
+    like "You are acting as Anna · Back to me", and `currentImpersonator()`
+    says who really acts. Who may act as whom is the application's rule:
+    ```java
+    @Bean
+    ImpersonationPolicy sameDivision(Divisions divisions) {
+        return (actor, target) -> divisions.adminOfDivisionOf(actor, target);
+    }
+    ```
+    Without the bean nobody may. On top, and beyond any policy: only a
+    **managed** account (no address, no password, no provider) can be acted
+    as, never oneself, never from within an impersonation. After `start()`
+    and `stop()` load the page again (`UI.getCurrent().getPage().reload()`),
+    so that the layout is built for the new principal. Once the account
+    belongs to a person -- the invitation redeemed --, is deleted or disabled,
+    or the policy changes its mind, the impersonation ends at the next check
+    (`verify()`; the shipped views check on every navigation and reload the
+    page for the administrator). Meanwhile the account's settings are locked:
+    the password, passkey and linked-provider views show a notice, and
+    `changePassword`, `requirePasswordChange`, `deleteAccount`,
+    `inviteToClaim`, deleting a passkey and unlinking a provider are turned
+    down for that account with `IMPERSONATION_RESTRICTED`. Screens of your own
+    (the address, "sign out everywhere") ask `current()` and lock themselves;
+    a sign-out button calls `stop()` first and signs out only when it returns
+    `false`. The principal is an `ImpersonatedUser` with the target's id,
+    name and roles; its `getUsername()` is `managed:<id>`, not an address --
+    take `IdentityUserDetails#userId()` to find the current account.
+    `ImpersonationStarted` and `ImpersonationEnded` (both `actorUserId`,
+    `targetUserId`) are published for the application's log.
+
 ## Configuration (`zs.identity.*`)
 
 | Key                           | Default                  | Meaning |
 |-------------------------------|--------------------------|---------|
-| `self-registration-enabled`   | `true`                   | self-registration allowed |
+| `registration-mode`           | `OPEN`                   | `OPEN`, `CODE` (needs a `RegistrationGate` bean) or `CLOSED` (see step 11) |
+| `self-registration-enabled`   | `true`                   | the older form: `false` means `registration-mode: CLOSED` |
 | `email-verification-required` | `true`                   | account usable only once its address is confirmed |
 | `token-validity`              | `24h`                    | validity of verification and reset links |
 | `invitation-validity`         | `7d`                     | validity of invitation links |
@@ -299,7 +370,7 @@ list is optional, and the auto-configuration takes care of everything else:
 | `search.collation`            | `C`                      | PostgreSQL collation the account search sorts and compares names with; `de-DE-x-icu` for German names, blank for the database's own |
 | `oauth2.enabled`              | `false`                  | sign-in through external providers; needs the OAuth2 client and `IdentityOAuth2Configurer` in the filter chain (see step 10) |
 | `oauth2.registrations`        | all, by name             | the client registrations the sign-in page offers, in this order |
-| `oauth2.create-accounts`      | = `self-registration-enabled` | whether the first sign-in of an unknown person creates an account |
+| `oauth2.create-accounts`      | `true` with `registration-mode: OPEN` | whether the first sign-in of an unknown person creates an account |
 | `oauth2.link-by-email`        | `true`                   | whether the first sign-in joins an existing account with the address the provider vouches for |
 
 **Mail delivery is optional** (since 0.7.0). `spring-boot-starter-mail` only
@@ -471,6 +542,12 @@ an unlink discards the remember-me tokens like a changed password, and a
 password dropped on the first sign-in through a provider (see step 10) is
 published as `PasswordChanged`.
 
+`AccountRegistered` (since 1.5.0; `userId`, `email`, `code`) comes once
+per self-registration, when the account first becomes usable (see step 11),
+and `ImpersonationStarted` / `ImpersonationEnded` (since 1.5.0; `actorUserId`,
+`targetUserId`) when an administrator starts or stops acting as a managed
+account (see step 12). None of them is among the sealed shapes.
+
 They are published **inside** the transaction that makes the change. Listen
 with `@TransactionalEventListener` if you must not act on a change that is
 rolled back afterwards, and with `@EventListener` if you only want to be told:
@@ -633,7 +710,8 @@ transaction, so a failure leaves the old layout untouched. Take a backup
 before that first start anyway.
 
 Tables: `auth_user` (since V1_6 with `passkey_user_handle`, the opaque id
-WebAuthn knows an account by), `auth_role`, `auth_role_authority`,
+WebAuthn knows an account by; since V1_9 with `registration_pending` and
+`registration_code`, which hold a registration until the account is usable), `auth_role`, `auth_role_authority`,
 `auth_user_role` (with `scope_type`/`scope_id`, empty = global),
 `auth_token`, `auth_passkey` (since V1_6; one row per registered passkey,
 hanging off `auth_user` with `ON DELETE CASCADE`).

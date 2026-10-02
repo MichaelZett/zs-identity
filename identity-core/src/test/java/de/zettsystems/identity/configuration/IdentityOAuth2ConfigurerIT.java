@@ -6,6 +6,7 @@ import de.zettsystems.identity.application.ExternalSignInService;
 import de.zettsystems.identity.application.ExternalSignInUser;
 import de.zettsystems.identity.application.IdentityMailSender;
 import de.zettsystems.identity.application.IdentityUserDetails;
+import de.zettsystems.identity.application.ImpersonatedUsers;
 import de.zettsystems.identity.application.InvitationService;
 import de.zettsystems.identity.application.RoleCatalog;
 import de.zettsystems.identity.application.UserAccountService;
@@ -281,6 +282,26 @@ class IdentityOAuth2ConfigurerIT {
         assertThat(callback.getRedirectedUrl())
                 .isEqualTo("/" + IdentityPaths.LINKED_ACCOUNTS + "?" + IdentityPaths.EXTERNAL_ERROR_PARAMETER
                         + "=reauthentication-required");
+    }
+
+    /** Acting as a managed account, the provider in hand is the administrator's (since 1.5.0). */
+    @Test
+    void anImpersonatedSessionCannotLinkAProvider() throws Exception {
+        UserAccountDto admin = userAccountService.createAccount("ida@example.com", "ein-langes-passwort",
+                "Ida", "Beispiel", true);
+        UserAccountDto managed = userAccountService.createManagedAccount("Kai", "Kind");
+        USER_INFO.set("{\"id\":42,\"email\":\"ida@example.com\",\"email_verified\":true}");
+        MockHttpSession session = sessionOf(ImpersonatedUsers.session(managed.id(), admin.id(),
+                passwordSignIn("ida@example.com")));
+
+        MockHttpServletResponse callback = roundTrip(session, "?" + IdentityPaths.LINK_PARAMETER);
+
+        assertThat(callback.getRedirectedUrl())
+                .isEqualTo("/" + IdentityPaths.LINKED_ACCOUNTS + "?" + IdentityPaths.EXTERNAL_ERROR_PARAMETER
+                        + "=reauthentication-required");
+        assertThat(userAccountService.findById(managed.id()).orElseThrow().claimed())
+                .as("no way into the managed account came about")
+                .isFalse();
     }
 
     /** With a login page of our own Spring neither generates one nor sends everybody straight to the provider. */

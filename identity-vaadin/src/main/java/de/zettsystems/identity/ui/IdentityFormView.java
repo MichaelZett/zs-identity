@@ -17,6 +17,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import de.zettsystems.identity.application.IdentityException;
+import de.zettsystems.identity.application.IdentityUserDetails;
+import de.zettsystems.identity.application.ImpersonatedUser;
 import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.values.ExternalProvider;
 import de.zettsystems.identity.values.IdentityMessageKeys;
@@ -115,7 +117,10 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
             IdentityMessageKeys.PASSKEY_NOT_FOUND,
             IdentityMessageKeys.ACCOUNT_WITHOUT_PASSWORD,
             IdentityMessageKeys.EXTERNAL_IDENTITY_NOT_FOUND,
-            IdentityMessageKeys.LAST_SIGN_IN_METHOD);
+            IdentityMessageKeys.LAST_SIGN_IN_METHOD,
+            IdentityMessageKeys.INVITATION_CODE_REQUIRED,
+            IdentityMessageKeys.INVITATION_CODE_INVALID,
+            IdentityMessageKeys.INVITATION_PENDING);
 
     private final IdentityTexts texts;
     private final UiSettings ui;
@@ -323,6 +328,22 @@ public abstract class IdentityFormView extends VerticalLayout implements HasDyna
         link.addClassNames(QUIET_CLASSES);
         FOOTER_LINK_STYLE.forEach(link.getStyle()::set);
         return link;
+    }
+
+    /**
+     * Shows a notice instead of the settings while the session acts as a
+     * managed account (since 1.5.0): password, passkeys and providers are the
+     * person's, and the administrator at the keyboard must not set them.
+     *
+     * @return whether the view is locked and must not build its form
+     */
+    protected final boolean lockedWhileImpersonating(IdentityUserDetails user, String titleKey) {
+        if (!(user instanceof ImpersonatedUser impersonated)) {
+            return false;
+        }
+        add(heading(titleKey));
+        add(paragraph("identity.impersonation.locked", impersonated.displayName()));
+        return true;
     }
 
     /**

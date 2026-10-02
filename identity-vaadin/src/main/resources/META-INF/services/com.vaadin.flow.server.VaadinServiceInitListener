@@ -1,1 +1,2 @@
 de.zettsystems.identity.ui.PasswordChangeServiceInitListener
+de.zettsystems.identity.ui.ImpersonationServiceInitListener

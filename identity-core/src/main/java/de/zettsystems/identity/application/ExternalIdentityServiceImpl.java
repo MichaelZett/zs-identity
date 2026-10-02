@@ -56,6 +56,7 @@ class ExternalIdentityServiceImpl implements ExternalIdentityService {
     @Override
     @Transactional
     public void unlink(Long userId, String registrationId) {
+        ImpersonatedUser.requireNotImpersonated(userId);
         UserAccount user = userRepository.findById(userId)
                 .orElseThrow(() -> new IdentityException(IdentityMessageKeys.ACCOUNT_NOT_FOUND,
                         "No account with id %d".formatted(userId)));

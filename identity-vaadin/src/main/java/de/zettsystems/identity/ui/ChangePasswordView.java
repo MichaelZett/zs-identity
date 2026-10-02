@@ -66,6 +66,9 @@ public class ChangePasswordView extends IdentityFormView implements BeforeEnterO
             event.forwardTo(IdentityRoutes.LOGIN);
             return;
         }
+        if (lockedWhileImpersonating(user, "identity.change.title")) {
+            return;
+        }
 
         password.setHelperText(text("identity.common.passwordHelper", passwordMinLength));
         password.setRequiredIndicatorVisible(true);

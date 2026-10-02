@@ -2,6 +2,7 @@ package de.zettsystems.identity.configuration;
 
 import de.zettsystems.identity.application.ExternalSignInService;
 import de.zettsystems.identity.application.IdentityUserDetails;
+import de.zettsystems.identity.application.ImpersonatedUser;
 import de.zettsystems.identity.values.IdentityPaths;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -104,8 +105,11 @@ final class ExternalAuthorizationRequestResolver implements OAuth2AuthorizationR
 
     private @Nullable Long freshlySignedInUser() {
         Authentication current = securityContextHolderStrategy.getContext().getAuthentication();
+        // Never while acting as somebody: the provider would be the
+        // administrator's, and the account somebody else's.
         if (current != null && trustResolver.isFullyAuthenticated(current)
-                && current.getPrincipal() instanceof IdentityUserDetails user) {
+                && current.getPrincipal() instanceof IdentityUserDetails user
+                && !(user instanceof ImpersonatedUser)) {
             return user.userId();
         }
         return null;

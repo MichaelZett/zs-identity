@@ -5,6 +5,53 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 1.5.0 - 2026-10-02
+
+### Added
+- **Registration only with an invitation code**:
+  `zs.identity.registration-mode` (`OPEN` | `CODE` | `CLOSED`, enum
+  `RegistrationMode`). With `CODE` the application decides which codes are
+  valid through a `RegistrationGate` bean (`boolean admits(String code)`);
+  without one the application does not start. The registration view asks for
+  the code first and takes it from `/register?code=...`
+  (`IdentityRoutes.CODE_PARAMETER`); an unknown code is marked on its field
+  (`INVITATION_CODE_INVALID`, `INVITATION_CODE_REQUIRED`) before any account
+  exists, and it is checked before the address. New on
+  `RegistrationService`: `registrationMode()` and
+  `register(email, password, name, locale, code)`, both `default` methods.
+  Invitations need no code in any mode.
+- **`AccountRegistered(userId, email, code)`**, published once per
+  self-registration when the account first becomes usable: the confirmed
+  address, or right away without verification; a password reset through the
+  mailed link, a provider vouching for the address and an administrator
+  enabling the account count as well. `code` is the admitted invitation code,
+  `null` without one. Until then the code waits on the account (migration
+  `V1_9`: `auth_user.registration_pending`, `auth_user.registration_code`);
+  it is forgotten once handed over. Registrations still waiting for their
+  confirmation when `V1_9` runs publish nothing.
+- **Acting as a managed account**: `ImpersonationService` (`start`, `stop`,
+  `current`, `currentImpersonator`, `verify`) switches the session of an
+  administrator to a managed account and back; the application decides who
+  may through an `ImpersonationPolicy` bean (without one nobody may). Only
+  managed accounts qualify, never oneself, never nested. The impersonation
+  ends at the next check once the account is claimed, deleted or disabled or
+  the policy says no; the shipped views check on every navigation
+  (`ImpersonationGuard`). Meanwhile the password, passkey and linked-provider
+  views are locked, and `changePassword`, `requirePasswordChange`,
+  `deleteAccount`, `inviteToClaim`, deleting a passkey and unlinking a
+  provider are turned down for the account (`IMPERSONATION_RESTRICTED`); no
+  passkey and no provider link can come about. The principal is an
+  `ImpersonatedUser` (an `IdentityUserDetails` with the target's id and
+  roles, username `managed:<id>`). Events `ImpersonationStarted` and
+  `ImpersonationEnded`.
+
+### Changed
+- Registering with an address an invitation was sent to answers
+  `INVITATION_PENDING` instead of `EMAIL_ALREADY_REGISTERED`; still no second
+  account.
+- `oauth2.create-accounts`, when not set, creates accounts only with
+  `registration-mode: OPEN`: a provider brings no invitation code.
+
 ## 1.4.1 - 2026-10-01
 
 ### Fixed

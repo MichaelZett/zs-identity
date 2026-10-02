@@ -176,8 +176,8 @@ class AutoConfigurationIT {
                 "select count(*) from public.flyway_schema_history where script like 'V1\\_%'", Integer.class);
 
         assertThat(tables).isEqualTo(7);
-        assertThat(ourHistory).as("a fresh database takes the baseline B1_6 and V1_7, V1_8 on top")
-                .isEqualTo(3);
+        assertThat(ourHistory).as("a fresh database takes the baseline B1_6 and V1_7 to V1_9 on top")
+                .isEqualTo(4);
         assertThat(inTheApplicationsHistory).as("nothing of ours in the application's history").isZero();
     }
 

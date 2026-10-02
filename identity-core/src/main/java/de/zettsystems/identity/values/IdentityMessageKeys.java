@@ -32,6 +32,23 @@ public final class IdentityMessageKeys {
      * passkey, no other provider (since 1.2.0).
      */
     public static final String LAST_SIGN_IN_METHOD = "identity.error.lastSignInMethod";
+    /** Registration needs an invitation code, and none was given (since 1.5.0). */
+    public static final String INVITATION_CODE_REQUIRED = "identity.error.invitationCodeRequired";
+    /** The {@code RegistrationGate} does not admit the code (since 1.5.0). */
+    public static final String INVITATION_CODE_INVALID = "identity.error.invitationCodeInvalid";
+    /**
+     * Somebody tries to register with an address an invitation was sent to;
+     * the way in is the link in that mail (since 1.5.0).
+     */
+    public static final String INVITATION_PENDING = "identity.error.invitationPending";
+    /**
+     * Acting as this account is not allowed: it is no managed account, it is
+     * one's own, an impersonation is already running, or the application's
+     * policy says no (since 1.5.0).
+     */
+    public static final String IMPERSONATION_NOT_ALLOWED = "identity.error.impersonationNotAllowed";
+    /** The settings of an account are locked while somebody acts as it (since 1.5.0). */
+    public static final String IMPERSONATION_RESTRICTED = "identity.error.impersonationRestricted";
     /** The UI's fallback for everything it does not handle individually. */
     public static final String UNEXPECTED = "identity.error.unexpected";
 

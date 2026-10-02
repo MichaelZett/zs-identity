@@ -29,6 +29,9 @@ public final class IdentityRoutes {
     /** Name of the token parameter in verification, reset and invitation links. */
     public static final String TOKEN_PARAMETER = IdentityPaths.TOKEN_PARAMETER;
 
+    /** Name of the parameter that fills in the invitation code on the registration form. */
+    public static final String CODE_PARAMETER = IdentityPaths.CODE_PARAMETER;
+
     private IdentityRoutes() {
         // Constants class
     }

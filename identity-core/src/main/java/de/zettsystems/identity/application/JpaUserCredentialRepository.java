@@ -64,6 +64,7 @@ class JpaUserCredentialRepository implements UserCredentialRepository {
             existing.get().recordUse(credentialRecord.getSignatureCount(), clock.instant());
             return;
         }
+        refuseWhileImpersonating();
         String handle = credentialRecord.getUserEntityUserId().toBase64UrlString();
         UserAccount user = users.findByPasskeyUserHandle(handle)
                 .orElseThrow(() -> new IllegalStateException("No account for the passkey user handle"));
@@ -143,5 +144,16 @@ class JpaUserCredentialRepository implements UserCredentialRepository {
 
     private static String toBase64(byte[] bytes) {
         return new Bytes(bytes).toBase64UrlString();
+    }
+
+    /**
+     * No passkey comes about while somebody acts as a managed account: the
+     * authenticator in hand is the administrator's. Checked where it is
+     * stored, so that no route around the views gets past it.
+     */
+    static void refuseWhileImpersonating() {
+        if (ImpersonatedUser.current().isPresent()) {
+            throw new IllegalStateException("No passkey can be registered while acting as another account");
+        }
     }
 }

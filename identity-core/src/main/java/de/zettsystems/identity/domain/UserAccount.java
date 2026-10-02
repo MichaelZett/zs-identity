@@ -1,5 +1,6 @@
 package de.zettsystems.identity.domain;
 
+import de.zettsystems.identity.values.AccountRegistered;
 import de.zettsystems.identity.values.IdentitySchema;
 import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.LoginProtectionSettings;
@@ -168,6 +169,17 @@ public class UserAccount extends AbstractAuthEntity {
     @Column(name = "external_sign_in", nullable = false)
     private boolean externalSignIn;
 
+    /**
+     * Came through the registration form and has not become usable yet, since
+     * V1_9 (see {@link #completeRegistration()}).
+     */
+    @Column(name = "registration_pending", nullable = false)
+    private boolean registrationPending;
+
+    /** The invitation code it registered with, kept only while the registration is pending. */
+    @Column(name = "registration_code", length = 100)
+    private @Nullable String registrationCode;
+
     protected UserAccount() {
         // for JPA
     }
@@ -319,6 +331,40 @@ public class UserAccount extends AbstractAuthEntity {
 
     public void disable() {
         this.enabled = false;
+    }
+
+    /**
+     * Marks the account as registered through the form, with the invitation
+     * code it came with ({@code null} without one). Until
+     * {@link #completeRegistration()} the code stays on the account.
+     */
+    public void startRegistration(@Nullable String code) {
+        this.registrationPending = true;
+        this.registrationCode = code;
+    }
+
+    /**
+     * Ends a pending registration once the account is usable and forgets the
+     * code. Every route that makes an account usable calls this; it does
+     * nothing unless a registration is pending, so the event comes exactly
+     * once.
+     *
+     * @return the event to publish, empty when no registration was pending
+     * @throws IllegalStateException if the account is not usable yet, or has
+     *                               no id or address
+     */
+    public Optional<AccountRegistered> completeRegistration() {
+        if (!registrationPending) {
+            return Optional.empty();
+        }
+        if (!enabled) {
+            throw new IllegalStateException("Account " + id + " is not usable yet");
+        }
+        AccountRegistered registered = new AccountRegistered(
+                Objects.requireNonNull(id, "id"), Objects.requireNonNull(email, "email"), registrationCode);
+        this.registrationPending = false;
+        this.registrationCode = null;
+        return Optional.of(registered);
     }
 
     /**
