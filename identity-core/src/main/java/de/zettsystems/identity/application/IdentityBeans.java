@@ -150,8 +150,10 @@ public class IdentityBeans {
                                             Clock clock,
                                             ApplicationEventPublisher events,
                                             ObjectProvider<RegistrationGate> gate) {
+        RegistrationGate registrationGate = gate.getIfAvailable();
+        RegistrationServiceImpl.requireGateWhereNeeded(properties, registrationGate);
         return new RegistrationServiceImpl(userRepository, roleRepository, tokenIssuer, mailSender,
-                passwordHasher, properties, clock, events, gate.getIfAvailable());
+                passwordHasher, properties, clock, events, registrationGate);
     }
 
     @Bean

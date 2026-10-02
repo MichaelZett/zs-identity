@@ -39,12 +39,7 @@ class RegistrationServiceImpl implements RegistrationService {
     private final ApplicationEventPublisher events;
     private final @Nullable RegistrationGate gate;
 
-    /**
-     * @throws IllegalStateException in the mode {@code CODE} without a gate:
-     *                               every registration would fail, and that
-     *                               is better learnt at startup than from the
-     *                               first person who tries
-     */
+    /** Use {@link #requireGateWhereNeeded} before: in the mode {@code CODE} the gate is mandatory. */
     RegistrationServiceImpl(UserAccountRepository userRepository,
                             RoleRepository roleRepository,
                             AuthTokenIssuer tokenIssuer,
@@ -54,10 +49,6 @@ class RegistrationServiceImpl implements RegistrationService {
                             Clock clock,
                             ApplicationEventPublisher events,
                             @Nullable RegistrationGate gate) {
-        if (properties.registrationMode() == RegistrationMode.CODE && gate == null) {
-            throw new IllegalStateException("zs.identity.registration-mode=CODE needs a RegistrationGate bean "
-                    + "that decides which invitation codes are valid");
-        }
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.tokenIssuer = tokenIssuer;
@@ -67,6 +58,24 @@ class RegistrationServiceImpl implements RegistrationService {
         this.clock = clock;
         this.events = events;
         this.gate = gate;
+    }
+
+    /**
+     * Checked before construction rather than inside it: a constructor that
+     * throws leaves a half-built object behind (SpotBugs
+     * {@code CT_CONSTRUCTOR_THROW}), and the class cannot be final because of
+     * the transaction proxy.
+     *
+     * @throws IllegalStateException in the mode {@code CODE} without a gate:
+     *                               every registration would fail, and that
+     *                               is better learnt at startup than from the
+     *                               first person who tries
+     */
+    static void requireGateWhereNeeded(IdentityProperties properties, @Nullable RegistrationGate gate) {
+        if (properties.registrationMode() == RegistrationMode.CODE && gate == null) {
+            throw new IllegalStateException("zs.identity.registration-mode=CODE needs a RegistrationGate bean "
+                    + "that decides which invitation codes are valid");
+        }
     }
 
     @Override
