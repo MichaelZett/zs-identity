@@ -322,6 +322,12 @@ subprojects {
     //
     // Locally the GPG agent holds the key; CI hands the key in through
     // `signingInMemoryKey`, which the publish plugin wires up on its own.
+    //
+    // A SNAPSHOT never leaves the machine: without a release version neither
+    // Central nor GitHub Packages is configured, so even a manual
+    // `./gradlew publish` can only reach mavenLocal.
+    def isRelease = !version.toString().endsWith('-SNAPSHOT')
+
     if (!project.hasProperty('signingInMemoryKey')) {
         signing {
             useGpgCmd()
@@ -333,7 +339,9 @@ subprojects {
         // bundle is only validated, never released automatically -- release it
         // by hand in the portal: a version on Central can never be removed or
         // replaced.
-        publishToMavenCentral()
+        if (isRelease) {
+            publishToMavenCentral()
+        }
         signAllPublications()
 
         pom {
@@ -369,14 +377,16 @@ subprojects {
         }
     }
 
-    publishing {
-        repositories {
-            maven {
-                name = 'GitHubPackages'
-                url = uri('https://maven.pkg.github.com/MichaelZett/zs-identity')
-                credentials {
-                    username = project.findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR')
-                    password = project.findProperty('gpr.key') ?: System.getenv('GITHUB_TOKEN')
+    if (isRelease) {
+        publishing {
+            repositories {
+                maven {
+                    name = 'GitHubPackages'
+                    url = uri('https://maven.pkg.github.com/MichaelZett/zs-identity')
+                    credentials {
+                        username = project.findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR')
+                        password = project.findProperty('gpr.key') ?: System.getenv('GITHUB_TOKEN')
+                    }
                 }
             }
         }
