@@ -5,6 +5,17 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## Unreleased
+
+### Changed
+- Vaadin 25.3.0 -> 25.3.3.
+
+### Build
+- **Dependencies updated**: SpotBugs plugin 6.5.13 (SpotBugs 4.10.5), NullAway
+  plugin 3.3.0, ben-manes 0.66.0, Gradle wrapper 9.8.2. The OpenRewrite plugin
+  stays on 7.39.0 and the recipe BOM on 3.37.0: their successors still point at
+  a rewrite-bom 8.91.0 that is not in Maven Central (as of 2026-10-22).
+
 ## 1.5.0 - 2026-10-02
 
 ### Added
