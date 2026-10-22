@@ -32,7 +32,8 @@ plugins {
 //
 // The plugin is deliberately pinned to 7.39.0: 7.40.0 and 7.41.0 point at a
 // rewrite-bom 8.91.0 that is not in Maven Central (as of 2026-09-17), so the
-// build fails while resolving.
+// build fails while resolving (still so on 2026-10-22, also for rewrite-recipe-bom
+// 3.38.0).
 dependencies {
     rewrite platform("org.openrewrite.recipe:rewrite-recipe-bom:${rewriteRecipeBomVersion}")
     rewrite "de.zettsystems:zettsystems-recipes:${zettsystemsRecipesVersion}"
