@@ -38,6 +38,20 @@ class ExternalIdentityClaimsTest {
     }
 
     @Test
+    void theNamePartsMakeADisplayNameWhereThereIsNoNameAsAWhole() {
+        assertThat(claims(null, false, "Ida", "Beispiel", null).accountName(NameMode.DISPLAY_NAME).displayName())
+                .isEqualTo("Ida Beispiel");
+        assertThat(claims(null, false, null, "Beispiel", null).accountName(NameMode.FULL_NAME).displayName())
+                .isEqualTo("Beispiel");
+    }
+
+    @Test
+    void anAddressWithoutALocalPartIsUsedAsItIs() {
+        assertThat(claims("@example.com", false, null, null, null).accountName(NameMode.FULL_NAME).displayName())
+                .isEqualTo("@example.com");
+    }
+
+    @Test
     void anOverlongNameIsCutToTheColumn() {
         AccountName name = claims(null, false, null, null, "x".repeat(400)).accountName(NameMode.DISPLAY_NAME);
 

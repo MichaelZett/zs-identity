@@ -11,6 +11,7 @@ import de.zettsystems.identity.testsupport.AbstractIdentityIntegrationTest;
 import de.zettsystems.identity.testsupport.MutableTestClock;
 import de.zettsystems.identity.testsupport.RecordingMailSender;
 import de.zettsystems.identity.testsupport.RecordingTokenRepository;
+import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.AccountRegistered;
 import de.zettsystems.identity.values.ExternalIdentityClaims;
 import de.zettsystems.identity.values.ExternalIdentityDto;
@@ -234,6 +235,39 @@ class ExternalSignInServiceIT extends AbstractIdentityIntegrationTest {
         UserAccountDto account = userAccountService.findById(invited.id()).orElseThrow();
         assertThat(account.claimed()).isTrue();
         assertThat(account.emailVerified()).isTrue();
+    }
+
+    @Test
+    void anInvitationCannotTakeAnIdentityOfAnotherAccount() {
+        signInService.signIn(claims("google", "sub-1", EMAIL, true), null);
+        invitationService.inviteNewAccount("other@example.com", "O", "Ther");
+        String invitationToken = mails.tokenFromLastMailTo("other@example.com");
+
+        assertRefused(() -> signInService.signIn(claims("google", "sub-1", EMAIL, true), invitationToken),
+                Reason.ALREADY_LINKED);
+    }
+
+    @Test
+    void anInvitationFindsItsAccountLinkedAlready() {
+        UserAccountDto invited = invitationService.inviteNewAccount(EMAIL, "Ida", "Beispiel");
+        String invitationToken = mails.tokenFromLastMailTo(EMAIL);
+        signInService.link(invited.id(), claims("google", "sub-1", EMAIL, true));
+
+        IdentityUserDetails signedIn = signInService.signIn(claims("google", "sub-1", EMAIL, true), invitationToken);
+
+        assertThat(signedIn.userId()).isEqualTo(invited.id());
+    }
+
+    @Test
+    void theLanguageOfAnInvitationWinsOverTheProvider() {
+        UserAccountDto invited = invitationService.inviteNewAccount(EMAIL, AccountName.of("Ida", "Beispiel"),
+                Locale.ENGLISH);
+        String invitationToken = mails.tokenFromLastMailTo(EMAIL);
+
+        signInService.signIn(claims("google", "sub-1", EMAIL, true, "Ida", "Beispiel", Locale.GERMAN), invitationToken);
+
+        assertThat(inTransaction(() -> userRepository.findById(invited.id()).orElseThrow().getLocale()))
+                .isEqualTo(Locale.ENGLISH);
     }
 
     @Test

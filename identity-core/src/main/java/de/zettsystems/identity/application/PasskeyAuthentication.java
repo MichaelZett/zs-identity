@@ -65,11 +65,14 @@ public final class PasskeyAuthentication extends AbstractAuthenticationToken {
         return principal.getUsername();
     }
 
-    /** The base class compares authorities and details; the principal has to count as well. */
+    /**
+     * The base class compares authorities, details, credentials, principal and
+     * the authenticated state, but accepts any token type; a password sign-in
+     * of the same account is a different session.
+     */
     @Override
     public boolean equals(@Nullable Object obj) {
-        return obj instanceof PasskeyAuthentication that && super.equals(obj)
-                && principal.equals(that.principal);
+        return obj instanceof PasskeyAuthentication && super.equals(obj);
     }
 
     @Override

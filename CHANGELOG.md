@@ -5,16 +5,38 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
-## Unreleased
+## 1.5.1 - 2026-10-31
 
 ### Changed
-- Vaadin 25.3.0 -> 25.3.3.
+- Vaadin 25.3.0 -> 25.3.4.
+- Spring Boot 4.1.1 -> 4.1.2 (Spring Security 7.1.2).
+- `PasskeyAuthentication.equals` no longer repeats the principal comparison
+  of its base class, which never decided anything.
+- `RegistrationView.submit` and `ExternalIdentityClaims.accountName` are split
+  up; their behaviour is unchanged.
+
+### Security
+- Spring Boot 4.1.2 raises what `identity-vaadin` pulls in past published
+  advisories: Tomcat 11.0.24 -> 11.0.27 (GHSA-f525-44xv-f2qj,
+  GHSA-9xv2-5v5q-p794, GHSA-gcx9-497g-6cp6, GHSA-h3x4-894j-xpx5) and Jackson
+  3.1.5 -> 3.1.7 (GHSA-cxp5-3px4-pw24, GHSA-wv8q-qhhj-9h54,
+  GHSA-gx83-3vf8-gh7j, GHSA-q4xh-88c3-wmh7, GHSA-wjgm-6hv5-3cvf).
 
 ### Build
 - **Dependencies updated**: SpotBugs plugin 6.5.13 (SpotBugs 4.10.5), NullAway
-  plugin 3.3.0, ben-manes 0.66.0, Gradle wrapper 9.8.2. The OpenRewrite plugin
-  stays on 7.39.0 and the recipe BOM on 3.37.0: their successors still point at
-  a rewrite-bom 8.91.0 that is not in Maven Central (as of 2026-10-22).
+  plugin 3.3.0, NullAway 0.14.3, Error Prone 2.51.0, Error Prone plugin 5.2.0,
+  JaCoCo 0.8.16, ben-manes 0.67.0, Gradle wrapper 9.8.2, PostgreSQL test image
+  17.11. In the workflow gradle/actions 6.4.1 (fixes GHSA-chpw-2mqm-95cc in
+  `dependency-submission`, which this build does not use) and
+  action-junit-report 6.6.2. The OpenRewrite plugin stays on 7.39.0 and the
+  recipe BOM on 3.37.0: their successors still point at a rewrite-bom 8.91.0
+  that is not in Maven Central (as of 2026-10-31).
+- `dependencyUpdates` no longer reads `Task.project` at execution time, which
+  Gradle 10 turns into an error.
+- Tests for what had none: the `default` methods of `RegistrationService`,
+  `PasskeyAuthentication` and `AbstractAuthEntity` equality, conflicting role
+  catalogs, registration without address confirmation, invitations meeting an
+  existing link, and the move of installations stopped at 1.1, 1.2 and 1.4.
 
 ## 1.5.0 - 2026-10-02
 

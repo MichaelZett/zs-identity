@@ -17,6 +17,7 @@ import de.zettsystems.identity.values.IdentityMessageKeys;
 import de.zettsystems.identity.values.IdentityProperties;
 import de.zettsystems.identity.values.NameMode;
 import de.zettsystems.identity.values.RegistrationMode;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Set;
@@ -130,23 +131,9 @@ public class RegistrationView extends IdentityFormView implements BeforeEnterObs
 
     private void submit() {
         code.setInvalid(false);
-        boolean codeMissing = codeRequired && code.getValue().isBlank();
-        boolean nameMissing = fullNameMode()
-                ? firstName.isEmpty() || lastName.isEmpty()
-                : displayName.isEmpty();
-        if (codeMissing || nameMissing || email.isEmpty() || password.isEmpty()) {
-            if (codeMissing) {
-                markCode(text(IdentityMessageKeys.INVITATION_CODE_REQUIRED));
-            }
-            warn(text("identity.registration.missingFields"));
-            return;
-        }
-        if (email.isInvalid()) {
-            warn(text("identity.common.invalidEmail"));
-            return;
-        }
-        if (!password.getValue().equals(passwordRepeat.getValue())) {
-            warn(text("identity.common.passwordMismatch"));
+        String problem = firstProblem();
+        if (problem != null) {
+            warn(problem);
             return;
         }
 
@@ -164,6 +151,29 @@ public class RegistrationView extends IdentityFormView implements BeforeEnterObs
                 warn(translate(e));
             }
         }
+    }
+
+    /** What keeps the form from being sent; {@code null} when nothing does. */
+    private @Nullable String firstProblem() {
+        boolean codeMissing = codeRequired && code.getValue().isBlank();
+        if (codeMissing) {
+            markCode(text(IdentityMessageKeys.INVITATION_CODE_REQUIRED));
+        }
+        if (codeMissing || nameMissing() || email.isEmpty() || password.isEmpty()) {
+            return text("identity.registration.missingFields");
+        }
+        if (email.isInvalid()) {
+            return text("identity.common.invalidEmail");
+        }
+        return password.getValue().equals(passwordRepeat.getValue())
+                ? null
+                : text("identity.common.passwordMismatch");
+    }
+
+    private boolean nameMissing() {
+        return fullNameMode()
+                ? firstName.isEmpty() || lastName.isEmpty()
+                : displayName.isEmpty();
     }
 
     private void markCode(String message) {

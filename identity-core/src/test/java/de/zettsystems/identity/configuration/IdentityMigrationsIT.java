@@ -4,6 +4,8 @@ import de.zettsystems.identity.testsupport.PostgresTestImage;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -140,17 +142,24 @@ class IdentityMigrationsIT {
                 .containsExactly("2.1");
     }
 
-    /** An installation that stopped at 1.3 gets 1.4 to 1.9 after the move. */
-    @Test
-    void anOlderInstallationGetsTheRemainingMigrationsAfterTheMove() {
+    /**
+     * An installation that stopped anywhere before 1.6 gets the rest after the
+     * move. The version is read off the columns, so each stop proves another
+     * branch of that reading: a wrong answer would skip a script or run it twice.
+     */
+    @ParameterizedTest
+    @CsvSource({"1.1, 8", "1.2, 7", "1.3, 6", "1.4, 5"})
+    void anOlderInstallationGetsTheRemainingMigrationsAfterTheMove(String stoppedAt, int remaining) {
         DataSource dataSource = freshDatabase();
-        legacyLayout(dataSource, "1.3");
+        legacyLayout(dataSource, stoppedAt);
 
         MigrateResult moved = new IdentityMigrations().migrate(dataSource, "public", "flyway_schema_history");
 
-        assertThat(moved.migrationsExecuted).isEqualTo(6);
+        assertThat(moved.migrationsExecuted).isEqualTo(remaining);
         assertThat(versionsIn(dataSource, "identity", "flyway_schema_history"))
-                .containsExactly("1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9");
+                .startsWith(stoppedAt)
+                .hasSize(remaining + 1)
+                .endsWith("1.9");
         assertThat(columnsOf(dataSource, "identity", "auth_user")).contains("locale");
         assertThat(columnsOf(dataSource, "identity", "auth_user_role")).contains("scope_type", "scope_id");
     }

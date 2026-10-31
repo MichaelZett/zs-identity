@@ -33,7 +33,7 @@ plugins {
 // The plugin is deliberately pinned to 7.39.0: 7.40.0 and 7.41.0 point at a
 // rewrite-bom 8.91.0 that is not in Maven Central (as of 2026-09-17), so the
 // build fails while resolving (still so on 2026-10-22, also for rewrite-recipe-bom
-// 3.38.0).
+// 3.38.0; rechecked 2026-10-31: 3.38.0 still imports it, Central still lacks it).
 dependencies {
     rewrite platform("org.openrewrite.recipe:rewrite-recipe-bom:${rewriteRecipeBomVersion}")
     rewrite "de.zettsystems:zettsystems-recipes:${zettsystemsRecipesVersion}"
@@ -336,10 +336,10 @@ subprojects {
     }
 
     mavenPublishing {
-        // Uploads to the Central Portal (https://central.sonatype.com). The
-        // bundle is only validated, never released automatically -- release it
-        // by hand in the portal: a version on Central can never be removed or
-        // replaced.
+        // Uploads to the Central Portal (https://central.sonatype.com). CI
+        // releases the bundle with publishAndReleaseToMavenCentral once the
+        // portal has validated it: a version on Central can never be removed
+        // or replaced, so pushing a release version is the decision.
         if (isRelease) {
             publishToMavenCentral()
         }
@@ -396,10 +396,13 @@ subprojects {
     // Show stable releases only, and no major bumps. Overrides:
     //   ./gradlew dependencyUpdates -Punstable   (shows RC/M/beta)
     //   ./gradlew dependencyUpdates -Pmajor      (shows major bumps)
+    //
+    // Read here rather than inside the closure: it runs at execution time, where
+    // `project` is the deprecated Task.project (an error from Gradle 10 on).
+    def allowUnstable = project.hasProperty('unstable')
+    def allowMajor = project.hasProperty('major')
     dependencyUpdates {
         rejectVersionIf { selection ->
-            def allowUnstable = project.hasProperty('unstable')
-            def allowMajor = project.hasProperty('major')
             if (!allowUnstable
                     && rootProject.ext.depUpdateIsUnstable(selection.candidate.version)
                     && !rootProject.ext.depUpdateIsUnstable(selection.currentVersion)) {
