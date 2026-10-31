@@ -67,18 +67,26 @@ public record ExternalIdentityClaims(String registrationId,
         if (nameMode == NameMode.FULL_NAME && givenName != null && familyName != null) {
             return AccountName.of(cut(givenName, NAME_PART_MAX_LENGTH), cut(familyName, NAME_PART_MAX_LENGTH));
         }
+        return display(bestDisplayName());
+    }
+
+    /** The most personal thing the provider said; the subject as a last resort. */
+    private String bestDisplayName() {
         if (fullName != null) {
-            return display(fullName);
+            return fullName;
         }
-        if (givenName != null || familyName != null) {
-            return display(((givenName != null ? givenName : "") + " "
-                    + (familyName != null ? familyName : "")).strip());
+        if (givenName != null) {
+            return familyName != null ? givenName + " " + familyName : givenName;
         }
-        if (email != null) {
-            int at = email.indexOf('@');
-            return display(at > 0 ? email.substring(0, at) : email);
+        if (familyName != null) {
+            return familyName;
         }
-        return display(subject);
+        return email != null ? localPart(email) : subject;
+    }
+
+    private static String localPart(String email) {
+        int at = email.indexOf('@');
+        return at > 0 ? email.substring(0, at) : email;
     }
 
     private static AccountName display(String name) {
