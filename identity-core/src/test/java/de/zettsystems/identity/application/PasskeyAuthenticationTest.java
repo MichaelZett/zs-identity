@@ -1,6 +1,7 @@
 package de.zettsystems.identity.application;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -23,8 +24,9 @@ class PasskeyAuthenticationTest {
     void twoTokensOfTheSameAccountAreEqual() {
         PasskeyAuthentication token = new PasskeyAuthentication(ANNA, ROLES);
 
-        assertThat(token).isEqualTo(new PasskeyAuthentication(ANNA, ROLES));
-        assertThat(token).hasSameHashCodeAs(new PasskeyAuthentication(ANNA, ROLES));
+        assertThat(token)
+                .isEqualTo(new PasskeyAuthentication(ANNA, ROLES))
+                .hasSameHashCodeAs(new PasskeyAuthentication(ANNA, ROLES));
     }
 
     @Test
@@ -35,7 +37,8 @@ class PasskeyAuthenticationTest {
 
     @Test
     void aPasswordSessionOfTheSameAccountIsNotAPasskeySession() {
-        assertThat(new PasskeyAuthentication(ANNA, ROLES))
-                .isNotEqualTo(new UsernamePasswordAuthenticationToken(ANNA, null, ROLES));
+        AbstractAuthenticationToken passwordSession = new UsernamePasswordAuthenticationToken(ANNA, null, ROLES);
+
+        assertThat(new PasskeyAuthentication(ANNA, ROLES)).isNotEqualTo(passwordSession);
     }
 }

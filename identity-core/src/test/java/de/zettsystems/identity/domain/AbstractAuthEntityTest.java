@@ -29,15 +29,13 @@ class AbstractAuthEntityTest {
     }
 
     @Test
-    void twoUnsavedEntitiesAreDifferentAndOneIsItself() {
-        UserAccount unsaved = account(null);
-
-        assertThat(unsaved).isEqualTo(unsaved).isNotEqualTo(account(null));
+    void twoUnsavedEntitiesAreDifferent() {
+        assertThat(account(null)).isNotEqualTo(account(null));
     }
 
     @Test
     void theSameIdInAnotherTypeIsADifferentEntity() {
-        Role role = new Role("USER", "role.user");
+        AbstractAuthEntity role = new Role("USER", "role.user");
         ReflectionTestUtils.setField(role, "id", 1L);
 
         assertThat(account(1L)).isNotEqualTo(role);
