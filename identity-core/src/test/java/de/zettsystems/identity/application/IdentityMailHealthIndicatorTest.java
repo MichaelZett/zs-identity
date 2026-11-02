@@ -95,6 +95,11 @@ class IdentityMailHealthIndicatorTest {
     }
 
     @Test
+    void theStatusItselfDoesNotTellThePublicWhatIsWrong() {
+        assertThat(IdentityMailHealthIndicator.DEGRADED.getDescription()).isEmpty();
+    }
+
+    @Test
     void keepsTheStartOfTheOutageAcrossFailedChecks() {
         serverDown = true;
         indicator.probe();

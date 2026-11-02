@@ -43,9 +43,11 @@ public final class IdentityMailHealthIndicator implements HealthIndicator, MailD
     /**
      * Reachable with HTTP 200, but not everything works. Only counts towards
      * the overall status if the application lists it in
-     * {@code management.endpoint.health.status.order}.
+     * {@code management.endpoint.health.status.order}. Without a description:
+     * Spring Boot prints it next to the status for every caller, and what is
+     * degraded belongs into the details, which only authorized callers see.
      */
-    public static final Status DEGRADED = new Status("DEGRADED", "Mail server not reachable");
+    public static final Status DEGRADED = new Status("DEGRADED");
 
     private static final Logger LOG = LoggerFactory.getLogger(IdentityMailHealthIndicator.class);
 

@@ -5,6 +5,14 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## Unreleased
+
+### Fixed
+- `IdentityMailHealthIndicator.DEGRADED` no longer carries a description. Spring
+  Boot prints it in the health response for every caller, so an open endpoint
+  told the public that the mail server was the problem. The status stays; the
+  reason remains in the details for authorized callers.
+
 ## 1.6.0 - 2026-11-02
 
 ### Added
