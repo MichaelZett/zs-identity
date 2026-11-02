@@ -1,3 +1,4 @@
 de.zettsystems.identity.configuration.IdentityAutoConfiguration
 de.zettsystems.identity.configuration.IdentityMailAutoConfiguration
+de.zettsystems.identity.configuration.IdentityMailHealthAutoConfiguration
 de.zettsystems.identity.configuration.IdentityFlywayAutoConfiguration

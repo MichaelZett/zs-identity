@@ -34,10 +34,12 @@ final class JavaMailTransport implements IdentityMailTransport {
 
     private final JavaMailSender mailSender;
     private final IdentityProperties properties;
+    private final MailDeliveryListener listener;
 
-    JavaMailTransport(JavaMailSender mailSender, IdentityProperties properties) {
+    JavaMailTransport(JavaMailSender mailSender, IdentityProperties properties, MailDeliveryListener listener) {
         this.mailSender = mailSender;
         this.properties = properties;
+        this.listener = listener;
     }
 
     @Override
@@ -58,11 +60,13 @@ final class JavaMailTransport implements IdentityMailTransport {
 
         try {
             mailSender.send(message);
+            listener.delivered();
         } catch (MailException e) {
             // Do not rethrow: otherwise a failed delivery rolls back the
             // registration although the account was created correctly. The UI
             // offers to send it again.
             LOG.error("Could not send {} mail to account {}", mail.type(), user.id(), e);
+            listener.failed();
         }
     }
 }

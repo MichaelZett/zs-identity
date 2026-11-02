@@ -20,7 +20,13 @@ public final class JavaMailFactory {
 
     /** The default transport: {@code JavaMailSender} with the sender from the properties. */
     public static IdentityMailTransport transport(JavaMailSender mailSender, IdentityProperties properties) {
-        return new JavaMailTransport(mailSender, properties);
+        return transport(mailSender, properties, MailDeliveryListener.NONE);
+    }
+
+    /** The default transport, reporting each delivery to the listener. */
+    public static IdentityMailTransport transport(JavaMailSender mailSender, IdentityProperties properties,
+                                                  MailDeliveryListener listener) {
+        return new JavaMailTransport(mailSender, properties, listener);
     }
 
     /** Sender over the default transport, as before 0.9.0. */

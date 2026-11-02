@@ -406,6 +406,44 @@ into one that can no longer be clicked.
   wants mails of its own design; `sendInvitation(..)` has to be implemented
   along with the other two.
 
+**Mail server in the health endpoint** (since 1.6.0, off by default). Without a
+single setting nothing changes and no login at the mail server happens. If an
+application wants to tell "down" from "still running, but mails do not go out",
+it switches this on; it needs `spring-boot-starter-mail`, `spring.mail.*` and the
+actuator:
+
+```yaml
+zs:
+  identity:
+    mail-health:
+      enabled: true
+      interval: 3h   # how old the last result may get (default)
+management:
+  endpoint:
+    health:
+      status:
+        order: down,out-of-service,degraded,up,unknown
+```
+
+- A dead mail server reports `DEGRADED` with HTTP 200 instead of `DOWN` with 503.
+- This replaces Spring Boot's mail indicator by itself.
+- `order` is what puts `DEGRADED` into the overall status. Without it the
+  component only shows up in the details, and the overall status stays `UP`.
+- A health request never talks to the mail server. It reads the last result; if
+  that is older than `interval`, it starts one check in the background. With
+  nobody asking, nobody logs in, and `@EnableScheduling` is not needed.
+- Real deliveries count: an accepted mail means reachable, a failed one starts
+  a check, since a rejected address fails the same way.
+- If you know when you will need the server, call
+  `IdentityMailHealthIndicator#probe()` shortly before.
+- Without a `JavaMailSenderImpl`, for instance with one mail account per club in
+  a transport of your own, there is nothing to log in with and the component
+  stays away. You may implement `MailDeliveryListener`, a type without mail or
+  health classes, and call it from your transport, or leave it.
+- The default transport reports to a bean of that type by itself, whether the
+  health component is on or not, but only if there is exactly one. The
+  component is such a bean, so a second one of your own silences both.
+
 Either bean displaces the default; the defaults themselves are
 `JavaMailFactory.transport(..)` and `IdentityMailFactory.logOnlyTransport()`.
 

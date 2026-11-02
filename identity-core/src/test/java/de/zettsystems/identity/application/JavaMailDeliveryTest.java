@@ -72,6 +72,48 @@ class JavaMailDeliveryTest {
         }
     }
 
+    private static final class CountingListener implements MailDeliveryListener {
+
+        private int delivered;
+        private int failed;
+
+        @Override
+        public void delivered() {
+            delivered++;
+        }
+
+        @Override
+        public void failed() {
+            failed++;
+        }
+    }
+
+    @Test
+    void theListenerHearsOfAnAcceptedMail() {
+        CountingListener listener = new CountingListener();
+        IdentityMailTransport transport = JavaMailFactory.transport(new CapturingMailSender(),
+                IdentityProperties.defaults(), listener);
+
+        IdentityMailFactory.viaTransport(transport, IdentityProperties.defaults(), MESSAGES)
+                .sendPasswordReset(USER, "http://example.com/password/reset?token=xyz");
+
+        assertThat(listener.delivered).isEqualTo(1);
+        assertThat(listener.failed).isZero();
+    }
+
+    @Test
+    void theListenerHearsOfAFailedDelivery() {
+        CountingListener listener = new CountingListener();
+        IdentityMailTransport transport = JavaMailFactory.transport(new FailingMailSender(),
+                IdentityProperties.defaults(), listener);
+
+        IdentityMailFactory.viaTransport(transport, IdentityProperties.defaults(), MESSAGES)
+                .sendPasswordReset(USER, "http://example.com/password/reset?token=xyz");
+
+        assertThat(listener.failed).isEqualTo(1);
+        assertThat(listener.delivered).isZero();
+    }
+
     @Test
     void theVerificationMailCarriesRecipientSubjectAndLink() throws Exception {
         CapturingMailSender mailSender = new CapturingMailSender();

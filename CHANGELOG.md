@@ -5,6 +5,15 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 1.6.0 - 2026-11-02
+
+### Added
+- Optional health component `mail` (`zs.identity.mail-health.enabled`, off by
+  default): a dead mail server reports `DEGRADED` instead of `DOWN`, and a health
+  request never logs in at the mail server. Nothing changes without the setting.
+- `MailDeliveryListener` hears of each delivery of the default transport, and an
+  application's own transport may call it as well.
+
 ## 1.5.1 - 2026-10-31
 
 ### Changed

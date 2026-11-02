@@ -5,6 +5,7 @@ import de.zettsystems.identity.application.IdentityMailSender;
 import de.zettsystems.identity.application.IdentityMailTransport;
 import de.zettsystems.identity.application.IdentityMessages;
 import de.zettsystems.identity.application.JavaMailFactory;
+import de.zettsystems.identity.application.MailDeliveryListener;
 import de.zettsystems.identity.values.IdentityProperties;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -58,8 +59,9 @@ public class IdentityMailAutoConfiguration {
         @ConditionalOnBean(JavaMailSender.class)
         @ConditionalOnMissingBean(IdentityMailTransport.class)
         IdentityMailTransport javaMailIdentityMailTransport(JavaMailSender mailSender,
-                                                            IdentityProperties properties) {
-            return JavaMailFactory.transport(mailSender, properties);
+                                                            IdentityProperties properties,
+                                                            ObjectProvider<MailDeliveryListener> listener) {
+            return JavaMailFactory.transport(mailSender, properties, listener.getIfUnique(() -> MailDeliveryListener.NONE));
         }
     }
 

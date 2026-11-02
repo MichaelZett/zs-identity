@@ -32,6 +32,10 @@ dependencies {
     // delivery through the log.
     compileOnly 'org.springframework.boot:spring-boot-starter-mail'
 
+    // compileOnly as well (since 1.6.0): the health component "mail" is off
+    // unless switched on, and an application without actuator never needs it.
+    compileOnly 'org.springframework.boot:spring-boot-health'
+
     // compileOnly as well (since 0.11.0): sign-in with passkeys needs Spring
     // Security's WebAuthn module, which brings webauthn4j along. An application
     // that offers passkeys takes the module itself; without it the classes
@@ -50,6 +54,7 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-webauthn'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
     testImplementation 'org.springframework.boot:spring-boot-starter-mail'
+    testImplementation 'org.springframework.boot:spring-boot-health'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     // For MockHttpServletRequest/-Response: the main code knows the servlet
     // types only compileOnly, and the AuthenticationRefresher test needs them.

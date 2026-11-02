@@ -56,8 +56,9 @@ not be merged, however well it is written.
   `UserAccountService`, `RegistrationService`, `PasswordResetService`,
   `UserAccountDto`, `AccountName`, `IdentityProperties`, `IdentityRoutes` or
   `IdentityAccountEvent` and its four records, and since 1.5.0 `RegistrationGate`,
-  `ImpersonationService`, `ImpersonationPolicy` and their value types,
-  breaks every application that depends on it. Extend with `default` methods or
+  `ImpersonationService`, `ImpersonationPolicy` and their value types, and since
+  1.6.0 `MailDeliveryListener`, `IdentityMailHealthIndicator` and
+  `MailHealthProperties`, breaks every application that depends on it. Extend with `default` methods or
   additional overloads instead; a genuine break needs a major version.
 
 ## Building
