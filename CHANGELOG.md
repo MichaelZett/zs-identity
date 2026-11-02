@@ -5,7 +5,7 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
-## Unreleased
+## 1.6.1 - 2026-11-02
 
 ### Fixed
 - `IdentityMailHealthIndicator.DEGRADED` no longer carries a description. Spring
