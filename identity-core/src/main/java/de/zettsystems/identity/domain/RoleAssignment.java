@@ -2,6 +2,7 @@ package de.zettsystems.identity.domain;
 
 import de.zettsystems.identity.values.IdentitySchema;
 import de.zettsystems.identity.values.Scope;
+import jakarta.persistence.Cacheable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -31,6 +32,7 @@ import java.util.Objects;
  * outside the scope is still {@code null} rather than an empty value (see
  * {@link #getScope()}).
  */
+@Cacheable
 @Entity
 @Table(name = "auth_user_role", schema = IdentitySchema.NAME)
 @Getter

@@ -761,6 +761,21 @@ Their comments are German -- the one place left untranslated on purpose,
 because Flyway checksums the whole file and editing an applied migration would
 make every existing installation fail validation.
 
+### Second-level cache
+
+`UserAccount` with its role assignments, `RoleAssignment` and `Role` with its
+authorities are `@Cacheable`, and the two lookups that turn accounts into DTOs
+(`UserAccountService#findById`, `#findAllById`) are cacheable queries. Nothing
+happens unless the application switches on Hibernate's second-level and query
+cache (`hibernate.cache.use_second_level_cache`, `use_query_cache` and a region
+factory such as `hibernate-jcache` with Caffeine); then a page that asks for the
+same accounts several times needs one statement instead of one per call. Every
+change through the building block evicts what it touches. Writing to the
+`identity` tables past Hibernate (SQL by hand, `JdbcTemplate`) leaves the cache
+stale until it is evicted or the application restarts. With `hibernate-jcache`
+on the classpath Hibernate switches the second-level cache on by itself; set
+`use_second_level_cache: false` to keep it off.
+
 ## The name model
 
 `AccountName` always carries a `displayName`; `firstName`/`lastName` are set

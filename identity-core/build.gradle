@@ -55,6 +55,10 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
     testImplementation 'org.springframework.boot:spring-boot-starter-mail'
     testImplementation 'org.springframework.boot:spring-boot-health'
+    // Only for SecondLevelCacheIT: the building block marks its entities and
+    // lookups cacheable, whether a cache runs is the application's choice.
+    testImplementation 'org.hibernate.orm:hibernate-jcache'
+    testImplementation 'com.github.ben-manes.caffeine:jcache'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     // For MockHttpServletRequest/-Response: the main code knows the servlet
     // types only compileOnly, and the AuthenticationRefresher test needs them.

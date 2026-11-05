@@ -1,10 +1,13 @@
 package de.zettsystems.identity.domain;
 
 import jakarta.persistence.LockModeType;
+import jakarta.persistence.QueryHint;
+import org.hibernate.jpa.HibernateHints;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
@@ -25,9 +28,12 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
     /**
      * One account together with its roles in one statement. Wherever an
      * account becomes a DTO, this is the lookup by id: the inherited
-     * {@code findById} would fetch the roles one by one afterwards.
+     * {@code findById} would fetch the roles one by one afterwards. Cacheable:
+     * with Hibernate's query cache on, a repeated lookup needs no statement;
+     * without it the hint does nothing.
      */
     @EntityGraph(attributePaths = {"roleAssignments", "roleAssignments.role"})
+    @QueryHints(@QueryHint(name = HibernateHints.HINT_CACHEABLE, value = "true"))
     Optional<UserAccount> findWithRolesById(Long id);
 
     boolean existsByEmail(String email);
@@ -47,7 +53,8 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
     @EntityGraph(attributePaths = {"roleAssignments", "roleAssignments.role"})
     List<UserAccount> findAllByOrderByDisplayNameAsc();
 
-    /** Several accounts including roles in one query, for member lists. */
+    /** Several accounts including roles in one query, for member lists; cacheable like {@link #findWithRolesById}. */
     @EntityGraph(attributePaths = {"roleAssignments", "roleAssignments.role"})
+    @QueryHints(@QueryHint(name = HibernateHints.HINT_CACHEABLE, value = "true"))
     List<UserAccount> findAllWithRolesByIdIn(Collection<Long> ids);
 }

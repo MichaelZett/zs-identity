@@ -1,6 +1,7 @@
 package de.zettsystems.identity.domain;
 
 import de.zettsystems.identity.values.IdentitySchema;
+import jakarta.persistence.Cacheable;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -13,6 +14,8 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Collections;
@@ -32,6 +35,7 @@ import java.util.Set;
  * its own. With it, the roles still missing come in one statement, and so do
  * their authorities.
  */
+@Cacheable
 @Entity
 @Table(name = "auth_role", schema = IdentitySchema.NAME)
 @BatchSize(size = 50)
@@ -53,6 +57,7 @@ public class Role extends AbstractAuthEntity {
 
     @ElementCollection
     @BatchSize(size = 50)
+    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     @CollectionTable(name = "auth_role_authority", schema = IdentitySchema.NAME,
             joinColumns = @JoinColumn(name = "role_id"))
     @Column(name = "authority", nullable = false, length = 128)

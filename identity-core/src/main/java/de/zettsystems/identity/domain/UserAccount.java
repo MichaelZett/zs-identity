@@ -5,6 +5,7 @@ import de.zettsystems.identity.values.IdentitySchema;
 import de.zettsystems.identity.values.AccountName;
 import de.zettsystems.identity.values.LoginProtectionSettings;
 import de.zettsystems.identity.values.Scope;
+import jakarta.persistence.Cacheable;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -18,6 +19,8 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
@@ -57,6 +60,7 @@ import java.util.stream.Collectors;
  * a regular one: {@link #hasPassword()} and {@link #isClaimed()} tell the two
  * questions apart.
  */
+@Cacheable
 @Entity
 @Table(name = "auth_user", schema = IdentitySchema.NAME)
 @Getter
@@ -150,6 +154,7 @@ public class UserAccount extends AbstractAuthEntity {
     // (here and on Role) is the net for every path without one.
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @BatchSize(size = 50)
+    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     private Set<RoleAssignment> roleAssignments = new LinkedHashSet<>();
 
     // LAZY for the same reason; most accounts never have one. BatchSize keeps

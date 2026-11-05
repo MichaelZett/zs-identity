@@ -7,6 +7,11 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+        # hibernate-jcache is on the test classpath, and Hibernate would switch the
+        # cache on by itself; the suite proves the building block without one.
+        # SecondLevelCacheIT turns it on.
+        cache:
+          use_second_level_cache: false
   # spring.flyway.locations is deliberately NOT set here: the building block
   # has to contribute its own location through IdentityFlywayAutoConfiguration.
   # If it did not arrive, the auth_ tables would be missing and every test here

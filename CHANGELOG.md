@@ -5,6 +5,17 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 1.7.0 - 2026-11-05
+
+### Added
+- Accounts can come from Hibernate's second-level and query cache: `UserAccount`
+  (with its role assignments), `RoleAssignment` and `Role` (with its
+  authorities) are `@Cacheable`, and `UserAccountService#findById` and
+  `#findAllById` run cacheable queries. Without a cache in the application
+  nothing changes. `SecondLevelCacheIT` shows a repeated lookup without a
+  statement and changes through the building block visible at once. Reported
+  from `orgaapp`, whose overall overview loaded the same accounts 16 times.
+
 ## 1.6.1 - 2026-11-02
 
 ### Fixed
