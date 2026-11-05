@@ -17,6 +17,9 @@ import java.time.Clock;
  * {@code UserDetailsService}: that one is called for a failed sign-in attempt
  * too, so it would not be a sign-in time at all.
  * {@link AuthenticationSuccessEvent} fires only after a successful check.
+ *
+ * <p>Row locked: a phone waking up signs in with several requests at once,
+ * and with the optimistic lock alone all but the first would fail.
  */
 class LoginRecorder {
 
@@ -34,7 +37,7 @@ class LoginRecorder {
     @Transactional
     public void onAuthenticationSuccess(AuthenticationSuccessEvent event) {
         String username = event.getAuthentication().getName();
-        userRepository.findByEmail(UserAccount.normalizeEmail(username))
+        userRepository.findForUpdateByEmail(UserAccount.normalizeEmail(username))
                 .ifPresentOrElse(user -> user.recordLogin(clock.instant()),
                         () -> LOG.debug("Successful authentication for {} without a matching account", username));
     }

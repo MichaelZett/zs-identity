@@ -5,6 +5,17 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## 1.7.1 - 2026-11-05
+
+### Fixed
+- Parallel sign-ins of one account no longer end in an error page. A phone
+  waking up sends several requests at once, each signs in again through
+  remember-me, and `LoginRecorder` wrote the sign-in time with the optimistic
+  lock alone, so all but the first failed with
+  `ObjectOptimisticLockingFailureException`. It now locks the row like the
+  count of failed sign-ins. `LoginRecorderIT` shows it. Reported from `orgaapp`
+  production, four times in two weeks.
+
 ## 1.7.0 - 2026-11-05
 
 ### Added

@@ -39,9 +39,9 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
     boolean existsByEmail(String email);
 
     /**
-     * The account for counting a failed sign-in, with the row locked until the
-     * transaction ends. Guesses arrive in parallel; with the optimistic lock
-     * alone the second of two would fail instead of counting.
+     * The account for recording a sign-in, with the row locked until the
+     * transaction ends. Guesses and sign-ins arrive in parallel; with the
+     * optimistic lock alone the second of two would fail.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from UserAccount u where u.email = :email")
