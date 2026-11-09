@@ -61,6 +61,18 @@ class UserAccountTest {
 
         managed.claimWithPassword("hash");
         assertThat(managed.isClaimed()).isTrue();
+        assertThat(managed.isEmailVerified()).as("the invitation went to this address").isTrue();
+        assertThat(managed.isEnabled()).isTrue();
+    }
+
+    @Test
+    void aManagedAccountKeepsItsNameAndIsUsableWithoutAddress() {
+        UserAccount managed = UserAccount.managed(AccountName.of("Ida", "Beispiel"), CREATED);
+
+        assertThat(managed.getName()).isEqualTo(AccountName.of("Ida", "Beispiel"));
+        assertThat(managed.isManaged()).isTrue();
+        assertThat(managed.isEnabled()).isTrue();
+        assertThat(managed.isEmailVerified()).isFalse();
     }
 
     @Test
@@ -319,6 +331,8 @@ class UserAccountTest {
         user.linkExternalIdentity("google", "sub-1", "ida@example.com", CREATED);
 
         assertThat(user.getEmail()).isEqualTo("ida@example.com");
+        assertThat(user.getName()).isEqualTo(AccountName.display("Ida"));
+        assertThat(user.isManaged()).isFalse();
         assertThat(user.hasPassword()).isFalse();
         assertThat(user.isClaimed()).as("a linked identity is a way in").isTrue();
         assertThat(user.isEmailVerified()).isTrue();
@@ -364,6 +378,20 @@ class UserAccountTest {
         assertThat(user.externalIdentity("github")).isPresent();
     }
 
+    /** Without password, the last identity is the last way in: once it goes, the account is no longer claimed. */
+    @Test
+    void unlinkingTheLastIdentityEndsTheClaim() {
+        UserAccount user = UserAccount.external("ida@example.com", AccountName.display("Ida"), CREATED);
+        user.linkExternalIdentity("google", "sub-1", null, CREATED);
+        user.linkExternalIdentity("github", "42", null, CREATED);
+
+        user.unlinkExternalIdentity("google");
+        assertThat(user.isClaimed()).as("github is still a way in").isTrue();
+
+        user.unlinkExternalIdentity("github");
+        assertThat(user.isClaimed()).isFalse();
+    }
+
     @Test
     void anUnconfirmedPasswordCanBeDropped() {
         UserAccount user = newAccount("a@b.c");
@@ -373,6 +401,18 @@ class UserAccountTest {
 
         assertThat(user.hasPassword()).isFalse();
         assertThat(user.isMustChangePassword()).isFalse();
+    }
+
+    /** The failures were aimed at a password that no longer exists. */
+    @Test
+    void droppingThePasswordAlsoLiftsTheLock() {
+        UserAccount user = lockedOnce(LoginProtectionSettings.defaults());
+
+        user.dropUnconfirmedPassword();
+
+        assertThat(user.isLockedAt(CREATED)).isFalse();
+        assertThat(user.getFailedLoginCount()).isZero();
+        assertThat(user.getLastFailedLoginAt()).isNull();
     }
 
     @Test

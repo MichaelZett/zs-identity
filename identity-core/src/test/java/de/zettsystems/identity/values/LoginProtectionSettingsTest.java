@@ -58,6 +58,22 @@ class LoginProtectionSettingsTest {
     }
 
     @Test
+    void theBoundariesThemselvesAreAllowed() {
+        LoginProtectionSettings tight = new LoginProtectionSettings(true, 1, Duration.ofMinutes(15),
+                Duration.ofMinutes(15), Duration.ZERO, Duration.ZERO, 1, true);
+
+        assertThat(tight.maxAttempts()).as("one attempt").isEqualTo(1);
+        assertThat(tight.lockDurationAfter(5)).as("no doubling room").isEqualTo(Duration.ofMinutes(15));
+    }
+
+    @Test
+    void aZeroMaximumLockIsNamedAsSuch() {
+        assertThatThrownBy(() -> new LoginProtectionSettings(true, 3, Duration.ofMinutes(15), Duration.ZERO,
+                Duration.ofSeconds(1), Duration.ofSeconds(8), 50, true))
+                .hasMessage("zs.identity.login-protection.max-lock-duration must be positive");
+    }
+
+    @Test
     void switchingOffKeepsTheRest() {
         LoginProtectionSettings off = defaults.enabled(false);
 

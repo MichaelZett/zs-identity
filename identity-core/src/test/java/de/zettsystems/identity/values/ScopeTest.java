@@ -23,6 +23,14 @@ class ScopeTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    /** A separator in front leaves the type empty, and that is what the message says. */
+    @Test
+    void textStartingWithTheSeparatorHasABlankType() {
+        assertThatThrownBy(() -> Scope.parse(":17"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("type must not be blank");
+    }
+
     @Test
     void textWithoutASeparatorIsNoScope() {
         assertThatThrownBy(() -> Scope.parse("club"))
@@ -36,14 +44,14 @@ class ScopeTest {
      * characters, one could invent a permission nobody granted.
      */
     @ParameterizedTest
-    @ValueSource(strings = {"4@club", "a:b", "mit leerzeichen", " ", ""})
+    @ValueSource(strings = {"4@club", "a:b", "@4", ":4", "mit leerzeichen", " ", ""})
     void anIdThatCouldForgeAnAuthorityIsRefused(String id) {
         assertThatThrownBy(() -> Scope.of("club", id))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"cl@ub", "cl:ub", "c ub", ""})
+    @ValueSource(strings = {"cl@ub", "cl:ub", "@club", ":club", "c ub", ""})
     void theSameHoldsForTheType(String type) {
         assertThatThrownBy(() -> Scope.of(type, "17"))
                 .isInstanceOf(IllegalArgumentException.class);
