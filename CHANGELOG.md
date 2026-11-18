@@ -5,6 +5,14 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
+## Unreleased
+
+### Added
+- `UserAccountDto.lastLoginAt()`: the last successful sign-in, `null` for an
+  account that never signed in. The building block recorded it all along but
+  kept it inside; an administrator's list of accounts had to read the table
+  for it. The shape without it stays as a constructor.
+
 ## 1.7.1 - 2026-11-05
 
 ### Fixed

@@ -37,6 +37,7 @@ final class UserAccountMapper {
                 user.getLocale(),
                 user.isClaimed(),
                 user.getLockedUntil(),
-                user.hasPassword());
+                user.hasPassword(),
+                user.getLastLoginAt());
     }
 }

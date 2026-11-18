@@ -53,4 +53,17 @@ class LoginRecorderIT extends AbstractIdentityIntegrationTest {
 
         assertThat(userRepository.findById(account).orElseThrow().getLastLoginAt()).isNotNull();
     }
+
+    @Test
+    void theViewOfTheAccountShowsTheLastSignIn() {
+        String email = "last-login@example.com";
+        long account = accounts.createAccount(email, "ein-langes-passwort", "Letzte", "Anmeldung", true).id();
+        assertThat(accounts.findById(account).orElseThrow().lastLoginAt()).isNull();
+
+        events.publishEvent(new AuthenticationSuccessEvent(
+                UsernamePasswordAuthenticationToken.authenticated(email, null, List.of())));
+
+        assertThat(accounts.findById(account).orElseThrow().lastLoginAt())
+                .isEqualTo(userRepository.findById(account).orElseThrow().getLastLoginAt()).isNotNull();
+    }
 }

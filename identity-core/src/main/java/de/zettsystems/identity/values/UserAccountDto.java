@@ -49,6 +49,10 @@ import java.util.stream.Collectors;
  *                    external provider only -- the case an application
  *                    needs it for: such an account has no password to
  *                    change or to force a change of.
+ * @param lastLoginAt last successful sign-in (since 1.8.0), with any
+ *                    method; {@code null} when the account has never signed
+ *                    in. Meant for overviews such as an administrator's list
+ *                    of accounts, not for security decisions.
  */
 public record UserAccountDto(Long id,
                              @Nullable String email,
@@ -61,7 +65,8 @@ public record UserAccountDto(Long id,
                              @Nullable Locale locale,
                              boolean claimed,
                              @Nullable Instant lockedUntil,
-                             boolean hasPassword) {
+                             boolean hasPassword,
+                             @Nullable Instant lastLoginAt) {
 
     public UserAccountDto {
         Objects.requireNonNull(id, "id");
@@ -69,6 +74,19 @@ public record UserAccountDto(Long id,
         Objects.requireNonNull(createdAt, "createdAt");
         Objects.requireNonNull(roleAssignments, "roleAssignments");
         roleAssignments = Set.copyOf(roleAssignments);
+    }
+
+    /**
+     * The shape before 1.8.0, without {@code lastLoginAt}. It stays so that
+     * applications building the record by hand (common in tests) do not
+     * break; the account has then never signed in.
+     */
+    public UserAccountDto(Long id, @Nullable String email, AccountName name, boolean enabled,
+                          boolean emailVerified, Instant createdAt, Set<ScopedRole> roleAssignments,
+                          boolean mustChangePassword, @Nullable Locale locale, boolean claimed,
+                          @Nullable Instant lockedUntil, boolean hasPassword) {
+        this(id, email, name, enabled, emailVerified, createdAt, roleAssignments, mustChangePassword,
+                locale, claimed, lockedUntil, hasPassword, null);
     }
 
     /**
