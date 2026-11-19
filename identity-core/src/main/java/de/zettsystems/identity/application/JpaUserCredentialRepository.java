@@ -16,6 +16,7 @@ import org.springframework.security.web.webauthn.management.UserCredentialReposi
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -95,6 +96,8 @@ class JpaUserCredentialRepository implements UserCredentialRepository {
         PasskeyCredential credential = passkey.credential();
         String handle = Objects.requireNonNull(passkey.getUser().getPasskeyUserHandle(),
                 "an account with a passkey has a user handle");
+        Instant lastUsedAt = passkey.getLastUsedAt();
+        Instant lastUsed = lastUsedAt != null ? lastUsedAt : passkey.getCreatedAt();
         return ImmutableCredentialRecord.builder()
                 .credentialId(Bytes.fromBase64(credential.credentialId()))
                 .credentialType(PublicKeyCredentialType.valueOf(credential.credentialType()))
@@ -111,7 +114,7 @@ class JpaUserCredentialRepository implements UserCredentialRepository {
                 .attestationClientDataJSON(fromBase64(credential.attestationClientDataJson()))
                 .label(passkey.getLabel())
                 .created(passkey.getCreatedAt())
-                .lastUsed(Objects.requireNonNullElse(passkey.getLastUsedAt(), passkey.getCreatedAt()))
+                .lastUsed(lastUsed)
                 .build();
     }
 
