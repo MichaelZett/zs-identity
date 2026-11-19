@@ -9,7 +9,7 @@ import org.testcontainers.utility.DockerImageName;
  */
 public final class PostgresTestImage {
 
-    private static final String FALLBACK_VERSION = "17.12";
+    private static final String FALLBACK_VERSION = "18.7";
 
     private PostgresTestImage() {
         // Utility class
