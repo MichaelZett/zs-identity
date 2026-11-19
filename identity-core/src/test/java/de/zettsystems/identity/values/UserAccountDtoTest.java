@@ -73,6 +73,17 @@ class UserAccountDtoTest {
         assertThat(accountWith(null, name, Set.of()).claimed()).isFalse();
     }
 
+    /** The shapes before 1.8.0 know no sign-ins; such an account has never signed in. */
+    @Test
+    void theOlderShapesHaveNoLastSignIn() {
+        UserAccountDto account = new UserAccountDto(1L, "anna@example.com", AccountName.display("Anna"), true, true,
+                CREATED, Set.of(), false, null, true, null, true);
+
+        assertThat(account.lastLoginAt()).isNull();
+        assertThat(account.hasPassword()).isTrue();
+        assertThat(accountWith("anna@example.com", AccountName.display("Anna"), Set.of()).lastLoginAt()).isNull();
+    }
+
     @Test
     void theMandatoryFieldsAreChecked() {
         AccountName name = AccountName.display("Anna");

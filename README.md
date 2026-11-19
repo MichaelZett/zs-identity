@@ -130,10 +130,11 @@ list is optional, and the auto-configuration takes care of everything else:
    remember-me session is sent to sign in first). It also gives the sign-in
    filter the application's `RememberMeServices`, so a passkey sign-in sets
    the remember-me cookie like the form login, and the shared
-   `AuthenticationManager`, so the last sign-in is recorded (`UserAccountDto.lastLoginAt()`, since 1.8.0). The access
-   rules take effect where the call sits: put it before an `anyRequest()`
-   of your own; next to a Vaadin configurer the order does not matter, since
-   that one adds its `anyRequest()` last by itself. After a passkey sign-in the session
+   `AuthenticationManager`, so the last sign-in is recorded
+   (`UserAccountDto.lastLoginAt()`, since 1.8.0). The access rules take
+   effect where the call sits: put it before an `anyRequest()` of your own;
+   next to a Vaadin configurer the order does not matter, since that one adds
+   its `anyRequest()` last by itself. After a passkey sign-in the session
    holds a `PasskeyAuthentication` whose principal is the same
    `IdentityUserDetails` as after a password sign-in.
    With `identity-vaadin`, the sign-in page offers the passkey in its
