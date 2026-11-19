@@ -27,3 +27,6 @@ Thumbs.db
 ### Secrets / lokale Stände ###
 *.env
 .env.local
+
+### Sonar-Scanner-Cache (lokaler Lauf) ###
+.sonar/
