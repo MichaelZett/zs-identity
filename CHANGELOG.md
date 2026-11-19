@@ -5,7 +5,7 @@ Notable changes to zs-identity. The format follows
 [SemVer](https://semver.org/). On release, `## Unreleased` is renamed to
 `## <version> - <date>`.
 
-## Unreleased
+## 1.8.0 - 2026-11-19
 
 ### Added
 - `UserAccountDto.lastLoginAt()`: the last successful sign-in, `null` for an
