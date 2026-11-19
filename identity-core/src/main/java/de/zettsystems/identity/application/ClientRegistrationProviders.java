@@ -13,6 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.StreamSupport;
 
 /**
  * The providers to offer, read from Spring's
@@ -77,14 +78,12 @@ final class ClientRegistrationProviders implements ExternalProviders {
         if (!(repository instanceof Iterable<?> registrations)) {
             return List.of();
         }
-        List<ExternalProvider> providers = new ArrayList<>();
-        for (Object registration : registrations) {
-            if (registration instanceof ClientRegistration clientRegistration) {
-                providers.add(toProvider(clientRegistration));
-            }
-        }
-        providers.sort(BY_NAME);
-        return List.copyOf(providers);
+        return StreamSupport.stream(registrations.spliterator(), false)
+                .filter(ClientRegistration.class::isInstance)
+                .map(ClientRegistration.class::cast)
+                .map(ClientRegistrationProviders::toProvider)
+                .sorted(BY_NAME)
+                .toList();
     }
 
     /** Spring sets the client name to the registration id when the configuration has none. */

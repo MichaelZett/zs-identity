@@ -13,6 +13,27 @@ Notable changes to zs-identity. The format follows
   kept it inside; an administrator's list of accounts had to read the table
   for it. The shape without it stays as a constructor.
 
+### Changed
+- Vaadin 25.3.4 -> 25.3.5.
+
+### Build
+- **Dependencies updated**: Gradle wrapper 9.9.1, Error Prone 2.53.0, NullAway
+  0.14.4, Sonar plugin 7.6.0. In the workflow action-junit-report 6.7.1,
+  action-gh-release 3.0.4 and setup-gradle 6.4.1 (CodeQL). The OpenRewrite
+  plugin stays on 7.39.0 for the reason given under 1.5.1 (rechecked
+  2026-11-19).
+- The integration tests run against PostgreSQL 18.7 instead of 17.11; the
+  schema uses nothing specific to either version.
+- Sonar findings closed: the mail health component keeps its last probe in an
+  `AtomicReference`, three loops became streams, a constant in `AccountSearch`
+  no longer shadows a record component. The dynamic SQL in `AccountSearch`
+  (only the validated collation name) and the size of `IdentityBeans` (the
+  explicit wiring) are documented exceptions in the Sonar configuration.
+- Tests for what a CRAP and PIT run found unchecked: the scoped role queries,
+  `lockedAt` and `localeOr` of `UserAccountDto`, starting an impersonation
+  without a signed-in account, and GitHub's address list behind a user-info
+  address with a trailing slash or none at all.
+
 ## 1.7.1 - 2026-11-05
 
 ### Fixed

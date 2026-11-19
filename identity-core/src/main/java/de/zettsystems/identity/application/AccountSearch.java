@@ -89,7 +89,7 @@ final class AccountSearch {
         Set<Long> userIds = query.userIds();
         if (userIds != null) {
             if (userIds.isEmpty()) {
-                return Restriction.NOBODY;
+                return Restriction.NO_MATCH;
             }
             conditions.add("u.id in (:userIds)");
             parameters.put("userIds", userIds);
@@ -150,16 +150,14 @@ final class AccountSearch {
     }
 
     private static List<Long> castToLongs(List<?> rows) {
-        List<Long> ids = new ArrayList<>(rows.size());
-        for (Object row : rows) {
-            ids.add(((Number) row).longValue());
-        }
-        return ids;
+        return rows.stream()
+                .map(row -> ((Number) row).longValue())
+                .toList();
     }
 
     private record Restriction(String where, Map<String, Object> parameters, boolean nobody) {
 
-        static final Restriction NOBODY = new Restriction("", Map.of(), true);
+        static final Restriction NO_MATCH = new Restriction("", Map.of(), true);
 
         void bindTo(Query query) {
             parameters.forEach(query::setParameter);

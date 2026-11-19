@@ -465,7 +465,15 @@ sonar {
         //   and table names, which cannot be bound as parameters. They are
         //   quoted with doubled quotes (`qualified`), every value is bound.
         //   Scoped to this one class; dynamic SQL anywhere else still counts.
-        property 'sonar.issue.ignore.multicriteria', 's1948,s2160,s110,s107,plsql,s7785,s2077'
+        // - java:S2077 on AccountSearch: the only text put into the statement
+        //   besides constants is the collation name, which has no bind
+        //   parameter either; SearchSettings lets nothing but letters, digits
+        //   and _ . @ - through. Every value a caller controls is bound.
+        // - java:S6539 on IdentityBeans: it is the one place that wires every
+        //   bean explicitly (rule "no @ComponentScan", AutoConfigurationIT), so
+        //   its dependencies grow with each feature by design. Splitting it
+        //   would scatter the list an application reads to replace a bean.
+        property 'sonar.issue.ignore.multicriteria', 's1948,s2160,s110,s107,plsql,s7785,s2077,s2077search,s6539'
         property 'sonar.issue.ignore.multicriteria.s2160.ruleKey', 'java:S2160'
         property 'sonar.issue.ignore.multicriteria.s2160.resourceKey', '**/domain/**/*.java'
         property 'sonar.issue.ignore.multicriteria.s1948.ruleKey', 'java:S1948'
@@ -480,5 +488,9 @@ sonar {
         property 'sonar.issue.ignore.multicriteria.s7785.resourceKey', '**/ui/passkey-*.js'
         property 'sonar.issue.ignore.multicriteria.s2077.ruleKey', 'java:S2077'
         property 'sonar.issue.ignore.multicriteria.s2077.resourceKey', '**/configuration/IdentityMigrations.java'
+        property 'sonar.issue.ignore.multicriteria.s2077search.ruleKey', 'java:S2077'
+        property 'sonar.issue.ignore.multicriteria.s2077search.resourceKey', '**/application/AccountSearch.java'
+        property 'sonar.issue.ignore.multicriteria.s6539.ruleKey', 'java:S6539'
+        property 'sonar.issue.ignore.multicriteria.s6539.resourceKey', '**/application/IdentityBeans.java'
     }
 }

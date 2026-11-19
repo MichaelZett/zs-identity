@@ -1,9 +1,11 @@
 package de.zettsystems.identity.values;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -12,6 +14,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class UserAccountDtoTest {
 
     private static final Instant CREATED = Instant.parse("2026-09-01T10:00:00Z");
+    private static final Scope CLUB_7 = Scope.of("club", "7");
+    private static final Scope CLUB_8 = Scope.of("club", "8");
 
     private static UserAccountDto accountWith(String email, AccountName name, Set<String> roles) {
         return new UserAccountDto(1L, email, name, true, true, CREATED, roles);
@@ -82,6 +86,64 @@ class UserAccountDtoTest {
         assertThat(account.lastLoginAt()).isNull();
         assertThat(account.hasPassword()).isTrue();
         assertThat(accountWith("anna@example.com", AccountName.display("Anna"), Set.of()).lastLoginAt()).isNull();
+    }
+
+    private static UserAccountDto accountWithAssignments(Set<ScopedRole> assignments, @Nullable Instant lockedUntil,
+                                                         @Nullable Locale locale) {
+        return new UserAccountDto(1L, "anna@example.com", AccountName.display("Anna"), true, true, CREATED,
+                assignments, false, locale, true, lockedUntil, true);
+    }
+
+    /** Only the global roles are the role codes; a role in a scope applies there alone. */
+    @Test
+    void roleCodesLeaveOutTheScopedRoles() {
+        UserAccountDto account = accountWithAssignments(
+                Set.of(ScopedRole.global("USER"), ScopedRole.of("GROUP_ADMIN", CLUB_7)), null, null);
+
+        assertThat(account.roleCodes()).containsExactly("USER");
+        assertThat(account.hasRole("GROUP_ADMIN")).isFalse();
+    }
+
+    @Test
+    void aScopedRoleAppliesInItsScopeAndAGlobalOneEverywhere() {
+        UserAccountDto account = accountWithAssignments(
+                Set.of(ScopedRole.global("USER"), ScopedRole.of("GROUP_ADMIN", CLUB_7)), null, null);
+
+        assertThat(account.hasRole("GROUP_ADMIN", CLUB_7)).isTrue();
+        assertThat(account.hasRole("GROUP_ADMIN", CLUB_8)).isFalse();
+        assertThat(account.hasRole("USER", CLUB_8)).isTrue();
+        assertThat(account.hasRole("MEMBER", CLUB_7)).isFalse();
+        assertThat(account.rolesIn(CLUB_7)).containsExactlyInAnyOrder("USER", "GROUP_ADMIN");
+        assertThat(account.rolesIn(CLUB_8)).containsExactly("USER");
+    }
+
+    @Test
+    void scopesOfAKindListOnlyThatKind() {
+        Scope tournament = Scope.of("tournament", "3");
+        UserAccountDto account = accountWithAssignments(Set.of(ScopedRole.global("USER"),
+                ScopedRole.of("MEMBER", CLUB_7), ScopedRole.of("REFEREE", tournament)), null, null);
+
+        assertThat(account.scopesOf("club")).containsExactly(CLUB_7);
+        assertThat(account.scopesOf("tournament")).containsExactly(tournament);
+        assertThat(account.scopesOf("game")).isEmpty();
+    }
+
+    /** The lock holds until its end, exclusive; without an end there is none. */
+    @Test
+    void aLockHoldsUntilItsEnd() {
+        Instant until = CREATED.plusSeconds(600);
+        UserAccountDto locked = accountWithAssignments(Set.of(), until, null);
+
+        assertThat(locked.lockedAt(until.minusSeconds(1))).isTrue();
+        assertThat(locked.lockedAt(until)).isFalse();
+        assertThat(accountWithAssignments(Set.of(), null, null).lockedAt(until)).isFalse();
+    }
+
+    @Test
+    void theChosenLanguageWinsOverTheFallback() {
+        assertThat(accountWithAssignments(Set.of(), null, Locale.ENGLISH).localeOr(Locale.GERMAN))
+                .isEqualTo(Locale.ENGLISH);
+        assertThat(accountWithAssignments(Set.of(), null, null).localeOr(Locale.GERMAN)).isEqualTo(Locale.GERMAN);
     }
 
     @Test

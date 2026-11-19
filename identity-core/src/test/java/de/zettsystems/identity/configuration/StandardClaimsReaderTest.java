@@ -139,6 +139,32 @@ class StandardClaimsReaderTest {
         assertThat(claims.verifiedEmail()).isNull();
     }
 
+    /** A user-info address with a trailing slash still finds the list next to it. */
+    @Test
+    void aTrailingSlashOnTheUserInfoAddressIsNotDoubled() throws IOException {
+        String userInfoUri = startGitHub(new AtomicReference<>(), """
+                [{"email":"ida@example.com","primary":true,"verified":true}]
+                """);
+        OAuth2User user = new DefaultOAuth2User(List.of(), Map.of("id", 42, "login", "ida"), "id");
+
+        ExternalIdentityClaims claims = ExternalClaimsReader.standard()
+                .read(token(registration("github", userInfoUri + "/"), user));
+
+        assertThat(claims.verifiedEmail()).isEqualTo("ida@example.com");
+    }
+
+    /** Without a user-info address there is nothing to ask; the sign-in stays, without an address. */
+    @Test
+    void withoutAUserInfoAddressGitHubIsNotAsked() {
+        OAuth2User user = new DefaultOAuth2User(List.of(), Map.of("id", 42, "login", "ida"), "id");
+
+        ExternalIdentityClaims claims = ExternalClaimsReader.standard()
+                .read(token(registration("github", " "), user));
+
+        assertThat(claims.subject()).isEqualTo("42");
+        assertThat(claims.verifiedEmail()).isNull();
+    }
+
     @Test
     void gitHubIsRecognisedByItsApiHostToo() {
         assertThat(StandardClaimsReader.isGitHub(registration("octo", "https://api.github.com/user"))).isTrue();

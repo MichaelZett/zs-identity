@@ -30,6 +30,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -161,6 +162,22 @@ class ImpersonationServiceIT extends AbstractIdentityIntegrationTest {
         assertNotAllowed(() -> impersonation.start(adminId));
         impersonation.start(managed.id());
         assertNotAllowed(() -> impersonation.start(second.id()));
+    }
+
+    /** Only a signed-in account of the building block may act for somebody. */
+    @Test
+    void nobodyAndNoForeignPrincipalMayStart() {
+        inSessionOf(null, () -> assertNotAllowed(() -> impersonation.start(managed.id())));
+        inSessionOf(UsernamePasswordAuthenticationToken.unauthenticated(ADMIN, PASSWORD),
+                () -> assertNotAllowed(() -> impersonation.start(managed.id())));
+        inSessionOf(UsernamePasswordAuthenticationToken.authenticated("basic-user", null, List.of()),
+                () -> assertNotAllowed(() -> impersonation.start(managed.id())));
+    }
+
+    @Test
+    void withoutAnImpersonationThereIsNothingToVerify() {
+        assertThat(impersonation.verify()).isFalse();
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isSameAs(adminSession);
     }
 
     @Test

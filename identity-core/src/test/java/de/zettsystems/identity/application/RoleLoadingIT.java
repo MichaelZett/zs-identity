@@ -4,7 +4,6 @@ import de.zettsystems.identity.domain.AuthTokenRepository;
 import de.zettsystems.identity.domain.UserAccountRepository;
 import de.zettsystems.identity.testsupport.AbstractIdentityIntegrationTest;
 import de.zettsystems.identity.values.Scope;
-import de.zettsystems.identity.values.UserAccountDto;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;

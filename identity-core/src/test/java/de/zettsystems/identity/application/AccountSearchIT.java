@@ -259,9 +259,11 @@ class AccountSearchIT extends AbstractIdentityIntegrationTest {
 
     @Test
     void anOffsetBelowZeroOrALimitBelowOneIsRefused() {
-        assertThatThrownBy(() -> accounts.search(AccountQuery.all(), -1, 10))
+        AccountQuery everyone = AccountQuery.all();
+
+        assertThatThrownBy(() -> accounts.search(everyone, -1, 10))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> accounts.search(AccountQuery.all(), 0, 0))
+        assertThatThrownBy(() -> accounts.search(everyone, 0, 0))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

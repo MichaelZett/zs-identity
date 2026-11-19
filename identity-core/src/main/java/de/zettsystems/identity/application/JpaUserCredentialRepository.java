@@ -16,7 +16,6 @@ import org.springframework.security.web.webauthn.management.UserCredentialReposi
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -112,15 +111,14 @@ class JpaUserCredentialRepository implements UserCredentialRepository {
                 .attestationClientDataJSON(fromBase64(credential.attestationClientDataJson()))
                 .label(passkey.getLabel())
                 .created(passkey.getCreatedAt())
-                .lastUsed(passkey.getLastUsedAt() != null ? passkey.getLastUsedAt() : passkey.getCreatedAt())
+                .lastUsed(Objects.requireNonNullElse(passkey.getLastUsedAt(), passkey.getCreatedAt()))
                 .build();
     }
 
     static PasskeyCredential toCredential(CredentialRecord credentialRecord) {
-        Set<String> transports = new HashSet<>();
-        for (AuthenticatorTransport transport : credentialRecord.getTransports()) {
-            transports.add(transport.getValue());
-        }
+        Set<String> transports = credentialRecord.getTransports().stream()
+                .map(AuthenticatorTransport::getValue)
+                .collect(Collectors.toUnmodifiableSet());
         PublicKeyCredentialType type = credentialRecord.getCredentialType();
         return new PasskeyCredential(
                 credentialRecord.getCredentialId().toBase64UrlString(),

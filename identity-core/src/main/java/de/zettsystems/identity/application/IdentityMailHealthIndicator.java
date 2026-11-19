@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The health component {@code mail} for applications that switch it on with
@@ -56,7 +57,7 @@ public final class IdentityMailHealthIndicator implements HealthIndicator, MailD
     private final Clock clock;
     private final Executor background;
     private final AtomicBoolean probing = new AtomicBoolean();
-    private volatile @Nullable Probe last;
+    private final AtomicReference<@Nullable Probe> last = new AtomicReference<>();
 
     IdentityMailHealthIndicator(MailConnection connection, Duration interval, Clock clock, Executor background) {
         this.connection = connection;
@@ -85,7 +86,7 @@ public final class IdentityMailHealthIndicator implements HealthIndicator, MailD
     public void delivered() {
         Instant now = clock.instant();
         boolean wasFailing = outageStart() != null;
-        last = new Probe(now, null, now);
+        last.set(new Probe(now, null, now));
         if (wasFailing) {
             LOG.info("Mail server reachable again");
         }
@@ -98,20 +99,21 @@ public final class IdentityMailHealthIndicator implements HealthIndicator, MailD
 
     @Override
     public Health health() {
-        Probe probe = last;
+        Probe probe = last.get();
         if (probe == null || !probe.at().plus(interval).isAfter(clock.instant())) {
             probeInBackground();
         }
         if (probe == null) {
             return Health.unknown().build();
         }
-        if (probe.error() == null) {
+        String error = probe.error();
+        if (error == null) {
             return Health.up().withDetail("checked", probe.at().toString()).build();
         }
         return Health.status(DEGRADED)
                 .withDetail("checked", probe.at().toString())
                 .withDetail("since", probe.since().toString())
-                .withDetail("error", probe.error())
+                .withDetail("error", error)
                 .build();
     }
 
@@ -132,14 +134,14 @@ public final class IdentityMailHealthIndicator implements HealthIndicator, MailD
         Instant start = outageStart();
         if (start == null) {
             LOG.warn("Mail server not reachable: {}", error);
-            last = new Probe(now, error, now);
+            last.set(new Probe(now, error, now));
         } else {
-            last = new Probe(now, error, start);
+            last.set(new Probe(now, error, start));
         }
     }
 
     private @Nullable Instant outageStart() {
-        Probe probe = last;
+        Probe probe = last.get();
         return probe != null && probe.error() != null ? probe.since() : null;
     }
 
