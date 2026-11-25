@@ -30,3 +30,6 @@ Thumbs.db
 
 ### Sonar-Scanner-Cache (lokaler Lauf) ###
 .sonar/
+
+# Eigene Eingabeordner des Users
+_input*/
